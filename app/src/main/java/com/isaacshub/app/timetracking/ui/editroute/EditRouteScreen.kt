@@ -123,6 +123,15 @@ fun EditRouteScreen(
                 )
             }
 
+            OutlinedTextField(
+                value = state.notes,
+                onValueChange = viewModel::setNotes,
+                label = { Text("Notes") },
+                placeholder = { Text("What this route is like, where it goes, landmarks, etc.") },
+                minLines = 3,
+                modifier = Modifier.fillMaxWidth()
+            )
+
             state.error?.let {
                 Text(it, color = MaterialTheme.colorScheme.error)
             }

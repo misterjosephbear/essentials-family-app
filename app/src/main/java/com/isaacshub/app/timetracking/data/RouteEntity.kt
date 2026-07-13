@@ -21,7 +21,8 @@ data class RouteEntity(
      * its day-of-week is the recurring day, and for BIWEEKLY its week parity anchors which of the two weeks
      * the route falls on.
      */
-    val scheduleAnchorEpochDay: Long? = null
+    val scheduleAnchorEpochDay: Long? = null,
+    val notes: String? = null
 )
 
 class ScheduleTypeConverter {

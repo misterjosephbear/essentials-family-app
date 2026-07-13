@@ -21,6 +21,7 @@ data class EditRouteUiState(
     val evaluatedMiles: String = "",
     val scheduleType: ScheduleType = ScheduleType.NONE,
     val scheduleAnchor: LocalDate = LocalDate.now(),
+    val notes: String = "",
     val error: String? = null,
     val saved: Boolean = false
 ) {
@@ -46,7 +47,8 @@ class EditRouteViewModel(
                         evaluatedMiles = formatNumber(existing.evaluatedMiles),
                         scheduleType = existing.scheduleType,
                         scheduleAnchor = existing.scheduleAnchorEpochDay?.let(LocalDate::ofEpochDay)
-                            ?: LocalDate.now()
+                            ?: LocalDate.now(),
+                        notes = existing.notes ?: ""
                     )
                 }
             }
@@ -77,6 +79,10 @@ class EditRouteViewModel(
         _uiState.value = _uiState.value.copy(scheduleAnchor = value, error = null)
     }
 
+    fun setNotes(value: String) {
+        _uiState.value = _uiState.value.copy(notes = value)
+    }
+
     fun save() {
         val state = _uiState.value
         val hours = state.evaluatedHours.toDoubleOrNull()
@@ -95,7 +101,8 @@ class EditRouteViewModel(
                         evaluatedHours = hours,
                         evaluatedMiles = miles,
                         scheduleType = state.scheduleType,
-                        scheduleAnchorEpochDay = if (state.needsAnchor) state.scheduleAnchor.toEpochDay() else null
+                        scheduleAnchorEpochDay = if (state.needsAnchor) state.scheduleAnchor.toEpochDay() else null,
+                        notes = state.notes.trim().ifBlank { null }
                     )
                 )
                 _uiState.value = _uiState.value.copy(saved = true)

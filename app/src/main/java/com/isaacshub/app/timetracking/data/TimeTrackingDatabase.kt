@@ -16,9 +16,15 @@ private val MIGRATION_3_4 = object : Migration(3, 4) {
     }
 }
 
+private val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `routes` ADD COLUMN `notes` TEXT")
+    }
+}
+
 @Database(
     entities = [TimeEntryEntity::class, RouteEntity::class, DeductionEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class TimeTrackingDatabase : RoomDatabase() {
@@ -39,7 +45,7 @@ abstract class TimeTrackingDatabase : RoomDatabase() {
                 )
                     // Any future schema change must ship an explicit Migration - routes and logged
                     // hours are real user data now and must never be dropped on upgrade.
-                    .addMigrations(MIGRATION_3_4)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
                     .build().also { instance = it }
             }
     }
