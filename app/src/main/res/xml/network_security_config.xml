@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The vault-pairing feature talks to a self-hosted server on the user's own LAN, which has no
+  known hostname/TLS ahead of time and typically runs plain HTTP - so cleartext traffic is allowed
+  app-wide. Every other network call in this app (GitHub API for updates) already uses HTTPS,
+  so this only actually matters for that one legitimate case.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

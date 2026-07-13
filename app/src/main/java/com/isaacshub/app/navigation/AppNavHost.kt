@@ -40,6 +40,8 @@ import com.isaacshub.app.timetracking.ui.settings.TimeTrackerSettingsScreen
 import com.isaacshub.app.timetracking.ui.week.TimeTrackingHomeScreen
 import com.isaacshub.app.update.UpdateBanner
 import com.isaacshub.app.update.UpdateViewModel
+import com.isaacshub.app.vault.ui.home.VaultHomeScreen
+import com.isaacshub.app.vault.ui.pairing.PairingScreen
 
 private data class TopLevelDestination(val route: String, val label: String, val icon: ImageVector)
 
@@ -118,7 +120,8 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
             composable(Routes.LANDING) {
                 LandingScreen(
                     onOpenSleep = { navController.navigate(Routes.SLEEP_HOME) },
-                    onOpenTimeTracking = { navController.navigate(Routes.TIME_HOME) }
+                    onOpenTimeTracking = { navController.navigate(Routes.TIME_HOME) },
+                    onOpenVault = { navController.navigate(Routes.VAULT_HOME) }
                 )
             }
 
@@ -178,6 +181,17 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                 EditRouteScreen(
                     routeId = routeId,
                     onDone = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.VAULT_HOME) {
+                VaultHomeScreen(
+                    onPair = { navController.navigate(Routes.VAULT_PAIRING) }
+                )
+            }
+            composable(Routes.VAULT_PAIRING) {
+                PairingScreen(
+                    onPaired = { navController.popBackStack() }
                 )
             }
         }

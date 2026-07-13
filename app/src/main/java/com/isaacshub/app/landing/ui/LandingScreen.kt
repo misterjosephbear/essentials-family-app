@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,7 +28,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun LandingScreen(
     onOpenSleep: () -> Unit,
-    onOpenTimeTracking: () -> Unit
+    onOpenTimeTracking: () -> Unit,
+    onOpenVault: () -> Unit
 ) {
     Scaffold(
         topBar = { TopAppBar(title = { Text("Isaac's Hub") }) }
@@ -50,6 +52,12 @@ fun LandingScreen(
                 title = "Time Tracking",
                 subtitle = "Log route hours and evaluations, watch weekly overtime",
                 onClick = onOpenTimeTracking
+            )
+            ToolCard(
+                icon = Icons.Filled.CloudUpload,
+                title = "Photo Vault",
+                subtitle = "Back up new photos to your own server",
+                onClick = onOpenVault
             )
         }
     }

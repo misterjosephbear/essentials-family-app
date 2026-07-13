@@ -6,6 +6,8 @@ import com.isaacshub.app.sleep.data.SleepDatabase
 import com.isaacshub.app.sleep.data.SleepRepository
 import com.isaacshub.app.timetracking.data.TimeTrackingDatabase
 import com.isaacshub.app.timetracking.data.TimeTrackingRepository
+import com.isaacshub.app.vault.data.VaultPreferencesRepository
+import com.isaacshub.app.vault.work.PhotoBackupScheduler
 
 class App : Application() {
 
@@ -16,6 +18,9 @@ class App : Application() {
         private set
 
     lateinit var timeTrackingRepository: TimeTrackingRepository
+        private set
+
+    lateinit var vaultPreferencesRepository: VaultPreferencesRepository
         private set
 
     override fun onCreate() {
@@ -32,5 +37,8 @@ class App : Application() {
             timeTrackingDatabase.deductionDao(),
             timeTrackingDatabase.routeScheduleOverrideDao()
         )
+
+        vaultPreferencesRepository = VaultPreferencesRepository(this)
+        PhotoBackupScheduler.rescheduleIfPaired(this, vaultPreferencesRepository)
     }
 }

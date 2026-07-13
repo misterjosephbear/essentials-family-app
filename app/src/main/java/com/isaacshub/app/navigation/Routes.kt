@@ -21,6 +21,9 @@ object Routes {
     const val EDIT_ROUTE_ARG = "routeId"
     const val EDIT_ROUTE_PATTERN = "$EDIT_ROUTE_BASE/{$EDIT_ROUTE_ARG}"
 
+    const val VAULT_HOME = "vault_home"
+    const val VAULT_PAIRING = "vault_pairing"
+
     private const val NEW_TOKEN = "new"
 
     fun editSession(sessionId: Long?): String = "$EDIT_SESSION_BASE/${sessionId ?: NEW_TOKEN}"

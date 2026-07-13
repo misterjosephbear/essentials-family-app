@@ -97,5 +97,16 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
 
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.mlkit.barcode.scanning)
+    implementation(libs.androidx.work.runtime.ktx)
+
     testImplementation(libs.junit)
+    testImplementation(libs.androidx.work.testing)
+    // Android's own org.json classes are stub-only outside instrumented tests - the real
+    // implementation is needed for JVM unit tests that parse JSON (e.g. pairing payloads).
+    testImplementation(libs.org.json)
 }
