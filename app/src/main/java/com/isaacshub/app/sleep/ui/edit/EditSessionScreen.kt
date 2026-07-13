@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isaacshub.app.App
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -111,6 +113,11 @@ private val displayFormatter = DateTimeFormatter.ofPattern("EEE, MMM d 'at' h:mm
 private fun formatInstant(instant: Instant): String =
     instant.atZone(ZoneId.systemDefault()).format(displayFormatter)
 
+/**
+ * Picks a date then a time as two separate dialogs rather than stacking both pickers in one -
+ * DatePickerDialog is sized just for a DatePicker's calendar grid, so adding a full TimePicker
+ * clock face below it pushed the clock face past the dialog's visible bounds.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun InstantPickerDialog(
@@ -120,42 +127,53 @@ private fun InstantPickerDialog(
 ) {
     val zone = ZoneId.systemDefault()
     val zoned = initial.atZone(zone)
+    var pickedDate by remember { mutableStateOf<LocalDate?>(null) }
 
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = zoned.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-    )
-    val timePickerState = rememberTimePickerState(
-        initialHour = zoned.hour,
-        initialMinute = zoned.minute,
-        is24Hour = false
-    )
-
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = {
-                val selectedMillis = datePickerState.selectedDateMillis
-                val localDate = if (selectedMillis != null) {
-                    Instant.ofEpochMilli(selectedMillis).atZone(ZoneOffset.UTC).toLocalDate()
-                } else {
-                    zoned.toLocalDate()
+    val date = pickedDate
+    if (date == null) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = zoned.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = onDismiss,
+            confirmButton = {
+                TextButton(onClick = {
+                    val selectedMillis = datePickerState.selectedDateMillis
+                    pickedDate = if (selectedMillis != null) {
+                        Instant.ofEpochMilli(selectedMillis).atZone(ZoneOffset.UTC).toLocalDate()
+                    } else {
+                        zoned.toLocalDate()
+                    }
+                }) {
+                    Text("OK")
                 }
-                val result = localDate
-                    .atTime(timePickerState.hour, timePickerState.minute)
-                    .atZone(zone)
-                    .toInstant()
-                onConfirm(result)
-            }) {
-                Text("OK")
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ) {
             DatePicker(state = datePickerState, showModeToggle = false)
-            TimePicker(state = timePickerState)
         }
+    } else {
+        val timePickerState = rememberTimePickerState(
+            initialHour = zoned.hour,
+            initialMinute = zoned.minute,
+            is24Hour = false
+        )
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            confirmButton = {
+                TextButton(onClick = {
+                    val result = date.atTime(timePickerState.hour, timePickerState.minute).atZone(zone).toInstant()
+                    onConfirm(result)
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            },
+            text = { TimePicker(state = timePickerState) }
+        )
     }
 }
