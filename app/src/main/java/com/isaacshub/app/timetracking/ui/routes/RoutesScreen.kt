@@ -54,7 +54,11 @@ fun RoutesScreen(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No saved routes yet. Add one with the + button for quick input.")
+                Text(
+                    "No saved routes yet. Add one with the + button for quick input.",
+                    modifier = Modifier.padding(horizontal = 32.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
             }
         } else {
             LazyColumn(
