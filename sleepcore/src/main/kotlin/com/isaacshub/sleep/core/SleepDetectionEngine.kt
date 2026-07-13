@@ -24,7 +24,9 @@ data class DetectionConfig(
     /** How long screen-on/motion must persist before a sleep session is considered actually over. */
     val wakeConfirmMinutes: Long = 3,
     /** Safety valve: finalize any session that has run this long, even without a clean wake signal. */
-    val maxSessionHours: Long = 16
+    val maxSessionHours: Long = 16,
+    /** Zone used to resolve the hour of day for night-window checks. */
+    val zone: ZoneId = ZoneId.systemDefault()
 )
 
 sealed interface DetectionResult {
@@ -58,7 +60,7 @@ class SleepDetectionEngine(
 
     fun currentPhase(): DetectionPhase = phase
 
-    fun isWithinNightWindow(at: Instant, zone: ZoneId = ZoneId.systemDefault()): Boolean {
+    fun isWithinNightWindow(at: Instant, zone: ZoneId = config.zone): Boolean {
         val hour = at.atZone(zone).hour
         val start = config.nightWindowStartHour
         val end = config.nightWindowEndHour
@@ -77,7 +79,7 @@ class SleepDetectionEngine(
             val start = candidateStart
             if (start != null && Duration.between(start, now).toMinutes() >= config.stillnessConfirmMinutes) {
                 phase = DetectionPhase.ASLEEP
-                sleepStart = start
+                sleepStart = start.plus(Duration.ofMinutes(config.stillnessConfirmMinutes))
                 DetectionResult.PhaseChanged(phase)
             } else {
                 DetectionResult.NoChange

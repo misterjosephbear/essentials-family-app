@@ -16,14 +16,14 @@ class SleepDetectionEngineTest {
 
     @Test
     fun `screen off at night starts a candidate`() {
-        val engine = engineWith(DetectionConfig(nightWindowStartHour = 20, nightWindowEndHour = 12))
+        val engine = engineWith(DetectionConfig(zone = ZoneOffset.UTC, nightWindowStartHour = 20, nightWindowEndHour = 12))
         val result = engine.onEvent(DetectionEvent.ScreenOff(at(23)))
         assertEquals(DetectionResult.PhaseChanged(DetectionPhase.CANDIDATE), result)
     }
 
     @Test
     fun `screen off during the day does not start a candidate`() {
-        val engine = engineWith(DetectionConfig(nightWindowStartHour = 20, nightWindowEndHour = 12))
+        val engine = engineWith(DetectionConfig(zone = ZoneOffset.UTC, nightWindowStartHour = 20, nightWindowEndHour = 12))
         val result = engine.onEvent(DetectionEvent.ScreenOff(at(15)))
         assertEquals(DetectionResult.NoChange, result)
         assertEquals(DetectionPhase.AWAKE, engine.currentPhase())
@@ -32,7 +32,7 @@ class SleepDetectionEngineTest {
     @Test
     fun `screen back on before stillness confirmed cancels the candidate`() {
         val engine = engineWith(
-            DetectionConfig(nightWindowStartHour = 20, nightWindowEndHour = 12, stillnessConfirmMinutes = 10)
+            DetectionConfig(zone = ZoneOffset.UTC, nightWindowStartHour = 20, nightWindowEndHour = 12, stillnessConfirmMinutes = 10)
         )
         engine.onEvent(DetectionEvent.ScreenOff(at(23)))
         val result = engine.onEvent(DetectionEvent.ScreenOn(at(23, 2)))
@@ -42,7 +42,7 @@ class SleepDetectionEngineTest {
     @Test
     fun `significant motion while candidate cancels it too`() {
         val engine = engineWith(
-            DetectionConfig(nightWindowStartHour = 20, nightWindowEndHour = 12, stillnessConfirmMinutes = 10)
+            DetectionConfig(zone = ZoneOffset.UTC, nightWindowStartHour = 20, nightWindowEndHour = 12, stillnessConfirmMinutes = 10)
         )
         engine.onEvent(DetectionEvent.ScreenOff(at(23)))
         val result = engine.onEvent(DetectionEvent.SignificantMotion(at(23, 3)))
@@ -51,7 +51,7 @@ class SleepDetectionEngineTest {
 
     @Test
     fun `candidate becomes asleep after stillness window elapses`() {
-        val config = DetectionConfig(nightWindowStartHour = 20, nightWindowEndHour = 12, stillnessConfirmMinutes = 10)
+        val config = DetectionConfig(zone = ZoneOffset.UTC, nightWindowStartHour = 20, nightWindowEndHour = 12, stillnessConfirmMinutes = 10)
         val engine = engineWith(config)
         engine.onEvent(DetectionEvent.ScreenOff(at(23)))
         val tickResult = engine.onTick(at(23, 11))
@@ -61,6 +61,7 @@ class SleepDetectionEngineTest {
     @Test
     fun `full night produces a finalized session after the wake confirm window`() {
         val config = DetectionConfig(
+            zone = ZoneOffset.UTC,
             nightWindowStartHour = 20,
             nightWindowEndHour = 12,
             stillnessConfirmMinutes = 10,
@@ -74,7 +75,7 @@ class SleepDetectionEngineTest {
 
         assertTrue(result is DetectionResult.SessionFinalized)
         result as DetectionResult.SessionFinalized
-        assertEquals(at(23, 0, day = 12), result.start)
+        assertEquals(at(23, 10, day = 12), result.start)
         assertEquals(at(7, 0, day = 13), result.end)
         assertEquals(DetectionPhase.AWAKE, engine.currentPhase())
     }
@@ -82,6 +83,7 @@ class SleepDetectionEngineTest {
     @Test
     fun `brief screen check during the night does not end the session`() {
         val config = DetectionConfig(
+            zone = ZoneOffset.UTC,
             nightWindowStartHour = 20,
             nightWindowEndHour = 12,
             stillnessConfirmMinutes = 10,
@@ -101,6 +103,7 @@ class SleepDetectionEngineTest {
     @Test
     fun `runaway session is finalized by the safety cap`() {
         val config = DetectionConfig(
+            zone = ZoneOffset.UTC,
             nightWindowStartHour = 20,
             nightWindowEndHour = 12,
             stillnessConfirmMinutes = 10,
@@ -117,7 +120,7 @@ class SleepDetectionEngineTest {
 
     @Test
     fun `snapshot round trips through fromSnapshot`() {
-        val config = DetectionConfig()
+        val config = DetectionConfig(zone = ZoneOffset.UTC)
         val engine = engineWith(config)
         engine.onEvent(DetectionEvent.ScreenOff(at(23)))
         val snapshot = engine.snapshot()
