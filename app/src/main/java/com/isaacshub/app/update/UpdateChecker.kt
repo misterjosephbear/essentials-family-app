@@ -13,6 +13,11 @@ data class ReleaseInfo(
     val assetId: Long
 )
 
+sealed interface UpdateCheckResult {
+    data class Success(val release: ReleaseInfo) : UpdateCheckResult
+    data class Failure(val reason: String) : UpdateCheckResult
+}
+
 /**
  * Checks GitHub Releases for a newer build. CI (.github/workflows/release.yml) tags every release
  * "v<versionCode>" and attaches the signed APK as an asset, so the numeric versionCode in the tag
@@ -20,28 +25,39 @@ data class ReleaseInfo(
  *
  * isaacs-hub is a private repo, so every request needs UPDATE_CHECK_TOKEN - a fine-grained PAT
  * scoped to read-only Contents access on just this repo, baked in by CI via BuildConfig. Local/debug
- * builds have no token and simply never find an update.
+ * builds have no token and simply never find an update. Failures are surfaced (not swallowed) so a
+ * broken token/scope shows up as a banner instead of the update silently never appearing.
  */
 object UpdateChecker {
     private const val LATEST_RELEASE_URL =
         "https://api.github.com/repos/misterjosephbear/isaacs-hub/releases/latest"
 
-    suspend fun fetchLatestRelease(): ReleaseInfo? = withContext(Dispatchers.IO) {
-        if (BuildConfig.UPDATE_CHECK_TOKEN.isBlank()) return@withContext null
-        runCatching {
+    suspend fun fetchLatestRelease(): UpdateCheckResult = withContext(Dispatchers.IO) {
+        if (BuildConfig.UPDATE_CHECK_TOKEN.isBlank()) {
+            return@withContext UpdateCheckResult.Failure("no update-check token embedded in this build")
+        }
+        try {
             val connection = URL(LATEST_RELEASE_URL).openConnection() as HttpURLConnection
             connection.setRequestProperty("Accept", "application/vnd.github+json")
             connection.setRequestProperty("Authorization", "Bearer ${BuildConfig.UPDATE_CHECK_TOKEN}")
             connection.connectTimeout = 10_000
             connection.readTimeout = 10_000
             try {
-                if (connection.responseCode != HttpURLConnection.HTTP_OK) return@withContext null
-                val body = connection.inputStream.bufferedReader().use { it.readText() }
-                parseRelease(body)
+                val code = connection.responseCode
+                if (code != HttpURLConnection.HTTP_OK) {
+                    val errorBody = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                    UpdateCheckResult.Failure("GitHub API returned HTTP $code: ${errorBody.take(200)}")
+                } else {
+                    val body = connection.inputStream.bufferedReader().use { it.readText() }
+                    parseRelease(body)?.let { UpdateCheckResult.Success(it) }
+                        ?: UpdateCheckResult.Failure("latest release has no .apk asset")
+                }
             } finally {
                 connection.disconnect()
             }
-        }.getOrNull()
+        } catch (e: Exception) {
+            UpdateCheckResult.Failure("${e.javaClass.simpleName}: ${e.message}")
+        }
     }
 
     private fun parseRelease(body: String): ReleaseInfo? {

@@ -24,7 +24,26 @@ fun UpdateBanner(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val release = state.availableRelease ?: return
+    val release = state.availableRelease
+    if (release == null) {
+        val failure = state.lastCheckFailure ?: return
+        Card(modifier = modifier.fillMaxWidth().padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Update check failed: $failure",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = onDismiss) { Text("Dismiss") }
+            }
+        }
+        return
+    }
 
     Card(modifier = modifier.fillMaxWidth().padding(12.dp)) {
         Row(

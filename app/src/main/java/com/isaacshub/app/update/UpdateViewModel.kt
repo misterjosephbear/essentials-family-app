@@ -15,7 +15,8 @@ data class UpdateUiState(
     val availableRelease: ReleaseInfo? = null,
     val downloading: Boolean = false,
     val progress: Float = 0f,
-    val error: String? = null
+    val error: String? = null,
+    val lastCheckFailure: String? = null
 )
 
 @Suppress("DEPRECATION")
@@ -40,9 +41,15 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     init {
         viewModelScope.launch {
             val installedVersionCode = runCatching { currentVersionCode(getApplication()) }.getOrDefault(Long.MAX_VALUE)
-            val release = UpdateChecker.fetchLatestRelease()
-            if (release != null && release.versionCode > installedVersionCode) {
-                _uiState.value = _uiState.value.copy(availableRelease = release)
+            when (val result = UpdateChecker.fetchLatestRelease()) {
+                is UpdateCheckResult.Success -> {
+                    if (result.release.versionCode > installedVersionCode) {
+                        _uiState.value = _uiState.value.copy(availableRelease = result.release)
+                    }
+                }
+                is UpdateCheckResult.Failure -> {
+                    _uiState.value = _uiState.value.copy(lastCheckFailure = result.reason)
+                }
             }
         }
     }
@@ -64,6 +71,6 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun dismiss() {
-        _uiState.value = _uiState.value.copy(availableRelease = null)
+        _uiState.value = _uiState.value.copy(availableRelease = null, lastCheckFailure = null)
     }
 }
