@@ -17,7 +17,8 @@ import com.isaacshub.app.timetracking.ui.formatNumber
 @Composable
 fun WeeklyHoursBar(
     summary: WeeklySummary,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    title: String = "This week's projected hours"
 ) {
     val target = summary.targetHours
     val fraction = (summary.projectedHours / target.takeIf { it > 0.0 }.let { it ?: 0.0001 })
@@ -31,7 +32,7 @@ fun WeeklyHoursBar(
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("This week's projected hours", style = MaterialTheme.typography.titleMedium)
+            Text(title, style = MaterialTheme.typography.titleMedium)
             Text(
                 "${formatNumber(summary.projectedHours)} / ${formatNumber(target)} hrs",
                 style = MaterialTheme.typography.titleMedium
