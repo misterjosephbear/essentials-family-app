@@ -7,10 +7,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -24,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -104,18 +108,32 @@ fun VaultHomeScreen(
                 )
                 Button(
                     onClick = viewModel::syncNow,
-                    enabled = hasMediaPermission,
+                    enabled = hasMediaPermission && !state.syncingPhotos,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Sync now")
+                    if (state.syncingPhotos) {
+                        LoadingButtonContent(
+                            label = state.photosRemaining?.let { "Backing up... ($it left)" } ?: "Backing up..."
+                        )
+                    } else {
+                        Text("Sync now")
+                    }
                 }
 
                 Text(
                     "App data: " + formatLastRun(state.lastBackupEpochMillis, "never backed up yet"),
                     style = MaterialTheme.typography.bodyMedium
                 )
-                Button(onClick = viewModel::backupNow, modifier = Modifier.fillMaxWidth()) {
-                    Text("Back up now")
+                Button(
+                    onClick = viewModel::backupNow,
+                    enabled = !state.backingUpAppData,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (state.backingUpAppData) {
+                        LoadingButtonContent(label = "Backing up...")
+                    } else {
+                        Text("Back up now")
+                    }
                 }
 
                 OutlinedButton(onClick = viewModel::unpair, modifier = Modifier.fillMaxWidth()) {
@@ -123,5 +141,13 @@ fun VaultHomeScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LoadingButtonContent(label: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+        Text(label)
     }
 }

@@ -16,8 +16,8 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 object AppDataBackupScheduler {
-    private const val PERIODIC_WORK_NAME = "app-data-backup"
-    private const val ONE_TIME_WORK_NAME = "app-data-backup-now"
+    const val PERIODIC_WORK_NAME = "app-data-backup"
+    const val ONE_TIME_WORK_NAME = "app-data-backup-now"
 
     private val constraints = Constraints.Builder()
         .setRequiredNetworkType(NetworkType.UNMETERED)
@@ -36,6 +36,7 @@ object AppDataBackupScheduler {
 
     fun cancel(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(PERIODIC_WORK_NAME)
+        WorkManager.getInstance(context).cancelUniqueWork(ONE_TIME_WORK_NAME)
     }
 
     fun backupNow(context: Context) {
