@@ -44,12 +44,20 @@ private fun formatLastRun(epochMillis: Long, neverText: String): String {
     return Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(timestampFormatter)
 }
 
-private val mediaPermission: String
-    get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        Manifest.permission.READ_MEDIA_IMAGES
+/** Permissions needed to read photos/videos at all - required before any backup can happen. */
+private fun mediaReadPermissions(): List<String> =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        listOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
     } else {
-        Manifest.permission.READ_EXTERNAL_STORAGE
+        listOf(Manifest.permission.READ_EXTERNAL_STORAGE)
     }
+
+/** Optional: without this, GPS/location EXIF data is redacted from backed-up files. Only exists API 29+. */
+private fun mediaLocationPermission(): String? =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) Manifest.permission.ACCESS_MEDIA_LOCATION else null
+
+private fun isGranted(context: android.content.Context, permission: String) =
+    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,16 +68,25 @@ fun VaultHomeScreen(
     val viewModel: VaultHomeViewModel = viewModel()
     val state by viewModel.uiState.collectAsState()
 
-    var hasMediaPermission by remember {
-        mutableStateOf(ContextCompat.checkSelfPermission(context, mediaPermission) == PackageManager.PERMISSION_GRANTED)
-    }
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        hasMediaPermission = granted
+    val readPermissions = remember { mediaReadPermissions() }
+    val locationPermission = remember { mediaLocationPermission() }
+    val allPermissions = remember { (readPermissions + listOfNotNull(locationPermission)).toTypedArray() }
+
+    var hasReadPermission by remember { mutableStateOf(readPermissions.all { isGranted(context, it) }) }
+    var hasLocationPermission by remember {
+        mutableStateOf(locationPermission?.let { isGranted(context, it) } ?: true)
     }
 
-    LaunchedEffect(state.connection, hasMediaPermission) {
-        if (state.connection != null && !hasMediaPermission) {
-            permissionLauncher.launch(mediaPermission)
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        hasReadPermission = readPermissions.all { isGranted(context, it) }
+        hasLocationPermission = locationPermission?.let { isGranted(context, it) } ?: true
+    }
+
+    LaunchedEffect(state.connection, hasReadPermission) {
+        if (state.connection != null && !hasReadPermission) {
+            permissionLauncher.launch(allPermissions)
         }
     }
 
@@ -92,23 +109,31 @@ fun VaultHomeScreen(
             } else {
                 Text("Paired with ${connection.baseUrl}", style = MaterialTheme.typography.bodyLarge)
 
-                if (!hasMediaPermission) {
+                if (!hasReadPermission) {
                     Text(
-                        "Photo access is needed to back up new photos.",
+                        "Photo and video access is needed to back things up.",
                         color = MaterialTheme.colorScheme.error
                     )
-                    Button(onClick = { permissionLauncher.launch(mediaPermission) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Grant photo access")
+                    Button(onClick = { permissionLauncher.launch(allPermissions) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Grant access")
+                    }
+                } else if (!hasLocationPermission) {
+                    Text(
+                        "Location access isn't granted - backed-up photos/videos will be missing GPS data.",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Button(onClick = { permissionLauncher.launch(allPermissions) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Grant location access")
                     }
                 }
 
                 Text(
-                    "Photos: " + formatLastRun(state.lastSyncEpochMillis, "never synced yet"),
+                    "Photos & videos: " + formatLastRun(state.lastSyncEpochMillis, "never synced yet"),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Button(
                     onClick = viewModel::syncNow,
-                    enabled = hasMediaPermission && !state.syncingPhotos,
+                    enabled = hasReadPermission && !state.syncingPhotos,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (state.syncingPhotos) {

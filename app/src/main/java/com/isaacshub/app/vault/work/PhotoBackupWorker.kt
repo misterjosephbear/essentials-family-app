@@ -8,7 +8,7 @@ import com.isaacshub.app.App
 import com.isaacshub.app.vault.data.VaultApiClient
 import com.isaacshub.app.vault.domain.PendingUpload
 import com.isaacshub.app.vault.domain.planPendingUploads
-import com.isaacshub.app.vault.media.MediaStorePhotoScanner
+import com.isaacshub.app.vault.media.MediaStoreScanner
 import kotlinx.coroutines.flow.first
 import java.io.File
 
@@ -29,9 +29,9 @@ class PhotoBackupWorker(
         val prefs = app.vaultPreferencesRepository
         val connection = prefs.connection.first() ?: return Result.success()
 
-        val scanner = MediaStorePhotoScanner(applicationContext)
+        val scanner = MediaStoreScanner(applicationContext)
         val lastSync = prefs.lastSyncEpochMillis.first()
-        val pending = planPendingUploads(scanner.queryPhotos(), lastSync)
+        val pending = planPendingUploads(scanner.queryMedia(), lastSync)
         if (pending.isEmpty()) return Result.success()
 
         val batch = pending.take(BATCH_SIZE)
@@ -57,10 +57,10 @@ class PhotoBackupWorker(
         return if (allSucceeded && !moreWorkRemains) Result.success() else Result.retry()
     }
 
-    private suspend fun uploadOne(scanner: MediaStorePhotoScanner, client: VaultApiClient, upload: PendingUpload): Boolean {
+    private suspend fun uploadOne(scanner: MediaStoreScanner, client: VaultApiClient, upload: PendingUpload): Boolean {
         val tempFile = File(applicationContext.cacheDir, "vault_upload_${upload.photo.id}")
         return try {
-            val input = scanner.openInputStream(upload.photo.id) ?: return true // deleted since query - skip, not a failure
+            val input = scanner.openInputStream(upload.photo) ?: return true // deleted since query - skip, not a failure
             input.use { stream -> tempFile.outputStream().use { output -> stream.copyTo(output) } }
             client.uploadFile(tempFile, upload.remotePath, upload.photo.mimeType)
         } finally {

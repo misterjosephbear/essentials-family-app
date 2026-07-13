@@ -4,33 +4,42 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-data class MediaPhoto(
+enum class MediaType { IMAGE, VIDEO }
+
+data class MediaItem(
     val id: Long,
     val displayName: String,
     val dateAddedEpochSeconds: Long,
-    val mimeType: String = "image/jpeg"
+    val mediaType: MediaType,
+    val mimeType: String = if (mediaType == MediaType.VIDEO) "video/mp4" else "image/jpeg"
 )
 
 data class PendingUpload(
-    val photo: MediaPhoto,
+    val photo: MediaItem,
     val remotePath: String
 )
 
 private val PATH_FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM")
 
+private fun remoteFolderFor(mediaType: MediaType) = when (mediaType) {
+    MediaType.IMAGE -> "Photos"
+    MediaType.VIDEO -> "Videos"
+}
+
 /**
- * Which of [photos] haven't been synced yet (added after [lastSyncEpochMillis]), each paired with
- * where it lands in the vault - organized by year/month of when it was added, so a large photo
- * library doesn't dump everything into one flat directory.
+ * Which of [items] (photos and videos) haven't been synced yet (added after [lastSyncEpochMillis]),
+ * each paired with where it lands in the vault - organized by media type then year/month of when it
+ * was added, so a large library doesn't dump everything into one flat directory.
  */
 fun planPendingUploads(
-    photos: List<MediaPhoto>,
+    items: List<MediaItem>,
     lastSyncEpochMillis: Long,
     zone: ZoneId = ZoneId.systemDefault()
-): List<PendingUpload> = photos
+): List<PendingUpload> = items
     .filter { it.dateAddedEpochSeconds * 1000 > lastSyncEpochMillis }
     .sortedBy { it.dateAddedEpochSeconds }
-    .map { photo ->
-        val date = Instant.ofEpochSecond(photo.dateAddedEpochSeconds).atZone(zone)
-        PendingUpload(photo, "Photos/${date.format(PATH_FORMATTER)}/${photo.displayName}")
+    .map { item ->
+        val date = Instant.ofEpochSecond(item.dateAddedEpochSeconds).atZone(zone)
+        val folder = remoteFolderFor(item.mediaType)
+        PendingUpload(item, "$folder/${date.format(PATH_FORMATTER)}/${item.displayName}")
     }
