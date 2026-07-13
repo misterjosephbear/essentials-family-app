@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.isaacshub.app.App
+import com.isaacshub.app.vault.backup.AppDataBackupScheduler
 import com.isaacshub.app.vault.domain.VaultConnection
 import com.isaacshub.app.vault.work.PhotoBackupScheduler
 import kotlinx.coroutines.flow.SharingStarted
@@ -14,7 +15,8 @@ import kotlinx.coroutines.launch
 
 data class VaultHomeUiState(
     val connection: VaultConnection? = null,
-    val lastSyncEpochMillis: Long = 0
+    val lastSyncEpochMillis: Long = 0,
+    val lastBackupEpochMillis: Long = 0
 )
 
 class VaultHomeViewModel(application: Application) : AndroidViewModel(application) {
@@ -23,17 +25,23 @@ class VaultHomeViewModel(application: Application) : AndroidViewModel(applicatio
 
     val uiState: StateFlow<VaultHomeUiState> = combine(
         prefs.connection,
-        prefs.lastSyncEpochMillis
-    ) { connection, lastSync -> VaultHomeUiState(connection, lastSync) }
+        prefs.lastSyncEpochMillis,
+        prefs.lastBackupEpochMillis
+    ) { connection, lastSync, lastBackup -> VaultHomeUiState(connection, lastSync, lastBackup) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), VaultHomeUiState())
 
     fun syncNow() {
         PhotoBackupScheduler.syncNow(getApplication())
     }
 
+    fun backupNow() {
+        AppDataBackupScheduler.backupNow(getApplication())
+    }
+
     fun unpair() {
         viewModelScope.launch {
             PhotoBackupScheduler.cancel(getApplication())
+            AppDataBackupScheduler.cancel(getApplication())
             prefs.clearConnection()
         }
     }

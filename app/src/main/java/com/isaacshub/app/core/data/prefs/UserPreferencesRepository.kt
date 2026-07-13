@@ -1,6 +1,7 @@
 package com.isaacshub.app.core.data.prefs
 
 import android.content.Context
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -44,6 +45,9 @@ class UserPreferencesRepository(private val context: Context) {
         val OVERTIME_MULTIPLIER = doublePreferencesKey("overtime_multiplier")
         val EMA_RATE = doublePreferencesKey("ema_rate")
     }
+
+    /** Every preference as-is, key name to value - used for backups so newly added prefs are included automatically. */
+    val rawPreferences: Flow<Preferences> = context.dataStore.data
 
     val userPreferences: Flow<UserPreferences> = context.dataStore.data.map { prefs ->
         UserPreferences(

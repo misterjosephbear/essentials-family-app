@@ -33,7 +33,12 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-private val lastSyncFormatter = DateTimeFormatter.ofPattern("EEE, MMM d 'at' h:mm a")
+private val timestampFormatter = DateTimeFormatter.ofPattern("EEE, MMM d 'at' h:mm a")
+
+private fun formatLastRun(epochMillis: Long, neverText: String): String {
+    if (epochMillis == 0L) return neverText
+    return Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(timestampFormatter)
+}
 
 private val mediaPermission: String
     get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -93,16 +98,10 @@ fun VaultHomeScreen(
                     }
                 }
 
-                val lastSyncText = if (state.lastSyncEpochMillis == 0L) {
-                    "Never synced yet"
-                } else {
-                    "Last synced: " +
-                        Instant.ofEpochMilli(state.lastSyncEpochMillis)
-                            .atZone(ZoneId.systemDefault())
-                            .format(lastSyncFormatter)
-                }
-                Text(lastSyncText, style = MaterialTheme.typography.bodyMedium)
-
+                Text(
+                    "Photos: " + formatLastRun(state.lastSyncEpochMillis, "never synced yet"),
+                    style = MaterialTheme.typography.bodyMedium
+                )
                 Button(
                     onClick = viewModel::syncNow,
                     enabled = hasMediaPermission,
@@ -110,6 +109,15 @@ fun VaultHomeScreen(
                 ) {
                     Text("Sync now")
                 }
+
+                Text(
+                    "App data: " + formatLastRun(state.lastBackupEpochMillis, "never backed up yet"),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Button(onClick = viewModel::backupNow, modifier = Modifier.fillMaxWidth()) {
+                    Text("Back up now")
+                }
+
                 OutlinedButton(onClick = viewModel::unpair, modifier = Modifier.fillMaxWidth()) {
                     Text("Unpair")
                 }

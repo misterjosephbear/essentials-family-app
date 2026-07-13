@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.isaacshub.app.App
+import com.isaacshub.app.vault.backup.AppDataBackupScheduler
 import com.isaacshub.app.vault.data.VaultApiClient
 import com.isaacshub.app.vault.domain.parsePairingPayload
 import com.isaacshub.app.vault.work.PhotoBackupScheduler
@@ -41,6 +42,8 @@ class PairingViewModel(application: Application) : AndroidViewModel(application)
                 val app = getApplication<App>()
                 app.vaultPreferencesRepository.setConnection(connection)
                 PhotoBackupScheduler.schedule(app)
+                AppDataBackupScheduler.schedule(app)
+                AppDataBackupScheduler.backupNow(app)
                 _uiState.value = _uiState.value.copy(connecting = false, paired = true)
             } else {
                 _uiState.value = _uiState.value.copy(
