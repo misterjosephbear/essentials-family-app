@@ -161,6 +161,25 @@ fun VaultHomeScreen(
                     }
                 }
 
+                val filePickerLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.OpenDocument()
+                ) { uri -> uri?.let(viewModel::uploadPickedFile) }
+
+                Button(
+                    onClick = { filePickerLauncher.launch(arrayOf("*/*")) },
+                    enabled = state.uploadingFileName == null,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (state.uploadingFileName != null) {
+                        LoadingButtonContent(label = "Uploading ${state.uploadingFileName}...")
+                    } else {
+                        Text("Upload a file")
+                    }
+                }
+                state.uploadError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                }
+
                 OutlinedButton(onClick = viewModel::unpair, modifier = Modifier.fillMaxWidth()) {
                     Text("Unpair")
                 }
