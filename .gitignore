@@ -10,3 +10,6 @@
 local.properties
 /app/build
 /sleepcore/build
+
+# Release signing key - never commit. Back this up somewhere durable outside this repo.
+/keystore/

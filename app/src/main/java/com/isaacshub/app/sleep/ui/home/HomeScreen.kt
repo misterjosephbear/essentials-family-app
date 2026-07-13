@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isaacshub.app.App
+import com.isaacshub.app.sleep.ui.components.EnergyForecastChart
 import com.isaacshub.app.sleep.ui.components.SleepDebtRing
 import java.time.Duration
 import java.time.Instant
@@ -99,6 +100,26 @@ fun HomeScreen(
                             Text(
                                 formatDuration(lastNight.startEpochMillis, lastNight.endEpochMillis),
                                 style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+
+            state.energyForecast?.let { forecast ->
+                item {
+                    Text("Today's energy", style = MaterialTheme.typography.titleMedium)
+                }
+                item {
+                    Card {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            EnergyForecastChart(
+                                forecast = forecast,
+                                currentHoursAwake = state.currentHoursAwake
+                            )
+                            Text(
+                                "Estimated from your wake time and sleep debt - not a clinical measurement.",
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
                     }

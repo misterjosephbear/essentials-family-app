@@ -7,11 +7,16 @@ import com.isaacshub.app.core.data.prefs.UserPreferencesRepository
 import com.isaacshub.app.sleep.data.SleepRepository
 import com.isaacshub.app.sleep.data.SleepSessionEntity
 import com.isaacshub.app.sleep.domain.computeDebt
+import com.isaacshub.sleep.core.EnergyForecast
+import com.isaacshub.sleep.core.EnergyForecastCalculator
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 
 data class HomeUiState(
@@ -19,7 +24,9 @@ data class HomeUiState(
     val debtMinutes: Int = 0,
     val lastNight: SleepSessionEntity? = null,
     val pendingConfirmation: SleepSessionEntity? = null,
-    val sleepNeedMinutes: Int = 480
+    val sleepNeedMinutes: Int = 480,
+    val energyForecast: EnergyForecast? = null,
+    val currentHoursAwake: Double? = null
 )
 
 class HomeViewModel(
@@ -34,12 +41,25 @@ class HomeViewModel(
         val result = computeDebt(sessions, prefs)
         val lastNight = sessions.filter { it.confirmed }.maxByOrNull { it.endEpochMillis }
         val pending = sessions.filter { !it.confirmed }.maxByOrNull { it.endEpochMillis }
+
+        val zone = ZoneId.systemDefault()
+        val wakeZoned = lastNight?.let { Instant.ofEpochMilli(it.endEpochMillis).atZone(zone) }
+        val energyForecast = wakeZoned?.let {
+            val wakeHourOfDay = it.hour + it.minute / 60.0
+            EnergyForecastCalculator.calculate(wakeHourOfDay, result.totalDebtMinutes)
+        }
+        val currentHoursAwake = wakeZoned?.let {
+            Duration.between(it, ZonedDateTime.now(zone)).toMinutes() / 60.0
+        }
+
         HomeUiState(
             loading = false,
             debtMinutes = result.totalDebtMinutes,
             lastNight = lastNight,
             pendingConfirmation = pending,
-            sleepNeedMinutes = prefs.sleepNeedMinutes
+            sleepNeedMinutes = prefs.sleepNeedMinutes,
+            energyForecast = energyForecast,
+            currentHoursAwake = currentHoursAwake
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 

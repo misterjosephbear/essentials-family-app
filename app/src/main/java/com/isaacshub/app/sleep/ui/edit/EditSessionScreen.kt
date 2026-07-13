@@ -5,9 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -130,7 +130,7 @@ private fun InstantPickerDialog(
         is24Hour = false
     )
 
-    AlertDialog(
+    DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = {
@@ -151,12 +151,11 @@ private fun InstantPickerDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                DatePicker(state = datePickerState, showModeToggle = false)
-                TimePicker(state = timePickerState)
-            }
         }
-    )
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            DatePicker(state = datePickerState, showModeToggle = false)
+            TimePicker(state = timePickerState)
+        }
+    }
 }
