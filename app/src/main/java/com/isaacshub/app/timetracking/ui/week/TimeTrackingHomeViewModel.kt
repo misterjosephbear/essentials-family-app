@@ -31,18 +31,20 @@ class TimeTrackingHomeViewModel(
         repository.observeEntries(),
         repository.observeRoutes(),
         repository.observeDeductions(),
+        repository.observeScheduleOverrides(),
         preferencesRepository.userPreferences
-    ) { entries, routes, deductions, prefs ->
+    ) { entries, routes, deductions, overrides, prefs ->
         TimeTrackingHomeUiState(
             loading = false,
-            summary = computeWeeklySummary(entries, routes),
+            summary = computeWeeklySummary(entries, routes, overrides = overrides),
             payPeriod = computePayPeriodSummary(
                 entries = entries,
                 routes = routes,
                 hourlyRate = prefs.hourlyRate,
                 overtimeMultiplier = prefs.overtimeMultiplier,
                 emaRate = prefs.emaRate,
-                deductions = deductions
+                deductions = deductions,
+                overrides = overrides
             )
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TimeTrackingHomeUiState())

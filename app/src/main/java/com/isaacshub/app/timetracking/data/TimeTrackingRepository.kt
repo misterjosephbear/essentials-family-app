@@ -6,7 +6,8 @@ import java.time.Instant
 class TimeTrackingRepository(
     private val timeEntryDao: TimeEntryDao,
     private val routeDao: RouteDao,
-    private val deductionDao: DeductionDao
+    private val deductionDao: DeductionDao,
+    private val routeScheduleOverrideDao: RouteScheduleOverrideDao
 ) {
     fun observeEntries(): Flow<List<TimeEntryEntity>> = timeEntryDao.observeAll()
 
@@ -39,4 +40,11 @@ class TimeTrackingRepository(
     suspend fun addDeduction(deduction: DeductionEntity): Long = deductionDao.insert(deduction)
 
     suspend fun deleteDeduction(deduction: DeductionEntity) = deductionDao.delete(deduction)
+
+    fun observeScheduleOverrides(): Flow<List<RouteScheduleOverrideEntity>> = routeScheduleOverrideDao.observeAll()
+
+    suspend fun addScheduleOverride(override: RouteScheduleOverrideEntity): Long =
+        routeScheduleOverrideDao.insert(override)
+
+    suspend fun deleteScheduleOverride(id: Long) = routeScheduleOverrideDao.deleteById(id)
 }

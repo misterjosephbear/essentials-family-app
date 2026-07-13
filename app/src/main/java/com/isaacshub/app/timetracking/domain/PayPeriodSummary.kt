@@ -4,6 +4,7 @@ import com.isaacshub.app.timetracking.data.DeductionEntity
 import com.isaacshub.app.timetracking.data.DeductionType
 import com.isaacshub.app.timetracking.data.PayType
 import com.isaacshub.app.timetracking.data.RouteEntity
+import com.isaacshub.app.timetracking.data.RouteScheduleOverrideEntity
 import com.isaacshub.app.timetracking.data.TimeEntryEntity
 import java.time.LocalDate
 import java.time.ZoneId
@@ -42,7 +43,8 @@ fun computePayPeriodSummary(
     emaRate: Double,
     deductions: List<DeductionEntity> = emptyList(),
     today: LocalDate = LocalDate.now(),
-    zone: ZoneId = ZoneId.systemDefault()
+    zone: ZoneId = ZoneId.systemDefault(),
+    overrides: List<RouteScheduleOverrideEntity> = emptyList()
 ): PayPeriodSummary {
     val periodRange = currentPayPeriodRange(today)
     val week1Range = periodRange.start..periodRange.start.plusDays(6)
@@ -69,7 +71,7 @@ fun computePayPeriodSummary(
             .filter { it.payType == PayType.EVALUATION && it.routeId != null }
             .map { it.routeId to it.localDate(zone) }
             .toSet()
-        val unloggedOccurrences = scheduledOccurrences(routes, weekRange)
+        val unloggedOccurrences = scheduledOccurrences(routes, weekRange, overrides)
             .filter { (route, date) -> (route.id to date) !in loggedRouteDates }
 
         val projectedHours = paidHours + unloggedOccurrences.sumOf { (route, _) -> route.evaluatedHours }

@@ -3,6 +3,8 @@ package com.isaacshub.app.timetracking.ui.schedule
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.isaacshub.app.timetracking.data.RouteEntity
+import com.isaacshub.app.timetracking.data.RouteScheduleOverrideEntity
 import com.isaacshub.app.timetracking.data.TimeTrackingRepository
 import com.isaacshub.app.timetracking.domain.ScheduledDay
 import com.isaacshub.app.timetracking.domain.WeeklySummary
@@ -13,12 +15,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 data class WeekScheduleUiState(
     val weekOffset: Int = 0,
     val summary: WeeklySummary = computeWeeklySummary(emptyList()),
-    val days: List<ScheduledDay> = emptyList()
+    val days: List<ScheduledDay> = emptyList(),
+    val routes: List<RouteEntity> = emptyList()
 )
 
 /**
@@ -33,13 +37,15 @@ class WeekScheduleViewModel(private val repository: TimeTrackingRepository) : Vi
     val uiState: StateFlow<WeekScheduleUiState> = combine(
         repository.observeEntries(),
         repository.observeRoutes(),
+        repository.observeScheduleOverrides(),
         weekOffset
-    ) { entries, routes, offset ->
+    ) { entries, routes, overrides, offset ->
         val anchor = LocalDate.now().plusWeeks(offset.toLong())
         WeekScheduleUiState(
             weekOffset = offset,
-            summary = computeWeeklySummary(entries, routes, today = anchor),
-            days = computeWeekSchedule(entries, routes, today = anchor)
+            summary = computeWeeklySummary(entries, routes, today = anchor, overrides = overrides),
+            days = computeWeekSchedule(entries, routes, today = anchor, overrides = overrides),
+            routes = routes
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), WeekScheduleUiState())
 
@@ -53,6 +59,18 @@ class WeekScheduleViewModel(private val repository: TimeTrackingRepository) : Vi
 
     fun goToCurrentWeek() {
         weekOffset.value = 0
+    }
+
+    fun addScheduleOverrides(routeId: Long, dates: List<LocalDate>) {
+        viewModelScope.launch {
+            dates.forEach { date ->
+                repository.addScheduleOverride(RouteScheduleOverrideEntity(routeId = routeId, epochDay = date.toEpochDay()))
+            }
+        }
+    }
+
+    fun removeScheduleOverride(overrideId: Long) {
+        viewModelScope.launch { repository.deleteScheduleOverride(overrideId) }
     }
 
     class Factory(private val repository: TimeTrackingRepository) : ViewModelProvider.Factory {

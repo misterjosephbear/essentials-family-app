@@ -2,6 +2,7 @@ package com.isaacshub.app.timetracking.domain
 
 import com.isaacshub.app.timetracking.data.PayType
 import com.isaacshub.app.timetracking.data.RouteEntity
+import com.isaacshub.app.timetracking.data.RouteScheduleOverrideEntity
 import com.isaacshub.app.timetracking.data.TimeEntryEntity
 import java.time.DayOfWeek
 import java.time.Instant
@@ -83,7 +84,8 @@ fun computeWeeklySummary(
     entries: List<TimeEntryEntity>,
     routes: List<RouteEntity> = emptyList(),
     today: LocalDate = LocalDate.now(),
-    zone: ZoneId = ZoneId.systemDefault()
+    zone: ZoneId = ZoneId.systemDefault(),
+    overrides: List<RouteScheduleOverrideEntity> = emptyList()
 ): WeeklySummary {
     val range = currentWeekRange(today)
     val weekEntries = entries
@@ -103,7 +105,7 @@ fun computeWeeklySummary(
         .map { it.routeId to it.localDate(zone) }
         .toSet()
 
-    val unloggedScheduledHours = scheduledOccurrences(routes, range)
+    val unloggedScheduledHours = scheduledOccurrences(routes, range, overrides)
         .filter { (route, date) -> (route.id to date) !in loggedRouteDates }
         .sumOf { (route, _) -> route.evaluatedHours }
 

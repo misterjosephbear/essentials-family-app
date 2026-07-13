@@ -29,7 +29,8 @@ class App : Application() {
         timeTrackingRepository = TimeTrackingRepository(
             timeTrackingDatabase.timeEntryDao(),
             timeTrackingDatabase.routeDao(),
-            timeTrackingDatabase.deductionDao()
+            timeTrackingDatabase.deductionDao(),
+            timeTrackingDatabase.routeScheduleOverrideDao()
         )
     }
 }

@@ -22,9 +22,18 @@ private val MIGRATION_4_5 = object : Migration(4, 5) {
     }
 }
 
+private val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `route_schedule_overrides` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`routeId` INTEGER NOT NULL, `epochDay` INTEGER NOT NULL)"
+        )
+    }
+}
+
 @Database(
-    entities = [TimeEntryEntity::class, RouteEntity::class, DeductionEntity::class],
-    version = 5,
+    entities = [TimeEntryEntity::class, RouteEntity::class, DeductionEntity::class, RouteScheduleOverrideEntity::class],
+    version = 6,
     exportSchema = true
 )
 abstract class TimeTrackingDatabase : RoomDatabase() {
@@ -32,6 +41,7 @@ abstract class TimeTrackingDatabase : RoomDatabase() {
     abstract fun timeEntryDao(): TimeEntryDao
     abstract fun routeDao(): RouteDao
     abstract fun deductionDao(): DeductionDao
+    abstract fun routeScheduleOverrideDao(): RouteScheduleOverrideDao
 
     companion object {
         @Volatile private var instance: TimeTrackingDatabase? = null
@@ -45,7 +55,7 @@ abstract class TimeTrackingDatabase : RoomDatabase() {
                 )
                     // Any future schema change must ship an explicit Migration - routes and logged
                     // hours are real user data now and must never be dropped on upgrade.
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build().also { instance = it }
             }
     }

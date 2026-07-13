@@ -1,6 +1,7 @@
 package com.isaacshub.app.timetracking.domain
 
 import com.isaacshub.app.timetracking.data.RouteEntity
+import com.isaacshub.app.timetracking.data.RouteScheduleOverrideEntity
 import com.isaacshub.app.timetracking.data.ScheduleType
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -24,13 +25,31 @@ fun RouteEntity.occursOn(date: LocalDate): Boolean {
     }
 }
 
-/** Every (route, date) pair where [route] is scheduled to run within [range], across all [routes]. */
-fun scheduledOccurrences(routes: List<RouteEntity>, range: ClosedRange<LocalDate>): List<Pair<RouteEntity, LocalDate>> {
-    val occurrences = mutableListOf<Pair<RouteEntity, LocalDate>>()
+/**
+ * Every (route, date) pair where [route] is scheduled to run within [range], across all [routes] -
+ * combining each route's regular recurring schedule with any one-off [overrides] (e.g. covering
+ * someone else's route on a specific day). An override that lands on an already-recurring day for
+ * that route isn't double-counted.
+ */
+fun scheduledOccurrences(
+    routes: List<RouteEntity>,
+    range: ClosedRange<LocalDate>,
+    overrides: List<RouteScheduleOverrideEntity> = emptyList()
+): List<Pair<RouteEntity, LocalDate>> {
+    val routesById = routes.associateBy { it.id }
+    val recurring = mutableListOf<Pair<RouteEntity, LocalDate>>()
     var date = range.start
     while (!date.isAfter(range.endInclusive)) {
-        routes.forEach { route -> if (route.occursOn(date)) occurrences += route to date }
+        routes.forEach { route -> if (route.occursOn(date)) recurring += route to date }
         date = date.plusDays(1)
     }
-    return occurrences
+    val recurringKeys = recurring.map { (route, d) -> route.id to d }.toSet()
+    val oneOff = overrides.mapNotNull { override ->
+        val overrideDate = LocalDate.ofEpochDay(override.epochDay)
+        if (overrideDate !in range) return@mapNotNull null
+        val route = routesById[override.routeId] ?: return@mapNotNull null
+        if ((route.id to overrideDate) in recurringKeys) return@mapNotNull null
+        route to overrideDate
+    }
+    return recurring + oneOff
 }
