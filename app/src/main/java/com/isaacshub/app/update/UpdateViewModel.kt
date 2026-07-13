@@ -52,7 +52,7 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(downloading = true, error = null, progress = 0f)
             runCatching {
-                UpdateInstaller.downloadAndInstall(getApplication(), release.downloadUrl) { progress ->
+                UpdateInstaller.downloadAndInstall(getApplication(), release) { progress ->
                     _uiState.value = _uiState.value.copy(progress = progress)
                 }
             }.onFailure {

@@ -31,6 +31,7 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
           RELEASE_VERSION_CODE: ${{ github.run_number }}
           RELEASE_VERSION_NAME: "1.0.${{ github.run_number }}"
+          UPDATE_CHECK_TOKEN: ${{ secrets.UPDATE_CHECK_TOKEN }}
         run: ./gradlew :app:assembleRelease --no-daemon
 
       - name: Create GitHub Release

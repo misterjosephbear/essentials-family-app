@@ -3,6 +3,7 @@ package com.isaacshub.app.update
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
+import com.isaacshub.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -11,20 +12,33 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object UpdateInstaller {
+    private const val ASSET_URL_TEMPLATE =
+        "https://api.github.com/repos/misterjosephbear/isaacs-hub/releases/assets/%d"
 
-    /** Downloads the APK at [downloadUrl] to cache, reporting 0f..1f via [onProgress], then launches the installer. */
+    /** Downloads the APK asset for [release] to cache, reporting 0f..1f via [onProgress], then launches the installer. */
     suspend fun downloadAndInstall(
         context: Context,
-        downloadUrl: String,
+        release: ReleaseInfo,
         onProgress: (Float) -> Unit
     ) {
         val file = withContext(Dispatchers.IO) {
-            val connection = URL(downloadUrl).openConnection() as HttpURLConnection
-            connection.connectTimeout = 15_000
-            connection.readTimeout = 15_000
-            connection.instanceFollowRedirects = true
+            var connection = openAssetConnection(ASSET_URL_TEMPLATE.format(release.assetId))
             try {
                 connection.connect()
+
+                // Private-repo asset downloads redirect to a temporary pre-signed URL that must be
+                // fetched with no Authorization header of its own - HttpURLConnection's built-in
+                // redirect following would resend ours, which the signed URL's host rejects.
+                if (connection.responseCode in 300..399) {
+                    val redirectUrl = connection.getHeaderField("Location")
+                    connection.disconnect()
+                    connection = (URL(redirectUrl).openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 15_000
+                        readTimeout = 15_000
+                        connect()
+                    }
+                }
+
                 val total = connection.contentLength
                 val target = File(context.cacheDir, "update.apk")
                 connection.inputStream.use { input ->
@@ -52,4 +66,13 @@ object UpdateInstaller {
         }
         context.startActivity(intent)
     }
+
+    private fun openAssetConnection(url: String): HttpURLConnection =
+        (URL(url).openConnection() as HttpURLConnection).apply {
+            instanceFollowRedirects = false
+            connectTimeout = 15_000
+            readTimeout = 15_000
+            setRequestProperty("Accept", "application/octet-stream")
+            setRequestProperty("Authorization", "Bearer ${BuildConfig.UPDATE_CHECK_TOKEN}")
+        }
 }

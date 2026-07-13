@@ -12,6 +12,11 @@ val releaseKeystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
 val releaseVersionCode = System.getenv("RELEASE_VERSION_CODE")?.toIntOrNull() ?: 1
 val releaseVersionName = System.getenv("RELEASE_VERSION_NAME") ?: "0.1.0"
 
+// Fine-grained PAT (Contents: read-only on this one private repo) so release builds can check
+// GitHub Releases and download the signed APK. Absent on local/debug builds, which simply never
+// find an update.
+val updateCheckToken = System.getenv("UPDATE_CHECK_TOKEN") ?: ""
+
 android {
     namespace = "com.isaacshub.app"
     compileSdk = 36
@@ -22,6 +27,7 @@ android {
         targetSdk = 36
         versionCode = releaseVersionCode
         versionName = releaseVersionName
+        buildConfigField("String", "UPDATE_CHECK_TOKEN", "\"$updateCheckToken\"")
     }
 
     signingConfigs {
@@ -54,6 +60,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
