@@ -17,6 +17,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -178,6 +179,27 @@ fun VaultHomeScreen(
                 }
                 state.uploadError?.let {
                     Text(it, color = MaterialTheme.colorScheme.error)
+                }
+
+                var remoteBaseUrlInput by remember(connection.remoteBaseUrl) {
+                    mutableStateOf(connection.remoteBaseUrl.orEmpty())
+                }
+                Text(
+                    "Remote/tunnel URL - tried when the address above can't be reached (e.g. off your home network):",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                OutlinedTextField(
+                    value = remoteBaseUrlInput,
+                    onValueChange = { remoteBaseUrlInput = it },
+                    placeholder = { Text("e.g. http://isaacs-hub.playit.plus") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(
+                    onClick = { viewModel.setRemoteBaseUrl(remoteBaseUrlInput) },
+                    enabled = remoteBaseUrlInput.trim().trimEnd('/') != connection.remoteBaseUrl.orEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Save remote URL")
                 }
 
                 OutlinedButton(onClick = viewModel::unpair, modifier = Modifier.fillMaxWidth()) {

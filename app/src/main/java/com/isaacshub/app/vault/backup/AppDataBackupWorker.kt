@@ -29,7 +29,7 @@ class AppDataBackupWorker(
         val app = applicationContext as App
         val vaultPrefs = app.vaultPreferencesRepository
         val connection = vaultPrefs.connection.first() ?: return Result.success()
-        val client = VaultApiClient(connection)
+        val client = VaultApiClient(connection, vaultPrefs.preferredBaseUrl.first())
 
         checkpointWal(SleepDatabase.getInstance(applicationContext))
         checkpointWal(TimeTrackingDatabase.getInstance(applicationContext))
@@ -54,6 +54,7 @@ class AppDataBackupWorker(
             tempPrefsFile.delete()
         }
 
+        client.resolvedBaseUrl?.let { vaultPrefs.setPreferredBaseUrl(it) }
         if (allSucceeded) vaultPrefs.setLastBackupEpochMillis(System.currentTimeMillis())
 
         return if (allSucceeded) Result.success() else Result.retry()

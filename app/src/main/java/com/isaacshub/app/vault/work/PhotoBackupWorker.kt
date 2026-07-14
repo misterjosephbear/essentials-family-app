@@ -35,7 +35,7 @@ class PhotoBackupWorker(
         if (pending.isEmpty()) return Result.success()
 
         val batch = pending.take(BATCH_SIZE)
-        val client = VaultApiClient(connection)
+        val client = VaultApiClient(connection, prefs.preferredBaseUrl.first())
         var lastSuccessfulEpochSeconds: Long? = null
         var allSucceeded = true
 
@@ -48,6 +48,7 @@ class PhotoBackupWorker(
             lastSuccessfulEpochSeconds = upload.photo.dateAddedEpochSeconds
         }
 
+        client.resolvedBaseUrl?.let { prefs.setPreferredBaseUrl(it) }
         lastSuccessfulEpochSeconds?.let { prefs.setLastSyncEpochMillis(it * 1000) }
 
         // More than this batch was pending, or something in it failed - either way there's still work
