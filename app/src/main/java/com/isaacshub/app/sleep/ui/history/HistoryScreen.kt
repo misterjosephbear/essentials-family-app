@@ -94,6 +94,7 @@ private fun SessionRow(
     val sourceLabel = when {
         !session.confirmed -> " - unconfirmed"
         session.source == SleepSource.AUTO_DETECTED -> " - auto"
+        session.source == SleepSource.NAP -> " - nap"
         else -> " - manual"
     }
 
