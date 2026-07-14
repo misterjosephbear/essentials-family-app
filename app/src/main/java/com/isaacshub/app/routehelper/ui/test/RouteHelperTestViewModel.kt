@@ -8,7 +8,7 @@ import com.isaacshub.app.routehelper.domain.GeoPoint
 import com.isaacshub.app.routehelper.domain.StopSide
 import com.isaacshub.app.routehelper.domain.nearestAddresses
 import com.isaacshub.app.routehelper.network.AddressFetchResult
-import com.isaacshub.app.routehelper.network.OsmAddressFetcher
+import com.isaacshub.app.routehelper.network.TigerAddressFetcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -34,7 +34,7 @@ data class RouteHelperTestUiState(
  */
 class RouteHelperTestViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val addressFetcher = OsmAddressFetcher()
+    private val addressFetcher = TigerAddressFetcher(application)
 
     private val _uiState = MutableStateFlow(RouteHelperTestUiState())
     val uiState: StateFlow<RouteHelperTestUiState> = _uiState

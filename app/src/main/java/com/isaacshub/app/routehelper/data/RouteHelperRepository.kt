@@ -2,7 +2,7 @@ package com.isaacshub.app.routehelper.data
 
 import com.isaacshub.app.routehelper.domain.GeoPoint
 import com.isaacshub.app.routehelper.network.AddressFetchResult
-import com.isaacshub.app.routehelper.network.OsmAddressFetcher
+import com.isaacshub.app.routehelper.network.TigerAddressFetcher
 import kotlinx.coroutines.flow.Flow
 
 sealed interface CreateRouteResult {
@@ -12,7 +12,7 @@ sealed interface CreateRouteResult {
 
 class RouteHelperRepository(
     private val dao: RouteHelperDao,
-    private val addressFetcher: OsmAddressFetcher
+    private val addressFetcher: TigerAddressFetcher
 ) {
     fun observeRoutes(): Flow<List<RouteHelperRouteEntity>> = dao.observeRoutes()
 
