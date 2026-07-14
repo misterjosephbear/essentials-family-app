@@ -4,7 +4,7 @@ import android.app.Application
 import com.isaacshub.app.core.data.prefs.UserPreferencesRepository
 import com.isaacshub.app.routehelper.data.RouteHelperDatabase
 import com.isaacshub.app.routehelper.data.RouteHelperRepository
-import com.isaacshub.app.routehelper.network.TigerAddressFetcher
+import com.isaacshub.app.routehelper.network.RouteHelperAddressFetcher
 import com.isaacshub.app.sleep.data.SleepDatabase
 import com.isaacshub.app.sleep.data.SleepRepository
 import com.isaacshub.app.timetracking.data.TimeTrackingDatabase
@@ -50,6 +50,6 @@ class App : Application() {
         AppDataBackupScheduler.rescheduleIfPaired(this, vaultPreferencesRepository)
 
         val routeHelperDatabase = RouteHelperDatabase.getInstance(this)
-        routeHelperRepository = RouteHelperRepository(routeHelperDatabase.routeHelperDao(), TigerAddressFetcher(this))
+        routeHelperRepository = RouteHelperRepository(routeHelperDatabase.routeHelperDao(), RouteHelperAddressFetcher(this))
     }
 }
