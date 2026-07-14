@@ -11,10 +11,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Snooze
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,7 +36,8 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun HomeScreen(
     onEditSession: (Long?) -> Unit,
-    onAddSession: () -> Unit
+    onAddSession: () -> Unit,
+    onOpenNap: () -> Unit
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as App
@@ -66,6 +69,13 @@ fun HomeScreen(
                         debtMinutes = state.debtMinutes,
                         capMinutes = state.sleepNeedMinutes * 3
                     )
+                }
+            }
+
+            item {
+                OutlinedButton(onClick = onOpenNap, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.Snooze, contentDescription = null)
+                    Text("  Start a nap")
                 }
             }
 
@@ -125,6 +135,36 @@ fun HomeScreen(
                     }
                 }
             }
+
+            state.windDown?.let { windDown ->
+                item {
+                    Text("Wind-down time", style = MaterialTheme.typography.titleMedium)
+                }
+                item {
+                    Card {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                formatHourOfDay(windDown.windDownHourOfDay),
+                                style = MaterialTheme.typography.headlineMedium
+                            )
+                            val bedtimeText = "Lights out by ${formatHourOfDay(windDown.bedtimeHourOfDay)}"
+                            val debtText = if (windDown.debtRecoveryMinutes > 0) {
+                                " (includes ${windDown.debtRecoveryMinutes}m toward your sleep debt)"
+                            } else {
+                                ""
+                            }
+                            Text(
+                                bedtimeText + debtText,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                "Estimated from your usual wake time and sleep debt - not a clinical measurement.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -142,4 +182,11 @@ private fun formatRange(startMillis: Long, endMillis: Long): String {
 private fun formatDuration(startMillis: Long, endMillis: Long): String {
     val duration = Duration.ofMillis(endMillis - startMillis)
     return "${duration.toHours()}h ${duration.toMinutes() % 60}m"
+}
+
+private val hourOfDayFormatter = DateTimeFormatter.ofPattern("h:mm a")
+
+private fun formatHourOfDay(hourOfDay: Double): String {
+    val totalMinutes = (hourOfDay * 60).toInt().mod(24 * 60)
+    return java.time.LocalTime.of(totalMinutes / 60, totalMinutes % 60).format(hourOfDayFormatter)
 }

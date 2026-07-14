@@ -5,7 +5,7 @@ import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 
-enum class SleepSource { AUTO_DETECTED, MANUAL }
+enum class SleepSource { AUTO_DETECTED, MANUAL, NAP }
 
 @Entity(tableName = "sleep_sessions")
 @TypeConverters(SleepSourceConverter::class)

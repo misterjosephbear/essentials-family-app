@@ -27,6 +27,19 @@ class SleepRepository(private val dao: SleepSessionDao) {
         )
     }
 
+    suspend fun addNapSession(start: Instant, end: Instant): Long {
+        require(end.isAfter(start)) { "End must be after start" }
+        return dao.insert(
+            SleepSessionEntity(
+                startEpochMillis = start.toEpochMilli(),
+                endEpochMillis = end.toEpochMilli(),
+                source = SleepSource.NAP,
+                confirmed = true,
+                createdAtEpochMillis = Instant.now().toEpochMilli()
+            )
+        )
+    }
+
     suspend fun addDetectedSession(start: Instant, end: Instant): Long {
         require(end.isAfter(start)) { "End must be after start" }
         return dao.insert(

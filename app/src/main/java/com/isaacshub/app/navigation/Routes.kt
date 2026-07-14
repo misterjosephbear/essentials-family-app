@@ -6,6 +6,7 @@ object Routes {
     const val SLEEP_HOME = "sleep_home"
     const val SLEEP_HISTORY = "sleep_history"
     const val SLEEP_SETTINGS = "sleep_settings"
+    const val SLEEP_NAP = "sleep_nap"
     const val EDIT_SESSION_BASE = "edit_session"
     const val EDIT_SESSION_ARG = "sessionId"
     const val EDIT_SESSION_PATTERN = "$EDIT_SESSION_BASE/{$EDIT_SESSION_ARG}"

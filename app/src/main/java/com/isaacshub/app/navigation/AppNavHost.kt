@@ -35,6 +35,7 @@ import com.isaacshub.app.routehelper.ui.test.RouteHelperTestScreen
 import com.isaacshub.app.sleep.ui.edit.EditSessionScreen
 import com.isaacshub.app.sleep.ui.history.HistoryScreen
 import com.isaacshub.app.sleep.ui.home.HomeScreen
+import com.isaacshub.app.sleep.ui.nap.NapScreen
 import com.isaacshub.app.sleep.ui.settings.SettingsScreen
 import com.isaacshub.app.timetracking.ui.editentry.EditTimeEntryScreen
 import com.isaacshub.app.timetracking.ui.editroute.EditRouteScreen
@@ -133,8 +134,12 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
             composable(Routes.SLEEP_HOME) {
                 HomeScreen(
                     onEditSession = { sessionId -> navController.navigate(Routes.editSession(sessionId)) },
-                    onAddSession = { navController.navigate(Routes.editSession(null)) }
+                    onAddSession = { navController.navigate(Routes.editSession(null)) },
+                    onOpenNap = { navController.navigate(Routes.SLEEP_NAP) }
                 )
+            }
+            composable(Routes.SLEEP_NAP) {
+                NapScreen()
             }
             composable(Routes.SLEEP_HISTORY) {
                 HistoryScreen(
