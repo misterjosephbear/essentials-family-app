@@ -158,7 +158,7 @@ fun HomeScreen(
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
-                                "Estimated from your usual wake time and sleep debt - not a clinical measurement.",
+                                "Based on tomorrow's wake time (set in Settings) and your sleep debt - not a clinical measurement.",
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
