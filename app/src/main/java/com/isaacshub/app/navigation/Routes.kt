@@ -28,6 +28,7 @@ object Routes {
     const val ROUTE_BUILDER_BASE = "route_builder"
     const val ROUTE_BUILDER_ARG = "routeId"
     const val ROUTE_BUILDER_PATTERN = "$ROUTE_BUILDER_BASE/{$ROUTE_BUILDER_ARG}"
+    const val ROUTE_HELPER_TEST = "route_helper_test"
 
     private const val NEW_TOKEN = "new"
 

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,8 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -41,13 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.isaacshub.app.routehelper.data.CandidateAddressEntity
-import com.isaacshub.app.routehelper.domain.StopSide
-import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.views.MapView
+import com.isaacshub.app.routehelper.ui.common.AddressActionCard
+import com.isaacshub.app.routehelper.ui.common.newOsmMapView
 import org.osmdroid.views.overlay.Marker
-import java.io.File
 import org.osmdroid.util.GeoPoint as OsmGeoPoint
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,38 +107,11 @@ fun RouteBuilderScreen(routeId: Long) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(state.nearestAddresses, key = { it.id }) { candidate ->
-                        AddressCard(
-                            candidate = candidate,
+                        AddressActionCard(
+                            label = candidate.label,
                             onTap = { side -> viewModel.routeStop(candidate, side) }
                         )
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AddressCard(candidate: CandidateAddressEntity, onTap: (StopSide) -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { onTap(StopSide.NONE) }, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    candidate.label,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onTap(StopSide.LEFT) }, modifier = Modifier.weight(1f)) {
-                    Text("Left")
-                }
-                Button(onClick = { onTap(StopSide.RIGHT) }, modifier = Modifier.weight(1f)) {
-                    Text("Right")
-                }
-                Button(onClick = { onTap(StopSide.IN_DRIVE) }, modifier = Modifier.weight(1f)) {
-                    Text("In Drive")
                 }
             }
         }
@@ -158,16 +123,7 @@ private fun LiveMap(state: RouteBuilderUiState, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var hasCenteredOnce by remember { mutableStateOf(false) }
 
-    val mapView = remember {
-        Configuration.getInstance().userAgentValue = context.packageName
-        Configuration.getInstance().osmdroidBasePath = File(context.filesDir, "osmdroid")
-        Configuration.getInstance().osmdroidTileCache = File(context.filesDir, "osmdroid/tiles")
-        MapView(context).apply {
-            setTileSource(TileSourceFactory.MAPNIK)
-            setMultiTouchControls(true)
-            controller.setZoom(18.0)
-        }
-    }
+    val mapView = remember { newOsmMapView(context) }
 
     DisposableEffect(Unit) {
         onDispose { mapView.onDetach() }

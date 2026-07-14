@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,7 +47,8 @@ private val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RouteHelperHomeScreen(
-    onOpenRoute: (Long) -> Unit
+    onOpenRoute: (Long) -> Unit,
+    onOpenTestMode: () -> Unit
 ) {
     val viewModel: RouteHelperHomeViewModel = viewModel()
     val routes by viewModel.routes.collectAsState()
@@ -62,7 +64,16 @@ fun RouteHelperHomeScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Route Helper") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Route Helper") },
+                actions = {
+                    IconButton(onClick = onOpenTestMode) {
+                        Icon(Icons.Filled.Science, contentDescription = "Testing mode")
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = { showNewRouteDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "New route")

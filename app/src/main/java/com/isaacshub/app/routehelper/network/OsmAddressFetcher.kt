@@ -46,6 +46,11 @@ class OsmAddressFetcher {
         fetchAddressesInBoundingBox(bbox)
     }
 
+    /** Just the center point of a ZIP code, for zooming a map to it (e.g. testing mode) without doing a full address fetch. */
+    suspend fun geocodeZip(zipCode: String): GeoPoint? = withContext(Dispatchers.IO) {
+        fetchZipBoundingBox(zipCode)?.let { GeoPoint((it.south + it.north) / 2.0, (it.west + it.east) / 2.0) }
+    }
+
     private fun fetchZipBoundingBox(zipCode: String): BoundingBox? {
         val encodedZip = URLEncoder.encode(zipCode, "UTF-8")
         val url = URL("https://nominatim.openstreetmap.org/search?postalcode=$encodedZip&country=us&format=json&limit=1")

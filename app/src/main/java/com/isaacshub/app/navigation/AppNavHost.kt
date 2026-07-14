@@ -30,6 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import com.isaacshub.app.landing.ui.LandingScreen
 import com.isaacshub.app.routehelper.ui.builder.RouteBuilderScreen
 import com.isaacshub.app.routehelper.ui.home.RouteHelperHomeScreen
+import com.isaacshub.app.routehelper.ui.test.RouteHelperTestScreen
 import com.isaacshub.app.sleep.ui.edit.EditSessionScreen
 import com.isaacshub.app.sleep.ui.history.HistoryScreen
 import com.isaacshub.app.sleep.ui.home.HomeScreen
@@ -200,8 +201,12 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
 
             composable(Routes.ROUTE_HELPER_HOME) {
                 RouteHelperHomeScreen(
-                    onOpenRoute = { routeId -> navController.navigate(Routes.routeBuilder(routeId)) }
+                    onOpenRoute = { routeId -> navController.navigate(Routes.routeBuilder(routeId)) },
+                    onOpenTestMode = { navController.navigate(Routes.ROUTE_HELPER_TEST) }
                 )
+            }
+            composable(Routes.ROUTE_HELPER_TEST) {
+                RouteHelperTestScreen()
             }
             composable(Routes.ROUTE_BUILDER_PATTERN) { backStackEntry ->
                 val routeId = backStackEntry.arguments?.getString(Routes.ROUTE_BUILDER_ARG)?.toLongOrNull()
