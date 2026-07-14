@@ -80,6 +80,24 @@ class AddressInterpolationTest {
     }
 
     @Test
+    fun `interpolateAddresses includes every address in a normal block-sized range`() {
+        // Regression test: a real Jackson St segment (1001-1099 odd) was thinned down to 12 sampled
+        // points, which happened to skip 1035 - a real address on the user's actual delivery route.
+        val feature = TigerAddressFeature(
+            streetName = "Jackson St",
+            leftRange = HouseNumberRange(null, null, AddressParity.UNKNOWN),
+            rightRange = HouseNumberRange(1001, 1099, AddressParity.ODD),
+            zipLeft = "",
+            zipRight = "47246",
+            vertices = listOf(GeoPoint(39.298, -85.77), GeoPoint(39.299, -85.771))
+        )
+        val result = interpolateAddresses(feature, "47246")
+        val houseNumbers = result.map { it.label.substringBefore(" ").toInt() }
+        assertEquals((1001..1099 step 2).toList(), houseNumbers.sorted())
+        assertTrue(1035 in houseNumbers)
+    }
+
+    @Test
     fun `interpolateAddresses caps points per side for a large range`() {
         val feature = TigerAddressFeature(
             streetName = "Rural Rd",

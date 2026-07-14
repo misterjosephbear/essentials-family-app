@@ -1,12 +1,14 @@
 package com.isaacshub.app.routehelper.domain
 
 /**
- * TIGER/Line house numbers are civic (E911-style) addressing, not sequential counts - a range
- * spanning thousands of numbers on a rural road does not mean thousands of houses on it. Rather
- * than generate one point per house number (which would drown out every other nearby street),
- * each side of a street segment is represented by a capped number of points spread evenly along it.
+ * Only the [nearestAddresses] closest candidates are ever shown or drawn as map markers, so a side
+ * with a wide house-number range costs nothing extra to represent in full - there's no "drowning
+ * out other streets" effect to guard against. This cap exists purely as a sanity ceiling against
+ * corrupt/pathological range data (e.g. a bad record spanning hundreds of thousands of numbers),
+ * not as a normal thinning mechanism - thinning a real block's range is what caused specific real
+ * addresses (like a house partway through a block) to never appear as a candidate at all.
  */
-const val MAX_POINTS_PER_SIDE = 12
+const val MAX_POINTS_PER_SIDE = 300
 
 enum class AddressParity { ODD, EVEN, BOTH, UNKNOWN }
 
