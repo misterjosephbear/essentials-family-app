@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -20,10 +21,18 @@ import com.isaacshub.app.routehelper.domain.StopSide
  * One-tap address row used by both the live route builder and testing mode: plain tap routes with
  * no note, L/R/D route with the matching canned note. All four targets sit in a single compact row
  * so five of these fit on screen without scrolling while driving.
+ *
+ * [isPending] tints the card when a tap has been registered but not yet planted - i.e. the driver hit
+ * a button while still moving and the stop is queued to land at their next full stop.
  */
 @Composable
-fun AddressActionCard(label: String, onTap: (StopSide) -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+fun AddressActionCard(label: String, isPending: Boolean = false, onTap: (StopSide) -> Unit) {
+    val colors = if (isPending) {
+        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+    } else {
+        CardDefaults.cardColors()
+    }
+    Card(modifier = Modifier.fillMaxWidth(), colors = colors) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically

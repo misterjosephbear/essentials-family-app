@@ -4,16 +4,15 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,6 +40,9 @@ import com.isaacshub.app.routehelper.ui.common.AddressActionCard
 import com.isaacshub.app.routehelper.ui.common.newOsmMapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.util.GeoPoint as OsmGeoPoint
+
+/** Height reserved for an empty address slot so it holds its place in the layout, matching a populated [AddressActionCard]. */
+private val ADDRESS_SLOT_MIN_HEIGHT = 56.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,22 +97,30 @@ fun RouteBuilderScreen(routeId: Long) {
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
 
-            if (state.nearestAddresses.isEmpty()) {
+            if (state.nearestAddressSlots.all { it == null }) {
                 Text(
                     "No nearby unrouted addresses.",
                     modifier = Modifier.weight(1f).padding(16.dp)
                 )
             } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(16.dp),
+                Column(
+                    modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(state.nearestAddresses, key = { it.id }) { candidate ->
-                        AddressActionCard(
-                            label = candidate.label,
-                            onTap = { side -> viewModel.routeStop(candidate, side) }
-                        )
+                    // Each slot is a fixed screen position - reassigned candidates crossfade in place
+                    // rather than the whole list reordering, so a tap target never moves under a driver's thumb.
+                    state.nearestAddressSlots.forEach { slotCandidate ->
+                        Crossfade(targetState = slotCandidate, label = "addressSlot") { candidate ->
+                            if (candidate != null) {
+                                AddressActionCard(
+                                    label = candidate.label,
+                                    isPending = candidate.id in state.pendingCandidateIds,
+                                    onTap = { side -> viewModel.routeStop(candidate, side) }
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.fillMaxWidth().height(ADDRESS_SLOT_MIN_HEIGHT))
+                            }
+                        }
                     }
                 }
             }
@@ -148,7 +158,7 @@ private fun LiveMap(state: RouteBuilderUiState, modifier: Modifier = Modifier) {
             )
         }
 
-        state.nearestAddresses.forEach { candidate ->
+        state.nearestAddressSlots.filterNotNull().forEach { candidate ->
             view.overlays.add(
                 Marker(view).apply {
                     position = OsmGeoPoint(candidate.latitude, candidate.longitude)
