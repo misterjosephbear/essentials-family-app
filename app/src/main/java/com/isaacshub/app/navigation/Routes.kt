@@ -24,11 +24,17 @@ object Routes {
     const val VAULT_HOME = "vault_home"
     const val VAULT_PAIRING = "vault_pairing"
 
+    const val ROUTE_HELPER_HOME = "route_helper_home"
+    const val ROUTE_BUILDER_BASE = "route_builder"
+    const val ROUTE_BUILDER_ARG = "routeId"
+    const val ROUTE_BUILDER_PATTERN = "$ROUTE_BUILDER_BASE/{$ROUTE_BUILDER_ARG}"
+
     private const val NEW_TOKEN = "new"
 
     fun editSession(sessionId: Long?): String = "$EDIT_SESSION_BASE/${sessionId ?: NEW_TOKEN}"
     fun editTimeEntry(entryId: Long?): String = "$EDIT_TIME_ENTRY_BASE/${entryId ?: NEW_TOKEN}"
     fun editRoute(routeId: Long?): String = "$EDIT_ROUTE_BASE/${routeId ?: NEW_TOKEN}"
+    fun routeBuilder(routeId: Long): String = "$ROUTE_BUILDER_BASE/$routeId"
 
     fun parseId(arg: String?): Long? = arg?.takeIf { it != NEW_TOKEN }?.toLongOrNull()
 }

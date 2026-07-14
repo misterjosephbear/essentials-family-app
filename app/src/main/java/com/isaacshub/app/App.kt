@@ -2,6 +2,9 @@ package com.isaacshub.app
 
 import android.app.Application
 import com.isaacshub.app.core.data.prefs.UserPreferencesRepository
+import com.isaacshub.app.routehelper.data.RouteHelperDatabase
+import com.isaacshub.app.routehelper.data.RouteHelperRepository
+import com.isaacshub.app.routehelper.network.OsmAddressFetcher
 import com.isaacshub.app.sleep.data.SleepDatabase
 import com.isaacshub.app.sleep.data.SleepRepository
 import com.isaacshub.app.timetracking.data.TimeTrackingDatabase
@@ -24,6 +27,9 @@ class App : Application() {
     lateinit var vaultPreferencesRepository: VaultPreferencesRepository
         private set
 
+    lateinit var routeHelperRepository: RouteHelperRepository
+        private set
+
     override fun onCreate() {
         super.onCreate()
         preferencesRepository = UserPreferencesRepository(this)
@@ -42,5 +48,8 @@ class App : Application() {
         vaultPreferencesRepository = VaultPreferencesRepository(this)
         PhotoBackupScheduler.rescheduleIfPaired(this, vaultPreferencesRepository)
         AppDataBackupScheduler.rescheduleIfPaired(this, vaultPreferencesRepository)
+
+        val routeHelperDatabase = RouteHelperDatabase.getInstance(this)
+        routeHelperRepository = RouteHelperRepository(routeHelperDatabase.routeHelperDao(), OsmAddressFetcher())
     }
 }

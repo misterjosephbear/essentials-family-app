@@ -15,6 +15,7 @@ cameraX = "1.4.1"
 mlkitBarcodeScanning = "17.3.0"
 workManager = "2.10.0"
 orgJson = "20250517"
+osmdroid = "6.1.20"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -45,6 +46,7 @@ mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning"
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
 androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "workManager" }
 org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
+osmdroid-android = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

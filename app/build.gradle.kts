@@ -103,6 +103,7 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.mlkit.barcode.scanning)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.osmdroid.android)
 
     testImplementation(libs.junit)
     testImplementation(libs.androidx.work.testing)

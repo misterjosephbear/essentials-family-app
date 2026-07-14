@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,7 +30,8 @@ import androidx.compose.ui.unit.dp
 fun LandingScreen(
     onOpenSleep: () -> Unit,
     onOpenTimeTracking: () -> Unit,
-    onOpenVault: () -> Unit
+    onOpenVault: () -> Unit,
+    onOpenRouteHelper: () -> Unit
 ) {
     Scaffold(
         topBar = { TopAppBar(title = { Text("Isaac's Hub") }) }
@@ -58,6 +60,12 @@ fun LandingScreen(
                 title = "Photo Vault",
                 subtitle = "Back up new photos to your own server",
                 onClick = onOpenVault
+            )
+            ToolCard(
+                icon = Icons.Filled.Map,
+                title = "Route Helper",
+                subtitle = "Build a route live while driving it",
+                onClick = onOpenRouteHelper
             )
         }
     }
