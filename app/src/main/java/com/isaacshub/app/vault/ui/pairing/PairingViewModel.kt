@@ -37,10 +37,12 @@ class PairingViewModel(application: Application) : AndroidViewModel(application)
         handling = true
         _uiState.value = _uiState.value.copy(connecting = true, error = null)
         viewModelScope.launch {
-            val ok = VaultApiClient(connection).checkConnection()
+            val client = VaultApiClient(connection)
+            val ok = client.checkConnection()
             if (ok) {
                 val app = getApplication<App>()
                 app.vaultPreferencesRepository.setConnection(connection)
+                client.resolvedBaseUrl?.let { app.vaultPreferencesRepository.setPreferredBaseUrl(it) }
                 PhotoBackupScheduler.schedule(app)
                 AppDataBackupScheduler.schedule(app)
                 AppDataBackupScheduler.backupNow(app)

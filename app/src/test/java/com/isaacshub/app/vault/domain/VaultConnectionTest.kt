@@ -29,4 +29,21 @@ class VaultConnectionTest {
         val raw = """{"type":"isaacs-hub-storage-pairing","baseUrl":"http://10.0.0.5:4000","apiKey":""}"""
         assertNull(parsePairingPayload(raw))
     }
+
+    @Test
+    fun `parses an optional remote base url`() {
+        val raw = """{"type":"isaacs-hub-storage-pairing","baseUrl":"http://10.0.0.5:4000","apiKey":"secret123","remoteBaseUrl":"http://isaacs-hub.playit.plus/"}"""
+        val result = parsePairingPayload(raw)
+        assertEquals(
+            VaultConnection("http://10.0.0.5:4000", "secret123", "http://isaacs-hub.playit.plus"),
+            result
+        )
+    }
+
+    @Test
+    fun `treats a blank remote base url as absent`() {
+        val raw = """{"type":"isaacs-hub-storage-pairing","baseUrl":"http://10.0.0.5:4000","apiKey":"secret123","remoteBaseUrl":""}"""
+        val result = parsePairingPayload(raw)
+        assertEquals(VaultConnection("http://10.0.0.5:4000", "secret123"), result)
+    }
 }
