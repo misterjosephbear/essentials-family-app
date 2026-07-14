@@ -82,4 +82,30 @@ class RouteHelperRepository(
         dao.deleteStop(last)
         last.candidateAddressId?.let { dao.setCandidateRouted(it, false) }
     }
+
+    /** Removes an arbitrary stop (not just the most recent) and restores its candidate address to the unrouted list. */
+    suspend fun deleteStop(stop: RoutedStopEntity) {
+        dao.deleteStop(stop)
+        stop.candidateAddressId?.let { dao.setCandidateRouted(it, false) }
+    }
+
+    /** Swaps [stop] with the one immediately before it in sequence. No-op if it's already first. */
+    suspend fun moveStopUp(routeId: Long, stop: RoutedStopEntity) {
+        val stops = dao.getStopsOnce(routeId)
+        val index = stops.indexOfFirst { it.id == stop.id }
+        if (index <= 0) return
+        swapOrder(stops[index], stops[index - 1])
+    }
+
+    /** Swaps [stop] with the one immediately after it in sequence. No-op if it's already last. */
+    suspend fun moveStopDown(routeId: Long, stop: RoutedStopEntity) {
+        val stops = dao.getStopsOnce(routeId)
+        val index = stops.indexOfFirst { it.id == stop.id }
+        if (index == -1 || index >= stops.size - 1) return
+        swapOrder(stops[index], stops[index + 1])
+    }
+
+    private suspend fun swapOrder(a: RoutedStopEntity, b: RoutedStopEntity) {
+        dao.updateStops(listOf(a.copy(sequenceOrder = b.sequenceOrder), b.copy(sequenceOrder = a.sequenceOrder)))
+    }
 }

@@ -29,6 +29,9 @@ object Routes {
     const val ROUTE_BUILDER_ARG = "routeId"
     const val ROUTE_BUILDER_PATTERN = "$ROUTE_BUILDER_BASE/{$ROUTE_BUILDER_ARG}"
     const val ROUTE_HELPER_TEST = "route_helper_test"
+    const val ROUTE_HELPER_EDIT_BASE = "route_helper_edit"
+    const val ROUTE_HELPER_EDIT_ARG = "routeId"
+    const val ROUTE_HELPER_EDIT_PATTERN = "$ROUTE_HELPER_EDIT_BASE/{$ROUTE_HELPER_EDIT_ARG}"
 
     private const val NEW_TOKEN = "new"
 
@@ -36,6 +39,7 @@ object Routes {
     fun editTimeEntry(entryId: Long?): String = "$EDIT_TIME_ENTRY_BASE/${entryId ?: NEW_TOKEN}"
     fun editRoute(routeId: Long?): String = "$EDIT_ROUTE_BASE/${routeId ?: NEW_TOKEN}"
     fun routeBuilder(routeId: Long): String = "$ROUTE_BUILDER_BASE/$routeId"
+    fun routeHelperEdit(routeId: Long): String = "$ROUTE_HELPER_EDIT_BASE/$routeId"
 
     fun parseId(arg: String?): Long? = arg?.takeIf { it != NEW_TOKEN }?.toLongOrNull()
 }

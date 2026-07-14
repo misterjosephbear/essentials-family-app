@@ -29,6 +29,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.isaacshub.app.landing.ui.LandingScreen
 import com.isaacshub.app.routehelper.ui.builder.RouteBuilderScreen
+import com.isaacshub.app.routehelper.ui.edit.RouteEditScreen
 import com.isaacshub.app.routehelper.ui.home.RouteHelperHomeScreen
 import com.isaacshub.app.routehelper.ui.test.RouteHelperTestScreen
 import com.isaacshub.app.sleep.ui.edit.EditSessionScreen
@@ -202,7 +203,8 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
             composable(Routes.ROUTE_HELPER_HOME) {
                 RouteHelperHomeScreen(
                     onOpenRoute = { routeId -> navController.navigate(Routes.routeBuilder(routeId)) },
-                    onOpenTestMode = { navController.navigate(Routes.ROUTE_HELPER_TEST) }
+                    onOpenTestMode = { navController.navigate(Routes.ROUTE_HELPER_TEST) },
+                    onEditRoute = { routeId -> navController.navigate(Routes.routeHelperEdit(routeId)) }
                 )
             }
             composable(Routes.ROUTE_HELPER_TEST) {
@@ -212,6 +214,12 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                 val routeId = backStackEntry.arguments?.getString(Routes.ROUTE_BUILDER_ARG)?.toLongOrNull()
                 if (routeId != null) {
                     RouteBuilderScreen(routeId = routeId)
+                }
+            }
+            composable(Routes.ROUTE_HELPER_EDIT_PATTERN) { backStackEntry ->
+                val routeId = backStackEntry.arguments?.getString(Routes.ROUTE_HELPER_EDIT_ARG)?.toLongOrNull()
+                if (routeId != null) {
+                    RouteEditScreen(routeId = routeId)
                 }
             }
         }

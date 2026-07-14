@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -42,11 +43,18 @@ interface RouteHelperDao {
     @Query("SELECT * FROM routed_stops WHERE routeId = :routeId ORDER BY sequenceOrder ASC")
     fun observeStops(routeId: Long): Flow<List<RoutedStopEntity>>
 
+    @Query("SELECT * FROM routed_stops WHERE routeId = :routeId ORDER BY sequenceOrder ASC")
+    suspend fun getStopsOnce(routeId: Long): List<RoutedStopEntity>
+
     @Query("SELECT * FROM routed_stops WHERE routeId = :routeId ORDER BY sequenceOrder DESC LIMIT 1")
     suspend fun getLastStop(routeId: Long): RoutedStopEntity?
 
     @Delete
     suspend fun deleteStop(stop: RoutedStopEntity)
+
+    /** Room wraps a list @Update in a single transaction, so a reordering swap can't land half-applied. */
+    @Update
+    suspend fun updateStops(stops: List<RoutedStopEntity>)
 
     @Query("SELECT COALESCE(MAX(sequenceOrder), -1) FROM routed_stops WHERE routeId = :routeId")
     suspend fun maxSequenceOrder(routeId: Long): Int

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Science
@@ -48,7 +49,8 @@ private val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
 @Composable
 fun RouteHelperHomeScreen(
     onOpenRoute: (Long) -> Unit,
-    onOpenTestMode: () -> Unit
+    onOpenTestMode: () -> Unit,
+    onEditRoute: (Long) -> Unit
 ) {
     val viewModel: RouteHelperHomeViewModel = viewModel()
     val routes by viewModel.routes.collectAsState()
@@ -94,7 +96,12 @@ fun RouteHelperHomeScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(routes, key = { it.id }) { route ->
-                    RouteRow(route = route, onClick = { onOpenRoute(route.id) }, onDelete = { viewModel.deleteRoute(route) })
+                    RouteRow(
+                        route = route,
+                        onClick = { onOpenRoute(route.id) },
+                        onEdit = { onEditRoute(route.id) },
+                        onDelete = { viewModel.deleteRoute(route) }
+                    )
                 }
             }
         }
@@ -111,7 +118,7 @@ fun RouteHelperHomeScreen(
 }
 
 @Composable
-private fun RouteRow(route: RouteHelperRouteEntity, onClick: () -> Unit, onDelete: () -> Unit) {
+private fun RouteRow(route: RouteHelperRouteEntity, onClick: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -123,8 +130,13 @@ private fun RouteRow(route: RouteHelperRouteEntity, onClick: () -> Unit, onDelet
                 val date = Instant.ofEpochMilli(route.createdAtEpochMillis).atZone(ZoneId.systemDefault()).toLocalDate()
                 Text("ZIP ${route.zipCode} - built ${date.format(dateFormatter)}", style = MaterialTheme.typography.bodySmall)
             }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete route")
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = "View and edit stops")
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Delete route")
+                }
             }
         }
     }
