@@ -17,11 +17,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
-
-private const val WAKE_TIME_HISTORY_SAMPLE_SIZE = 7
 
 data class HomeUiState(
     val loading: Boolean = true,
@@ -57,18 +56,13 @@ class HomeViewModel(
             Duration.between(it, ZonedDateTime.now(zone)).toMinutes() / 60.0
         }
 
-        val recentWakeHours = sessions
-            .filter { it.confirmed }
-            .sortedByDescending { it.endEpochMillis }
-            .take(WAKE_TIME_HISTORY_SAMPLE_SIZE)
-            .map { val z = Instant.ofEpochMilli(it.endEpochMillis).atZone(zone); z.hour + z.minute / 60.0 }
-        val windDown = recentWakeHours.takeIf { it.isNotEmpty() }?.let { hours ->
-            WindDownCalculator.calculate(
-                usualWakeHourOfDay = hours.average(),
-                neededMinutesPerNight = prefs.sleepNeedMinutes,
-                currentDebtMinutes = result.totalDebtMinutes
-            )
-        }
+        val tomorrow = LocalDate.now(zone).plusDays(1).dayOfWeek
+        val tomorrowWakeMinutes = prefs.wakeTimeMinutesByDay.getValue(tomorrow)
+        val windDown = WindDownCalculator.calculate(
+            usualWakeHourOfDay = tomorrowWakeMinutes / 60.0,
+            neededMinutesPerNight = prefs.sleepNeedMinutes,
+            currentDebtMinutes = result.totalDebtMinutes
+        )
 
         HomeUiState(
             loading = false,
