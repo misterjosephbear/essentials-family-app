@@ -21,6 +21,9 @@ interface RouteHelperDao {
     @Delete
     suspend fun deleteRoute(route: RouteHelperRouteEntity)
 
+    @Query("DELETE FROM route_helper_routes WHERE id = :id")
+    suspend fun deleteRouteById(id: Long)
+
     @Insert
     suspend fun insertCandidates(candidates: List<CandidateAddressEntity>)
 

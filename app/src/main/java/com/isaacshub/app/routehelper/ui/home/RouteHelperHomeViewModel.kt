@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.isaacshub.app.App
+import com.isaacshub.app.routehelper.data.CreateRouteResult
 import com.isaacshub.app.routehelper.data.RouteHelperRouteEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,8 +35,12 @@ class RouteHelperHomeViewModel(application: Application) : AndroidViewModel(appl
         }
         _newRouteState.value = NewRouteUiState(creating = true)
         viewModelScope.launch {
-            val id = repository.createRoute(name.trim(), zipCode.trim())
-            _newRouteState.value = NewRouteUiState(createdRouteId = id)
+            when (val result = repository.createRoute(name.trim(), zipCode.trim())) {
+                is CreateRouteResult.Success ->
+                    _newRouteState.value = NewRouteUiState(createdRouteId = result.routeId)
+                is CreateRouteResult.Failure ->
+                    _newRouteState.value = NewRouteUiState(error = "Couldn't fetch addresses: ${result.reason}")
+            }
         }
     }
 

@@ -1,8 +1,14 @@
 package com.isaacshub.app.routehelper.data
 
 import com.isaacshub.app.routehelper.domain.GeoPoint
+import com.isaacshub.app.routehelper.network.AddressFetchResult
 import com.isaacshub.app.routehelper.network.OsmAddressFetcher
 import kotlinx.coroutines.flow.Flow
+
+sealed interface CreateRouteResult {
+    data class Success(val routeId: Long, val addressCount: Int) : CreateRouteResult
+    data class Failure(val reason: String) : CreateRouteResult
+}
 
 class RouteHelperRepository(
     private val dao: RouteHelperDao,
@@ -14,25 +20,37 @@ class RouteHelperRepository(
 
     suspend fun deleteRoute(route: RouteHelperRouteEntity) = dao.deleteRoute(route)
 
-    /** Creates the route and does the one-time OSM address fetch for its ZIP code. Returns the new route's id. */
-    suspend fun createRoute(name: String, zipCode: String): Long {
+    /**
+     * Creates the route and does the one-time OSM address fetch for its ZIP code. If the fetch
+     * fails outright (network/server error, as opposed to a ZIP that genuinely has zero addressed
+     * buildings mapped), the just-created route is rolled back so a failed attempt doesn't leave a
+     * dead empty route behind - the caller can just retry.
+     */
+    suspend fun createRoute(name: String, zipCode: String): CreateRouteResult {
         val routeId = dao.insertRoute(
             RouteHelperRouteEntity(name = name, zipCode = zipCode, createdAtEpochMillis = System.currentTimeMillis())
         )
-        val fetched = addressFetcher.fetchAddressesForZip(zipCode)
-        if (fetched.isNotEmpty()) {
-            dao.insertCandidates(
-                fetched.map { address ->
-                    CandidateAddressEntity(
-                        routeId = routeId,
-                        label = address.label,
-                        latitude = address.location.latitude,
-                        longitude = address.location.longitude
+        return when (val fetched = addressFetcher.fetchAddressesForZip(zipCode)) {
+            is AddressFetchResult.Success -> {
+                if (fetched.addresses.isNotEmpty()) {
+                    dao.insertCandidates(
+                        fetched.addresses.map { address ->
+                            CandidateAddressEntity(
+                                routeId = routeId,
+                                label = address.label,
+                                latitude = address.location.latitude,
+                                longitude = address.location.longitude
+                            )
+                        }
                     )
                 }
-            )
+                CreateRouteResult.Success(routeId, fetched.addresses.size)
+            }
+            is AddressFetchResult.Failure -> {
+                dao.deleteRouteById(routeId)
+                CreateRouteResult.Failure(fetched.reason)
+            }
         }
-        return routeId
     }
 
     fun observeUnroutedCandidates(routeId: Long): Flow<List<CandidateAddressEntity>> =

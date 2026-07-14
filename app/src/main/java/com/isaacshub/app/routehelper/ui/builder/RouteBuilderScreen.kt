@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -93,7 +95,7 @@ fun RouteBuilderScreen(routeId: Long) {
         }
 
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            LiveMap(state = state, modifier = Modifier.fillMaxWidth().weight(1f))
+            LiveMap(state = state, modifier = Modifier.fillMaxWidth().height(220.dp))
 
             Text(
                 "Stops routed: ${state.routedStops.size}",
@@ -104,11 +106,11 @@ fun RouteBuilderScreen(routeId: Long) {
             if (state.nearestAddresses.isEmpty()) {
                 Text(
                     "No nearby unrouted addresses.",
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.weight(1f).padding(16.dp)
                 )
             } else {
                 LazyColumn(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -129,7 +131,12 @@ private fun AddressCard(candidate: CandidateAddressEntity, onTap: (StopSide) -> 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { onTap(StopSide.NONE) }, modifier = Modifier.fillMaxWidth()) {
-                Text(candidate.label, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    candidate.label,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { onTap(StopSide.LEFT) }, modifier = Modifier.weight(1f)) {
