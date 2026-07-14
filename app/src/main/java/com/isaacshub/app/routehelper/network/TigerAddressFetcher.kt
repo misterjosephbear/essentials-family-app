@@ -1,9 +1,11 @@
 package com.isaacshub.app.routehelper.network
 
 import android.content.Context
+import android.util.Log
 import com.isaacshub.app.routehelper.domain.GeoPoint
 import com.isaacshub.app.routehelper.domain.HouseNumberRange
 import com.isaacshub.app.routehelper.domain.TigerAddressFeature
+import com.isaacshub.app.routehelper.domain.filterAddressesNearBuildings
 import com.isaacshub.app.routehelper.domain.interpolateAddresses
 import com.isaacshub.app.routehelper.domain.parseParity
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +15,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.zip.ZipInputStream
 
+private const val TAG = "TigerAddressFetcher"
 private const val USER_AGENT = "IsaacsHub/1.0 (personal route-building app)"
 private const val TIGER_YEAR = "2023"
 
@@ -27,6 +30,7 @@ class TigerAddressFetcher(private val context: Context) {
 
     private val geocoder = NominatimGeocoder()
     private val fipsLookup by lazy { CountyFipsLookup(context) }
+    private val buildingFootprintFetcher = BuildingFootprintFetcher(context)
 
     /** Just the center point of a ZIP code, for zooming a map to it (e.g. testing mode) without a full address fetch. */
     suspend fun geocodeZip(zip: String): GeoPoint? = withContext(Dispatchers.IO) {
@@ -49,7 +53,7 @@ class TigerAddressFetcher(private val context: Context) {
 
         val rawRecords = TigerDbfParser.parse(dbfBytes)
         val lines = TigerShpParser.parseLines(shpBytes)
-        val addresses = rawRecords.zip(lines)
+        val interpolated = rawRecords.zip(lines)
             .asSequence()
             .filter { (record, _) -> !record.isDeleted && (record.zipL == zip || record.zipR == zip) }
             .flatMap { (record, points) ->
@@ -63,10 +67,15 @@ class TigerAddressFetcher(private val context: Context) {
                 )
                 interpolateAddresses(feature, zip)
             }
-            .map { FetchedAddress(it.label, it.location) }
             .toList()
 
-        AddressFetchResult.Success(addresses)
+        val buildingCentroids = buildingFootprintFetcher.fetchNearbyBuildingCentroids(location.center)
+        if (buildingCentroids.isEmpty()) {
+            Log.w(TAG, "No building footprints available for ZIP $zip - skipping phantom-address filter")
+        }
+        val filtered = filterAddressesNearBuildings(interpolated, buildingCentroids)
+
+        AddressFetchResult.Success(filtered.map { FetchedAddress(it.label, it.location) })
     }
 
     private fun loadCountyShapefile(stateFp: String, countyFp: String): Pair<ByteArray, ByteArray> {
