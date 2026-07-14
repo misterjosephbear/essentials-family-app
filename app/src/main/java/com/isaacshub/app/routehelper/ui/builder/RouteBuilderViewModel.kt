@@ -7,22 +7,34 @@ import com.isaacshub.app.App
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import com.isaacshub.app.routehelper.data.CandidateAddressEntity
 import com.isaacshub.app.routehelper.data.RoutedStopEntity
+import com.isaacshub.app.routehelper.domain.CandidateAddress
 import com.isaacshub.app.routehelper.domain.GeoPoint
+import com.isaacshub.app.routehelper.domain.LocationSample
 import com.isaacshub.app.routehelper.domain.StopSide
 import com.isaacshub.app.routehelper.domain.nearestAddresses
+import com.isaacshub.app.routehelper.domain.stickyNearestSlots
 import com.isaacshub.app.routehelper.location.liveLocationFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+private const val SLOT_COUNT = 5
+
+/** A one-tap button was pressed while still moving; it plants at wherever the driver ends up stopping. */
+private data class PendingStop(val candidate: CandidateAddressEntity, val side: StopSide)
+
 data class RouteBuilderUiState(
     val currentLocation: GeoPoint? = null,
-    val nearestAddresses: List<CandidateAddressEntity> = emptyList(),
+    /** Always [SLOT_COUNT] entries, one per fixed on-screen position; null means that slot is empty. */
+    val nearestAddressSlots: List<CandidateAddressEntity?> = List(SLOT_COUNT) { null },
+    val pendingCandidateIds: Set<Long> = emptySet(),
     val routedStops: List<RoutedStopEntity> = emptyList(),
     val canUndo: Boolean = false
 )
@@ -32,7 +44,8 @@ class RouteBuilderViewModel(application: Application) : AndroidViewModel(applica
 
     private val repository = getApplication<App>().routeHelperRepository
     private val routeIdFlow = MutableStateFlow<Long?>(null)
-    private val locationFlow = MutableStateFlow<GeoPoint?>(null)
+    private val locationFlow = MutableStateFlow<LocationSample?>(null)
+    private val pendingStopsFlow = MutableStateFlow<List<PendingStop>>(emptyList())
     private var locationStarted = false
 
     /** Safe to call every time the screen recomposes - only actually starts tracking/observing once per route. */
@@ -43,7 +56,10 @@ class RouteBuilderViewModel(application: Application) : AndroidViewModel(applica
         if (!locationStarted) {
             locationStarted = true
             viewModelScope.launch {
-                liveLocationFlow(getApplication()).collect { locationFlow.value = it }
+                liveLocationFlow(getApplication()).collect { sample ->
+                    locationFlow.value = sample
+                    if (sample.isStopped()) drainPendingStops(sample.point)
+                }
             }
         }
     }
@@ -56,34 +72,72 @@ class RouteBuilderViewModel(application: Application) : AndroidViewModel(applica
         if (id == null) flowOf(emptyList()) else repository.observeStops(id)
     }
 
-    val uiState: StateFlow<RouteBuilderUiState> = combine(
-        locationFlow,
-        candidatesFlow,
-        stopsFlow
-    ) { location, candidates, stops ->
-        val nearest = if (location == null) {
+    /** The current top [SLOT_COUNT] nearest unrouted candidates, re-ranked on every location/candidate change. */
+    private val nearestRawFlow: Flow<List<CandidateAddress>> = combine(locationFlow, candidatesFlow) { sample, candidates ->
+        val location = sample?.point
+        if (location == null) {
             emptyList()
         } else {
             val domainCandidates = candidates.map {
-                com.isaacshub.app.routehelper.domain.CandidateAddress(it.id, it.label, GeoPoint(it.latitude, it.longitude))
+                CandidateAddress(it.id, it.label, GeoPoint(it.latitude, it.longitude))
             }
-            val byId = candidates.associateBy { it.id }
-            nearestAddresses(location, domainCandidates, count = 5).mapNotNull { byId[it.id] }
+            nearestAddresses(location, domainCandidates, count = SLOT_COUNT)
         }
+    }
+
+    /**
+     * [nearestRawFlow] re-ranked, but pinned to fixed slots that only turn over when a candidate is
+     * routed or truly falls out of the nearest set - see [stickyNearestSlots]. This is what keeps the
+     * on-screen list from reshuffling under the driver's thumb as distances change while moving.
+     */
+    private val stickySlotIdsFlow: Flow<List<Long?>> = nearestRawFlow.scan(List(SLOT_COUNT) { null }) { previousSlots, nearest ->
+        stickyNearestSlots(previousSlots, nearest)
+    }
+
+    val uiState: StateFlow<RouteBuilderUiState> = combine(
+        locationFlow,
+        stickySlotIdsFlow,
+        candidatesFlow,
+        stopsFlow,
+        pendingStopsFlow
+    ) { sample, slotIds, candidates, stops, pending ->
+        val byId = candidates.associateBy { it.id }
         RouteBuilderUiState(
-            currentLocation = location,
-            nearestAddresses = nearest,
+            currentLocation = sample?.point,
+            nearestAddressSlots = slotIds.map { id -> id?.let { byId[it] } },
+            pendingCandidateIds = pending.map { it.candidate.id }.toSet(),
             routedStops = stops,
             canUndo = stops.isNotEmpty()
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), RouteBuilderUiState())
 
-    /** One tap: adds [candidate] as the next stop at wherever the driver is right now, with [side]'s canned note (or none). */
+    /**
+     * One tap: if the driver is already fully stopped, routes [candidate] immediately at the current
+     * location. Otherwise the tap is queued - it plants at wherever the driver next comes to a full
+     * stop, so a button can be pressed while still rolling up to the mailbox without misplacing the pin.
+     */
     fun routeStop(candidate: CandidateAddressEntity, side: StopSide) {
-        val location = locationFlow.value ?: return
+        val sample = locationFlow.value ?: return
         val routeId = routeIdFlow.value ?: return
+        if (sample.isStopped()) {
+            viewModelScope.launch {
+                repository.addStop(routeId, candidate.id, candidate.label, side.note, sample.point)
+            }
+        } else {
+            pendingStopsFlow.value = pendingStopsFlow.value + PendingStop(candidate, side)
+        }
+    }
+
+    /** Plants every queued tap at [location], in the order they were pressed, then clears the queue. */
+    private fun drainPendingStops(location: GeoPoint) {
+        val queued = pendingStopsFlow.value
+        if (queued.isEmpty()) return
+        val routeId = routeIdFlow.value ?: return
+        pendingStopsFlow.value = emptyList()
         viewModelScope.launch {
-            repository.addStop(routeId, candidate.id, candidate.label, side.note, location)
+            queued.forEach { pending ->
+                repository.addStop(routeId, pending.candidate.id, pending.candidate.label, pending.side.note, location)
+            }
         }
     }
 
