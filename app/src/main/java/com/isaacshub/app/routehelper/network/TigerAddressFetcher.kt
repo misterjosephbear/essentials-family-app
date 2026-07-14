@@ -5,8 +5,8 @@ import android.util.Log
 import com.isaacshub.app.routehelper.domain.GeoPoint
 import com.isaacshub.app.routehelper.domain.HouseNumberRange
 import com.isaacshub.app.routehelper.domain.TigerAddressFeature
-import com.isaacshub.app.routehelper.domain.filterAddressesNearBuildings
-import com.isaacshub.app.routehelper.domain.interpolateAddresses
+import com.isaacshub.app.routehelper.domain.filterAddressGroupsNearBuildings
+import com.isaacshub.app.routehelper.domain.interpolateAddressGroups
 import com.isaacshub.app.routehelper.domain.parseParity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -53,7 +53,7 @@ class TigerAddressFetcher(private val context: Context) {
 
         val rawRecords = TigerDbfParser.parse(dbfBytes)
         val lines = TigerShpParser.parseLines(shpBytes)
-        val interpolated = rawRecords.zip(lines)
+        val addressGroups = rawRecords.zip(lines)
             .asSequence()
             .filter { (record, _) -> !record.isDeleted && (record.zipL == zip || record.zipR == zip) }
             .flatMap { (record, points) ->
@@ -65,7 +65,7 @@ class TigerAddressFetcher(private val context: Context) {
                     zipRight = record.zipR,
                     vertices = points
                 )
-                interpolateAddresses(feature, zip)
+                interpolateAddressGroups(feature, zip)
             }
             .toList()
 
@@ -73,7 +73,7 @@ class TigerAddressFetcher(private val context: Context) {
         if (buildingCentroids.isEmpty()) {
             Log.w(TAG, "No building footprints available for ZIP $zip - skipping phantom-address filter")
         }
-        val filtered = filterAddressesNearBuildings(interpolated, buildingCentroids)
+        val filtered = filterAddressGroupsNearBuildings(addressGroups, buildingCentroids)
 
         AddressFetchResult.Success(filtered.map { FetchedAddress(it.label, it.location) })
     }

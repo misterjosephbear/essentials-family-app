@@ -34,15 +34,26 @@ data class TigerAddressFeature(
 )
 
 /** Sample points for whichever side(s) of [feature] serve [targetZip] - a road can have a different ZIP on each side. */
-fun interpolateAddresses(feature: TigerAddressFeature, targetZip: String): List<InterpolatedAddress> {
-    val results = mutableListOf<InterpolatedAddress>()
+fun interpolateAddresses(feature: TigerAddressFeature, targetZip: String): List<InterpolatedAddress> =
+    interpolateAddressGroups(feature, targetZip).flatten()
+
+/**
+ * Same as [interpolateAddresses], but keeps each side's addresses as its own group instead of one
+ * flat list - needed so a building-proximity filter can calibrate its distance threshold separately
+ * per segment side (a rural road's real houses can sit 100m+ back from the road, while an in-town
+ * block's sit within ~20m - one flat list loses which candidates came from which segment side).
+ */
+fun interpolateAddressGroups(feature: TigerAddressFeature, targetZip: String): List<List<InterpolatedAddress>> {
+    val groups = mutableListOf<List<InterpolatedAddress>>()
     if (feature.zipLeft == targetZip) {
-        results += sideAddresses(feature.streetName, feature.leftRange, feature.vertices)
+        val left = sideAddresses(feature.streetName, feature.leftRange, feature.vertices)
+        if (left.isNotEmpty()) groups += left
     }
     if (feature.zipRight == targetZip) {
-        results += sideAddresses(feature.streetName, feature.rightRange, feature.vertices)
+        val right = sideAddresses(feature.streetName, feature.rightRange, feature.vertices)
+        if (right.isNotEmpty()) groups += right
     }
-    return results
+    return groups
 }
 
 private fun sideAddresses(streetName: String, range: HouseNumberRange, vertices: List<GeoPoint>): List<InterpolatedAddress> {

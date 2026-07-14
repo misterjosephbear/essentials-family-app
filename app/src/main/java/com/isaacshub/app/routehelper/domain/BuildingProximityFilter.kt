@@ -2,56 +2,70 @@ package com.isaacshub.app.routehelper.domain
 
 import kotlin.math.floor
 
-private const val NEARBY_BUILDING_THRESHOLD_METERS = 40.0
+/** Floor for a segment's accept threshold - roughly an in-town lot's setback from the road. */
+private const val BASE_THRESHOLD_METERS = 40.0
 
 /**
- * Grid cell size in degrees for bucketing buildings before a proximity check. ~111m latitude x ~85m
- * longitude at mid US latitudes - comfortably larger than [NEARBY_BUILDING_THRESHOLD_METERS], so
- * checking a candidate's own cell plus its 8 neighbors can never miss a real match, while avoiding a
- * naive O(addresses x buildings) scan: a tile can hold ~70k buildings, and checking every one of them
- * against every candidate (each a haversine call) is what made this filter take over a minute before
- * this index was added.
+ * How much slack beyond a segment's own closest real-building distance to allow for its other
+ * candidates. If even the nearest candidate on a segment sits 90m from any building, real houses
+ * there likely sit ~90m back from the road, so its other candidates are checked against a
+ * proportionally wider band instead of [BASE_THRESHOLD_METERS].
  */
+private const val SLACK_FACTOR = 2.5
+
+/** ~111m latitude x ~85m longitude at mid US latitudes. */
 private const val GRID_CELL_DEGREES = 0.001
 
-private fun cellKey(point: GeoPoint): Long {
-    val latCell = floor(point.latitude / GRID_CELL_DEGREES).toLong()
-    val lonCell = floor(point.longitude / GRID_CELL_DEGREES).toLong()
-    return (latCell shl 32) xor (lonCell and 0xFFFFFFFFL)
+/** Cells searched outward in each direction - wide enough to find real rural setback distances (100m+), not just in-town ones. */
+private const val GRID_SEARCH_RADIUS_CELLS = 4
+
+private fun cellIndex(value: Double): Long = floor(value / GRID_CELL_DEGREES).toLong()
+private fun cellKey(latCell: Long, lonCell: Long): Long = (latCell shl 32) xor (lonCell and 0xFFFFFFFFL)
+
+private class BuildingGrid(buildings: List<GeoPoint>) {
+    private val cells: Map<Long, List<GeoPoint>> =
+        buildings.groupBy { cellKey(cellIndex(it.latitude), cellIndex(it.longitude)) }
+
+    /** Distance to the nearest building within the search radius, or null if none is found that close. */
+    fun nearestDistance(point: GeoPoint): Double? {
+        val latCell = cellIndex(point.latitude)
+        val lonCell = cellIndex(point.longitude)
+        var best: Double? = null
+        for (dLat in -GRID_SEARCH_RADIUS_CELLS..GRID_SEARCH_RADIUS_CELLS) {
+            for (dLon in -GRID_SEARCH_RADIUS_CELLS..GRID_SEARCH_RADIUS_CELLS) {
+                val bucket = cells[cellKey(latCell + dLat, lonCell + dLon)] ?: continue
+                for (building in bucket) {
+                    val distance = distanceMeters(point, building)
+                    if (best == null || distance < best!!) best = distance
+                }
+            }
+        }
+        return best
+    }
 }
 
 /**
- * Keeps only the [addresses] within [thresholdMeters] of a real building footprint - TIGER's
- * house-number ranges only describe a numbering scheme, not which numbers have an actual structure,
- * so interpolated points can land on numbers with no real house. Cross-referencing against Microsoft's
- * building footprints data drops those. If [buildings] is empty (the footprint fetch failed or found
- * nothing), addresses are returned unfiltered - a failed best-effort check should never remove every
- * candidate.
+ * Keeps only the addresses within a real building's reach, checked per street-segment-side group
+ * rather than against one fixed distance for the whole ZIP. TIGER's house-number ranges only
+ * describe a numbering scheme, not which numbers have an actual structure, so interpolated points
+ * can land on numbers with no real house - but how far back a real house sits from the road varies
+ * hugely between a dense in-town block and a rural road, and a single global threshold either lets
+ * every rural candidate through unfiltered (too loose) or drops every rural candidate outright (too
+ * tight, and what caused a whole rural stretch of a real route to show zero addresses). If a group
+ * has no building anywhere within the search radius, it's left unfiltered entirely - there's no
+ * reliable signal to filter by, so trusting TIGER's range beats dropping every candidate on it.
  */
-fun filterAddressesNearBuildings(
-    addresses: List<InterpolatedAddress>,
-    buildings: List<GeoPoint>,
-    thresholdMeters: Double = NEARBY_BUILDING_THRESHOLD_METERS
+fun filterAddressGroupsNearBuildings(
+    addressGroups: List<List<InterpolatedAddress>>,
+    buildings: List<GeoPoint>
 ): List<InterpolatedAddress> {
-    if (buildings.isEmpty()) return addresses
+    if (buildings.isEmpty()) return addressGroups.flatten()
+    val grid = BuildingGrid(buildings)
 
-    val grid = HashMap<Long, MutableList<GeoPoint>>()
-    for (building in buildings) {
-        grid.getOrPut(cellKey(building)) { mutableListOf() }.add(building)
+    return addressGroups.flatMap { group ->
+        val distances = group.associateWith { grid.nearestDistance(it.location) }
+        val minDistance = distances.values.filterNotNull().minOrNull() ?: return@flatMap group
+        val threshold = maxOf(BASE_THRESHOLD_METERS, minDistance * SLACK_FACTOR)
+        group.filter { (distances[it] ?: Double.MAX_VALUE) <= threshold }
     }
-
-    return addresses.filter { address -> hasNearbyBuilding(address.location, grid, thresholdMeters) }
-}
-
-private fun hasNearbyBuilding(location: GeoPoint, grid: Map<Long, List<GeoPoint>>, thresholdMeters: Double): Boolean {
-    val latCell = floor(location.latitude / GRID_CELL_DEGREES).toLong()
-    val lonCell = floor(location.longitude / GRID_CELL_DEGREES).toLong()
-    for (dLat in -1..1) {
-        for (dLon in -1..1) {
-            val key = ((latCell + dLat) shl 32) xor ((lonCell + dLon) and 0xFFFFFFFFL)
-            val bucket = grid[key] ?: continue
-            if (bucket.any { distanceMeters(location, it) <= thresholdMeters }) return true
-        }
-    }
-    return false
 }
