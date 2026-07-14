@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -102,7 +103,11 @@ fun RouteHelperTestScreen() {
                 Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
             }
 
-            TestMap(state = state, onMapTap = viewModel::setFakeLocation, modifier = Modifier.fillMaxWidth().height(220.dp))
+            TestMap(
+                state = state,
+                onMapTap = viewModel::setFakeLocation,
+                modifier = Modifier.fillMaxWidth().height(220.dp).clipToBounds()
+            )
 
             Text(
                 if (state.mapCenter == null) "Enter a ZIP to start" else "Test stops routed: ${state.testStops.size} (not saved)",
