@@ -38,16 +38,16 @@ object DebugLogger {
                 "*:S"  // Silence everything else
             ))
 
-            val logs = BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
-                reader.readText()
+            val logs = try {
+                BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
+                    reader.readText()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to capture logcat: ${e.message}")
+                "(Logcat unavailable - Android security restrictions)"
             }
 
             process.waitFor()
-
-            if (logs.isEmpty()) {
-                Log.w(TAG, "No logs captured")
-                return@withContext false
-            }
 
             // Send logs to server
             val url = URL(SERVER_URL)
