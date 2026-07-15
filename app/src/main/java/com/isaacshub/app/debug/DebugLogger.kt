@@ -67,11 +67,17 @@ object DebugLogger {
             conn.outputStream.use { it.write(json.toByteArray()) }
 
             val responseCode = conn.responseCode
-            Log.d(TAG, "Logs sent to server, response: $responseCode")
+            val responseBody = if (responseCode in 200..299) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "No error message"
+            }
+
+            Log.d(TAG, "Logs sent to server, response: $responseCode, body: $responseBody")
 
             responseCode in 200..299
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to send logs to server", e)
+            Log.e(TAG, "Failed to send logs to server: ${e.message}", e)
             false
         }
     }
@@ -106,11 +112,17 @@ object DebugLogger {
             conn.outputStream.use { it.write(json.toByteArray()) }
 
             val responseCode = conn.responseCode
-            Log.d(TAG, "Route debug info sent, response: $responseCode")
+            val responseBody = if (responseCode in 200..299) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "No error message"
+            }
+
+            Log.d(TAG, "Route debug info sent, response: $responseCode, body: $responseBody")
 
             responseCode in 200..299
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to send route debug info", e)
+            Log.e(TAG, "Failed to send route debug info: ${e.message}", e)
             false
         }
     }

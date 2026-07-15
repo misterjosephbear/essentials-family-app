@@ -26,6 +26,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -90,6 +92,7 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
     var isScanning by remember { mutableStateOf(false) }
     var isFreeCam by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         topBar = {
@@ -104,20 +107,27 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                     // Debug button to send logs to server
                     IconButton(onClick = {
                         scope.launch {
-                            DebugLogger.sendLogsToServer(context, "Route Player Logs")
-                            DebugLogger.sendRouteDebugInfo(
+                            snackbarHostState.showSnackbar("Sending debug logs...")
+                            val success1 = DebugLogger.sendLogsToServer(context, "Route Player Logs")
+                            val success2 = DebugLogger.sendRouteDebugInfo(
                                 routeId = routeId,
                                 stopCount = state.stops.size,
                                 roadRoutePointCount = state.roadRoutePoints?.size,
                                 debugInfo = state.roadRouteDebugInfo
                             )
+                            if (success1 && success2) {
+                                snackbarHostState.showSnackbar("Debug logs sent successfully!")
+                            } else {
+                                snackbarHostState.showSnackbar("Failed to send logs. Check network connection.")
+                            }
                         }
                     }) {
                         Icon(Icons.Filled.BugReport, contentDescription = "Send debug logs to server")
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         if (!hasLocationPermission) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
