@@ -6,12 +6,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.GpsNotFixed
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -79,6 +84,7 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
 
     val state by viewModel.uiState.collectAsState()
     var isScanning by remember { mutableStateOf(false) }
+    var isFreeCam by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -100,7 +106,11 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
         }
 
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            PlayerMap(state = state, modifier = Modifier.fillMaxSize().clipToBounds())
+            PlayerMap(
+                state = state,
+                isFreeCam = isFreeCam,
+                modifier = Modifier.fillMaxSize().clipToBounds()
+            )
 
             val nextStop = state.nextStopIndex?.let { state.stops.getOrNull(it) }
             Card(
@@ -122,11 +132,28 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                 }
             }
 
-            FloatingActionButton(
-                onClick = { isScanning = true },
+            // Bottom-right FAB row: GPS toggle and mail scanner
+            Row(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
             ) {
-                Icon(Icons.Filled.CameraAlt, contentDescription = "Scan a mail piece to add a stop")
+                // GPS lock/unlock toggle
+                FloatingActionButton(
+                    onClick = { isFreeCam = !isFreeCam }
+                ) {
+                    Icon(
+                        if (isFreeCam) Icons.Filled.GpsNotFixed else Icons.Filled.GpsFixed,
+                        contentDescription = if (isFreeCam) "Enable GPS tracking" else "Disable GPS tracking"
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Mail scanner
+                FloatingActionButton(
+                    onClick = { isScanning = true }
+                ) {
+                    Icon(Icons.Filled.CameraAlt, contentDescription = "Scan a mail piece to add a stop")
+                }
             }
         }
     }
@@ -148,7 +175,7 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
 private val routeLineColor = Color(0xFF1A73E8).toArgb()
 
 @Composable
-private fun PlayerMap(state: RoutePlayerUiState, modifier: Modifier = Modifier) {
+private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var hasCenteredOnce by remember { mutableStateOf(false) }
     val mapView = remember { newOsmMapView(context) }
@@ -159,9 +186,16 @@ private fun PlayerMap(state: RoutePlayerUiState, modifier: Modifier = Modifier) 
 
     AndroidView(modifier = modifier, factory = { mapView }) { view ->
         view.overlays.clear()
-        // Negated so the driver's live bearing visually points to the top of the screen (course-up),
-        // rather than the map staying north-up like the builder's preview map.
-        view.setMapOrientation(-state.mapBearingDegrees, false)
+
+        // Only rotate map and follow GPS when free-cam is disabled
+        if (!isFreeCam) {
+            // Negated so the driver's live bearing visually points to the top of the screen (course-up),
+            // rather than the map staying north-up like the builder's preview map.
+            view.setMapOrientation(-state.mapBearingDegrees, false)
+        } else {
+            // In free-cam mode, keep map north-up
+            view.setMapOrientation(0f, false)
+        }
 
         // Prefer the real road-following path; fall back to a straight line between stops if it hasn't
         // loaded yet (or failed - no signal, etc.) so the driver still sees a path either way.
@@ -187,13 +221,19 @@ private fun PlayerMap(state: RoutePlayerUiState, modifier: Modifier = Modifier) 
 
         state.currentLocation?.let { location ->
             val point = OsmGeoPoint(location.latitude, location.longitude)
-            if (!hasCenteredOnce) {
-                view.controller.setZoom(18.0)
-                view.controller.setCenter(point)
-                hasCenteredOnce = true
-            } else {
-                view.controller.animateTo(point)
+
+            // Only auto-center and follow GPS when free-cam is disabled
+            if (!isFreeCam) {
+                if (!hasCenteredOnce) {
+                    view.controller.setZoom(18.0)
+                    view.controller.setCenter(point)
+                    hasCenteredOnce = true
+                } else {
+                    view.controller.animateTo(point)
+                }
             }
+
+            // Always show the "You" marker regardless of free-cam mode
             view.overlays.add(
                 Marker(view).apply {
                     position = point
