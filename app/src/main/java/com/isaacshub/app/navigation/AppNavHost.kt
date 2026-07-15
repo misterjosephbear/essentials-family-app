@@ -31,6 +31,7 @@ import com.isaacshub.app.landing.ui.LandingScreen
 import com.isaacshub.app.routehelper.ui.builder.RouteBuilderScreen
 import com.isaacshub.app.routehelper.ui.edit.RouteEditScreen
 import com.isaacshub.app.routehelper.ui.home.RouteHelperHomeScreen
+import com.isaacshub.app.routehelper.ui.player.RoutePlayerScreen
 import com.isaacshub.app.routehelper.ui.test.RouteHelperTestScreen
 import com.isaacshub.app.sleep.ui.edit.EditSessionScreen
 import com.isaacshub.app.sleep.ui.history.HistoryScreen
@@ -209,7 +210,8 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                 RouteHelperHomeScreen(
                     onOpenRoute = { routeId -> navController.navigate(Routes.routeBuilder(routeId)) },
                     onOpenTestMode = { navController.navigate(Routes.ROUTE_HELPER_TEST) },
-                    onEditRoute = { routeId -> navController.navigate(Routes.routeHelperEdit(routeId)) }
+                    onEditRoute = { routeId -> navController.navigate(Routes.routeHelperEdit(routeId)) },
+                    onPlayRoute = { routeId -> navController.navigate(Routes.routePlayer(routeId)) }
                 )
             }
             composable(Routes.ROUTE_HELPER_TEST) {
@@ -225,6 +227,12 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                 val routeId = backStackEntry.arguments?.getString(Routes.ROUTE_HELPER_EDIT_ARG)?.toLongOrNull()
                 if (routeId != null) {
                     RouteEditScreen(routeId = routeId)
+                }
+            }
+            composable(Routes.ROUTE_PLAYER_PATTERN) { backStackEntry ->
+                val routeId = backStackEntry.arguments?.getString(Routes.ROUTE_PLAYER_ARG)?.toLongOrNull()
+                if (routeId != null) {
+                    RoutePlayerScreen(routeId = routeId, onDone = { navController.popBackStack() })
                 }
             }
         }

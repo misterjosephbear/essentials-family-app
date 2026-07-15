@@ -13,7 +13,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
 private fun Location.toSample(): LocationSample =
-    LocationSample(GeoPoint(latitude, longitude), if (hasSpeed()) speed else 0f)
+    LocationSample(
+        GeoPoint(latitude, longitude),
+        if (hasSpeed()) speed else 0f,
+        if (hasBearing()) bearing else null
+    )
 
 /**
  * Live location as a Flow, using the plain platform LocationManager (GPS) rather than Google Play

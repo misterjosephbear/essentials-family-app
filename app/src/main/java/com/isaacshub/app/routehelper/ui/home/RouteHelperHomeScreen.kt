@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -50,7 +51,8 @@ private val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
 fun RouteHelperHomeScreen(
     onOpenRoute: (Long) -> Unit,
     onOpenTestMode: () -> Unit,
-    onEditRoute: (Long) -> Unit
+    onEditRoute: (Long) -> Unit,
+    onPlayRoute: (Long) -> Unit
 ) {
     val viewModel: RouteHelperHomeViewModel = viewModel()
     val routes by viewModel.routes.collectAsState()
@@ -99,6 +101,7 @@ fun RouteHelperHomeScreen(
                     RouteRow(
                         route = route,
                         onClick = { onOpenRoute(route.id) },
+                        onPlay = { onPlayRoute(route.id) },
                         onEdit = { onEditRoute(route.id) },
                         onDelete = { viewModel.deleteRoute(route) }
                     )
@@ -118,7 +121,13 @@ fun RouteHelperHomeScreen(
 }
 
 @Composable
-private fun RouteRow(route: RouteHelperRouteEntity, onClick: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
+private fun RouteRow(
+    route: RouteHelperRouteEntity,
+    onClick: () -> Unit,
+    onPlay: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -131,6 +140,9 @@ private fun RouteRow(route: RouteHelperRouteEntity, onClick: () -> Unit, onEdit:
                 Text("ZIP ${route.zipCode} - built ${date.format(dateFormatter)}", style = MaterialTheme.typography.bodySmall)
             }
             Row {
+                IconButton(onClick = onPlay) {
+                    Icon(Icons.Filled.Navigation, contentDescription = "Drive this route")
+                }
                 IconButton(onClick = onEdit) {
                     Icon(Icons.AutoMirrored.Filled.List, contentDescription = "View and edit stops")
                 }
