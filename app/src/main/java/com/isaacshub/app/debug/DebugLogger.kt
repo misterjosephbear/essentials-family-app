@@ -15,7 +15,7 @@ import java.net.URL
  */
 object DebugLogger {
     private const val TAG = "DebugLogger"
-    private const val SERVER_URL = "http://brownserver2.local:4000/api/debug/logs"
+    private const val SERVER_URL = "http://10.0.0.237:4000/api/debug/logs"
 
     /**
      * Captures recent logcat entries for this app and sends them to the server.
