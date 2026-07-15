@@ -26,14 +26,81 @@ class RouteDirectionsFetcher {
     suspend fun fetchDrivingRoute(waypoints: List<GeoPoint>): List<GeoPoint>? = withContext(Dispatchers.IO) {
         if (waypoints.size < 2) return@withContext null
 
+        // Detect and duplicate turn-around points where the route reverses direction
+        val processedWaypoints = insertTurnaroundDuplicates(waypoints)
+        Log.d(TAG, "Processed ${waypoints.size} waypoints -> ${processedWaypoints.size} (with turnarounds)")
+
         // If too many waypoints, split into chunks and fetch each chunk
-        if (waypoints.size > MAX_WAYPOINTS_PER_REQUEST) {
-            Log.d(TAG, "Route has ${waypoints.size} waypoints, splitting into chunks of $MAX_WAYPOINTS_PER_REQUEST")
-            return@withContext fetchRouteInChunks(waypoints)
+        if (processedWaypoints.size > MAX_WAYPOINTS_PER_REQUEST) {
+            Log.d(TAG, "Route has ${processedWaypoints.size} waypoints, splitting into chunks of $MAX_WAYPOINTS_PER_REQUEST")
+            return@withContext fetchRouteInChunks(processedWaypoints)
         }
 
         // Single request for routes under the limit
-        fetchSingleRoute(waypoints)
+        fetchSingleRoute(processedWaypoints)
+    }
+
+    /**
+     * Detects turn-around points (where the route reverses direction) and duplicates those waypoints.
+     * This forces OSRM to route to the address and then back out the same way, rather than continuing
+     * to the end of the street to find a turnaround.
+     */
+    private fun insertTurnaroundDuplicates(waypoints: List<GeoPoint>): List<GeoPoint> {
+        if (waypoints.size < 3) return waypoints
+
+        val result = mutableListOf<GeoPoint>()
+        result.add(waypoints[0])
+
+        for (i in 1 until waypoints.size - 1) {
+            val prev = waypoints[i - 1]
+            val current = waypoints[i]
+            val next = waypoints[i + 1]
+
+            // Calculate bearing from prev->current and current->next
+            val bearingIn = calculateBearing(prev, current)
+            val bearingOut = calculateBearing(current, next)
+
+            // Calculate the absolute difference in bearing (normalized to 0-180 range)
+            val bearingDiff = normalizeBearingDiff(bearingOut - bearingIn)
+
+            // If the bearing changes by more than 90 degrees, this is a turn-around point
+            if (bearingDiff > 90.0) {
+                Log.d(TAG, "Detected turnaround at waypoint $i: bearing change ${bearingDiff.toInt()}° (in: ${bearingIn.toInt()}°, out: ${bearingOut.toInt()}°)")
+                result.add(current)
+                result.add(current)  // Duplicate to force routing through it twice
+            } else {
+                result.add(current)
+            }
+        }
+
+        result.add(waypoints.last())
+        return result
+    }
+
+    /**
+     * Calculate bearing in degrees from point A to point B.
+     * Returns value in range [0, 360).
+     */
+    private fun calculateBearing(from: GeoPoint, to: GeoPoint): Double {
+        val lat1 = Math.toRadians(from.latitude)
+        val lat2 = Math.toRadians(to.latitude)
+        val dLon = Math.toRadians(to.longitude - from.longitude)
+
+        val y = kotlin.math.sin(dLon) * kotlin.math.cos(lat2)
+        val x = kotlin.math.cos(lat1) * kotlin.math.sin(lat2) -
+                kotlin.math.sin(lat1) * kotlin.math.cos(lat2) * kotlin.math.cos(dLon)
+
+        val bearing = Math.toDegrees(kotlin.math.atan2(y, x))
+        return (bearing + 360) % 360  // Normalize to 0-360
+    }
+
+    /**
+     * Normalize bearing difference to range [0, 180].
+     * This handles the wraparound (e.g., 350° to 10° is a 20° change, not 340°).
+     */
+    private fun normalizeBearingDiff(diff: Double): Double {
+        val normalized = ((diff % 360) + 360) % 360
+        return if (normalized > 180) 360 - normalized else normalized
     }
 
     private suspend fun fetchRouteInChunks(waypoints: List<GeoPoint>): List<GeoPoint>? {
