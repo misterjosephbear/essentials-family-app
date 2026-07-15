@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 
 class SettingsViewModel(
     private val preferencesRepository: UserPreferencesRepository
@@ -23,6 +24,10 @@ class SettingsViewModel(
 
     fun setAutoDetectEnabled(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setAutoDetectEnabled(enabled) }
+    }
+
+    fun setWakeTime(day: DayOfWeek, minutesSinceMidnight: Int) {
+        viewModelScope.launch { preferencesRepository.setWakeTime(day, minutesSinceMidnight) }
     }
 
     class Factory(private val preferencesRepository: UserPreferencesRepository) : ViewModelProvider.Factory {

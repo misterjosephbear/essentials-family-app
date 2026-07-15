@@ -31,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -89,7 +90,7 @@ fun RouteBuilderScreen(routeId: Long) {
         }
 
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            LiveMap(state = state, modifier = Modifier.fillMaxWidth().height(220.dp))
+            LiveMap(state = state, modifier = Modifier.fillMaxWidth().height(220.dp).clipToBounds())
 
             Text(
                 "Stops routed: ${state.routedStops.size}",

@@ -76,6 +76,43 @@ class RouteHelperRepository(
         candidateId?.let { dao.setCandidateRouted(it, true) }
     }
 
+    /**
+     * Inserts a new stop just before [beforeStopId] in sequence (null appends at the end), shifting
+     * every stop from that point on back by one. Used to slot in a stop scanned off a mail piece
+     * between the driver's last stop and whichever one they were heading to next.
+     */
+    suspend fun insertStopBefore(
+        routeId: Long,
+        beforeStopId: Long?,
+        addressLabel: String,
+        recipientLastName: String?,
+        location: GeoPoint
+    ) {
+        val stops = dao.getStopsOnce(routeId)
+        val insertIndex = beforeStopId?.let { id -> stops.indexOfFirst { it.id == id }.takeIf { it != -1 } } ?: stops.size
+        val insertOrder = if (insertIndex < stops.size) {
+            stops[insertIndex].sequenceOrder
+        } else {
+            dao.maxSequenceOrder(routeId) + 1
+        }
+        if (insertIndex < stops.size) {
+            dao.updateStops(stops.drop(insertIndex).map { it.copy(sequenceOrder = it.sequenceOrder + 1) })
+        }
+        dao.insertStop(
+            RoutedStopEntity(
+                routeId = routeId,
+                sequenceOrder = insertOrder,
+                addressLabel = addressLabel,
+                note = null,
+                latitude = location.latitude,
+                longitude = location.longitude,
+                candidateAddressId = null,
+                createdAtEpochMillis = System.currentTimeMillis(),
+                recipientLastName = recipientLastName
+            )
+        )
+    }
+
     /** Removes the most recently routed stop and restores its candidate address to the unrouted list. */
     suspend fun undoLastStop(routeId: Long) {
         val last = dao.getLastStop(routeId) ?: return

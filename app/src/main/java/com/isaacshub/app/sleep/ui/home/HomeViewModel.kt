@@ -9,12 +9,15 @@ import com.isaacshub.app.sleep.data.SleepSessionEntity
 import com.isaacshub.app.sleep.domain.computeDebt
 import com.isaacshub.sleep.core.EnergyForecast
 import com.isaacshub.sleep.core.EnergyForecastCalculator
+import com.isaacshub.sleep.core.WindDownCalculator
+import com.isaacshub.sleep.core.WindDownRecommendation
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
@@ -26,7 +29,8 @@ data class HomeUiState(
     val pendingConfirmation: SleepSessionEntity? = null,
     val sleepNeedMinutes: Int = 480,
     val energyForecast: EnergyForecast? = null,
-    val currentHoursAwake: Double? = null
+    val currentHoursAwake: Double? = null,
+    val windDown: WindDownRecommendation? = null
 )
 
 class HomeViewModel(
@@ -52,6 +56,14 @@ class HomeViewModel(
             Duration.between(it, ZonedDateTime.now(zone)).toMinutes() / 60.0
         }
 
+        val tomorrow = LocalDate.now(zone).plusDays(1).dayOfWeek
+        val tomorrowWakeMinutes = prefs.wakeTimeMinutesByDay.getValue(tomorrow)
+        val windDown = WindDownCalculator.calculate(
+            usualWakeHourOfDay = tomorrowWakeMinutes / 60.0,
+            neededMinutesPerNight = prefs.sleepNeedMinutes,
+            currentDebtMinutes = result.totalDebtMinutes
+        )
+
         HomeUiState(
             loading = false,
             debtMinutes = result.totalDebtMinutes,
@@ -59,7 +71,8 @@ class HomeViewModel(
             pendingConfirmation = pending,
             sleepNeedMinutes = prefs.sleepNeedMinutes,
             energyForecast = energyForecast,
-            currentHoursAwake = currentHoursAwake
+            currentHoursAwake = currentHoursAwake,
+            windDown = windDown
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 

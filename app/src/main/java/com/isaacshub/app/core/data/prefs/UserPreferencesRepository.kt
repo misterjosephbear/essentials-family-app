@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.time.DayOfWeek
 
 private val Context.dataStore by preferencesDataStore(name = "isaacs_hub_prefs")
 
@@ -20,7 +21,8 @@ data class UserPreferences(
     val debtWindowDays: Int = DEFAULT_DEBT_WINDOW_DAYS,
     val hourlyRate: Double = DEFAULT_HOURLY_RATE,
     val overtimeMultiplier: Double = DEFAULT_OVERTIME_MULTIPLIER,
-    val emaRate: Double = DEFAULT_EMA_RATE
+    val emaRate: Double = DEFAULT_EMA_RATE,
+    val wakeTimeMinutesByDay: Map<DayOfWeek, Int> = DayOfWeek.entries.associateWith { DEFAULT_WAKE_TIME_MINUTES }
 ) {
     companion object {
         const val DEFAULT_SLEEP_NEED_MINUTES = 480
@@ -30,6 +32,8 @@ data class UserPreferences(
         const val DEFAULT_HOURLY_RATE = 0.0
         const val DEFAULT_OVERTIME_MULTIPLIER = 1.5
         const val DEFAULT_EMA_RATE = 0.0
+        /** 7:00 AM, expressed as minutes since midnight. */
+        const val DEFAULT_WAKE_TIME_MINUTES = 420
     }
 }
 
@@ -44,6 +48,9 @@ class UserPreferencesRepository(private val context: Context) {
         val HOURLY_RATE = doublePreferencesKey("hourly_rate")
         val OVERTIME_MULTIPLIER = doublePreferencesKey("overtime_multiplier")
         val EMA_RATE = doublePreferencesKey("ema_rate")
+        val WAKE_TIME_MINUTES_BY_DAY: Map<DayOfWeek, Preferences.Key<Int>> = DayOfWeek.entries.associateWith { day ->
+            intPreferencesKey("wake_time_${day.name.lowercase()}_minutes")
+        }
     }
 
     /** Every preference as-is, key name to value - used for backups so newly added prefs are included automatically. */
@@ -60,7 +67,10 @@ class UserPreferencesRepository(private val context: Context) {
             debtWindowDays = prefs[Keys.DEBT_WINDOW_DAYS] ?: UserPreferences.DEFAULT_DEBT_WINDOW_DAYS,
             hourlyRate = prefs[Keys.HOURLY_RATE] ?: UserPreferences.DEFAULT_HOURLY_RATE,
             overtimeMultiplier = prefs[Keys.OVERTIME_MULTIPLIER] ?: UserPreferences.DEFAULT_OVERTIME_MULTIPLIER,
-            emaRate = prefs[Keys.EMA_RATE] ?: UserPreferences.DEFAULT_EMA_RATE
+            emaRate = prefs[Keys.EMA_RATE] ?: UserPreferences.DEFAULT_EMA_RATE,
+            wakeTimeMinutesByDay = DayOfWeek.entries.associateWith { day ->
+                prefs[Keys.WAKE_TIME_MINUTES_BY_DAY.getValue(day)] ?: UserPreferences.DEFAULT_WAKE_TIME_MINUTES
+            }
         )
     }
 
@@ -85,5 +95,9 @@ class UserPreferencesRepository(private val context: Context) {
             it[Keys.OVERTIME_MULTIPLIER] = overtimeMultiplier
             it[Keys.EMA_RATE] = emaRate
         }
+    }
+
+    suspend fun setWakeTime(day: DayOfWeek, minutesSinceMidnight: Int) {
+        context.dataStore.edit { it[Keys.WAKE_TIME_MINUTES_BY_DAY.getValue(day)] = minutesSinceMidnight }
     }
 }
