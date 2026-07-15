@@ -1,17 +1,25 @@
 package com.isaacshub.app.routehelper.domain
 
-/** How close (in meters) the driver must get to a stop before the player advances to the next one. */
-const val STOP_ARRIVAL_RADIUS_METERS = 30.0
+/** How close (in meters) the driver must get to a stop before the player advances to it (10 feet ≈ 3 meters). */
+const val STOP_ARRIVAL_RADIUS_METERS = 3.0
 
 /**
- * If the driver is currently within [STOP_ARRIVAL_RADIUS_METERS] of `stops[currentIndex]`, advances to
- * the next stop; otherwise stays put. Never advances past the end of [stops] - once every stop has been
- * reached (or the route has none), the index just holds at `stops.size`.
+ * If the driver is currently within [STOP_ARRIVAL_RADIUS_METERS] of ANY remaining stop, fast-forwards to
+ * that stop (or the earliest one in sequence if multiple are nearby). Otherwise stays at the current index.
+ * Never advances past the end of [stops] - once every stop has been reached, the index holds at `stops.size`.
  */
 fun advanceToNextStop(currentLocation: GeoPoint, stops: List<GeoPoint>, currentIndex: Int): Int {
     val index = currentIndex.coerceIn(0, stops.size)
     if (index >= stops.size) return index
-    return if (distanceMeters(currentLocation, stops[index]) < STOP_ARRIVAL_RADIUS_METERS) index + 1 else index
+
+    // Check all remaining stops - if driver is near any of them, jump to the earliest one in sequence
+    for (i in index until stops.size) {
+        if (distanceMeters(currentLocation, stops[i]) < STOP_ARRIVAL_RADIUS_METERS) {
+            return i + 1  // Advance to this stop (return i+1 to mark it as passed)
+        }
+    }
+
+    return index  // No nearby stops, stay at current position
 }
 
 /** Below this speed a fresh GPS bearing reading is too noisy to trust, so the map keeps its last known heading. */

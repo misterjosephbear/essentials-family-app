@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.isaacshub.app.App
+import com.isaacshub.app.routehelper.data.CachedRoadRouteEntity
 import com.isaacshub.app.routehelper.data.RoutedStopEntity
 import com.isaacshub.app.routehelper.domain.GeoPoint
 import com.isaacshub.app.routehelper.domain.LocationSample
@@ -12,6 +13,7 @@ import com.isaacshub.app.routehelper.domain.resolveMapBearing
 import com.isaacshub.app.routehelper.location.liveLocationFlow
 import com.isaacshub.app.routehelper.network.RouteDirectionsFetcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import org.json.JSONArray
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,6 +50,7 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
     private val repository = getApplication<App>().routeHelperRepository
     private val directionsFetcher = RouteDirectionsFetcher()
     private val routeIdFlow = MutableStateFlow<Long?>(null)
+    private val rawLocationFlow = MutableStateFlow<LocationSample?>(null)
     private val locationFlow = MutableStateFlow<LocationSample?>(null)
     private var locationStarted = false
 
@@ -59,7 +62,24 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         if (!locationStarted) {
             locationStarted = true
             viewModelScope.launch {
-                liveLocationFlow(getApplication()).collect { sample -> locationFlow.value = sample }
+                liveLocationFlow(getApplication()).collect { sample ->
+                    rawLocationFlow.value = sample
+                    // Smooth location updates - interpolate between old and new position
+                    val current = locationFlow.value
+                    if (current != null && sample != null) {
+                        val smoothed = LocationSample(
+                            point = GeoPoint(
+                                latitude = current.point.latitude * 0.7 + sample.point.latitude * 0.3,
+                                longitude = current.point.longitude * 0.7 + sample.point.longitude * 0.3
+                            ),
+                            speedMetersPerSecond = sample.speedMetersPerSecond,
+                            bearingDegrees = sample.bearingDegrees
+                        )
+                        locationFlow.value = smoothed
+                    } else {
+                        locationFlow.value = sample
+                    }
+                }
             }
         }
     }
@@ -80,15 +100,37 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         sample?.let { resolveMapBearing(it, previousBearing) } ?: previousBearing
     }
 
-    /** Re-fetched whenever the stop list itself changes, not on every location tick. Emits null first so the rest of the screen doesn't stall waiting on the network. */
-    private val roadRouteFlow: Flow<List<GeoPoint>?> = stopsFlow.flatMapLatest { stops ->
-        flow {
-            emit(null)
-            if (stops.size >= 2) {
-                emit(directionsFetcher.fetchDrivingRoute(stops.map { GeoPoint(it.latitude, it.longitude) }))
+    /**
+     * Road route with offline caching: checks cache first, then fetches online if needed.
+     * Emits cached route immediately if available, then fetches fresh route in background.
+     */
+    private val roadRouteFlow: Flow<List<GeoPoint>?> = combine(routeIdFlow, stopsFlow) { routeId, stops -> routeId to stops }
+        .flatMapLatest { (routeId, stops) ->
+            flow {
+                if (routeId == null || stops.size < 2) {
+                    emit(null)
+                    return@flow
+                }
+
+                // Try cache first for instant offline display
+                val cached = repository.getCachedRoadRoute(routeId)
+                if (cached != null) {
+                    val points = parsePolylineJson(cached.polylineJson)
+                    emit(points)
+                } else {
+                    emit(null)  // No cache, show straight lines while fetching
+                }
+
+                // Fetch fresh route online and cache it
+                val waypoints = stops.map { GeoPoint(it.latitude, it.longitude) }
+                val fetched = directionsFetcher.fetchDrivingRoute(waypoints)
+                if (fetched != null) {
+                    // Cache for offline use
+                    repository.cacheRoadRoute(routeId, fetched)
+                    emit(fetched)
+                }
             }
         }
-    }
 
     /**
      * Slots a stop scanned off a mail piece in right after wherever the driver last was - i.e. just
@@ -118,4 +160,20 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             roadRoutePoints = roadRoute
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), RoutePlayerUiState())
+
+    private fun serializePolylineToJson(points: List<GeoPoint>): String {
+        val array = JSONArray()
+        points.forEach { point ->
+            array.put(JSONArray().put(point.latitude).put(point.longitude))
+        }
+        return array.toString()
+    }
+
+    private fun parsePolylineJson(json: String): List<GeoPoint> {
+        val array = JSONArray(json)
+        return (0 until array.length()).map { i ->
+            val pair = array.getJSONArray(i)
+            GeoPoint(latitude = pair.getDouble(0), longitude = pair.getDouble(1))
+        }
+    }
 }

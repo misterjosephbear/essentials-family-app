@@ -38,3 +38,12 @@ data class RoutedStopEntity(
     /** Recipient's last name, when this stop was added by scanning a mail piece. Not otherwise used yet - reserved for a later feature. */
     val recipientLastName: String? = null
 )
+
+/** Cached OSRM road-following route for offline use. One row per route, storing the polyline as JSON. */
+@Entity(tableName = "cached_road_routes")
+data class CachedRoadRouteEntity(
+    @PrimaryKey val routeId: Long,
+    /** JSON array of lat/lng points: [[lat1,lng1],[lat2,lng2],...] */
+    val polylineJson: String,
+    val fetchedAtEpochMillis: Long
+)

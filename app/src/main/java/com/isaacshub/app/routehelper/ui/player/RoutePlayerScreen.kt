@@ -134,6 +134,7 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
     if (isScanning) {
         Dialog(onDismissRequest = { isScanning = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             MailScanScreen(
+                currentLocation = state.currentLocation,
                 onResolved = { resolved ->
                     viewModel.addScannedStop(resolved)
                     isScanning = false

@@ -50,6 +50,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.isaacshub.app.routehelper.domain.GeoPoint
 
 /**
  * Full-screen mail-piece scanner: points the front camera at a letter, OCRs each frame looking for an
@@ -59,12 +60,15 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MailScanScreen(onResolved: (ResolvedMailStop) -> Unit, onCancel: () -> Unit) {
+fun MailScanScreen(currentLocation: GeoPoint?, onResolved: (ResolvedMailStop) -> Unit, onCancel: () -> Unit) {
     val context = LocalContext.current
     val viewModel: MailScanViewModel = viewModel()
     val state by viewModel.uiState.collectAsState()
     val resolved by viewModel.resolved.collectAsState()
 
+    LaunchedEffect(currentLocation) {
+        currentLocation?.let { viewModel.setFallbackLocation(it) }
+    }
     LaunchedEffect(resolved) { resolved?.let(onResolved) }
 
     var hasCameraPermission by remember {

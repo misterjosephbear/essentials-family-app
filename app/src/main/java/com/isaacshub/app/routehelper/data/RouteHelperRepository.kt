@@ -145,4 +145,19 @@ class RouteHelperRepository(
     private suspend fun swapOrder(a: RoutedStopEntity, b: RoutedStopEntity) {
         dao.updateStops(listOf(a.copy(sequenceOrder = b.sequenceOrder), b.copy(sequenceOrder = a.sequenceOrder)))
     }
+
+    /** Gets cached road route polyline for offline use. */
+    suspend fun getCachedRoadRoute(routeId: Long): CachedRoadRouteEntity? = dao.getCachedRoadRoute(routeId)
+
+    /** Caches OSRM road route polyline for offline use. */
+    suspend fun cacheRoadRoute(routeId: Long, points: List<GeoPoint>) {
+        val json = points.joinToString(prefix = "[", postfix = "]") { "[${it.latitude},${it.longitude}]" }
+        dao.insertCachedRoadRoute(
+            CachedRoadRouteEntity(
+                routeId = routeId,
+                polylineJson = json,
+                fetchedAtEpochMillis = System.currentTimeMillis()
+            )
+        )
+    }
 }

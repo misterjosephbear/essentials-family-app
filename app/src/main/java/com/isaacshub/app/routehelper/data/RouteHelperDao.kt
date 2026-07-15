@@ -58,4 +58,13 @@ interface RouteHelperDao {
 
     @Query("SELECT COALESCE(MAX(sequenceOrder), -1) FROM routed_stops WHERE routeId = :routeId")
     suspend fun maxSequenceOrder(routeId: Long): Int
+
+    @Insert
+    suspend fun insertCachedRoadRoute(cachedRoute: CachedRoadRouteEntity)
+
+    @Query("SELECT * FROM cached_road_routes WHERE routeId = :routeId")
+    suspend fun getCachedRoadRoute(routeId: Long): CachedRoadRouteEntity?
+
+    @Query("DELETE FROM cached_road_routes WHERE routeId = :routeId")
+    suspend fun deleteCachedRoadRoute(routeId: Long)
 }

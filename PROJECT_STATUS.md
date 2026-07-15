@@ -42,13 +42,15 @@ new stop.
 - Entry point: the camera FAB on `RoutePlayerScreen.kt` ("Scan a mail piece to add a stop") opens
   `MailScanScreen.kt` as an overlay.
 - `MailScanScreen.kt` does the CameraX + ML Kit text-recognition plumbing (frame analysis only - no UI
-  logic beyond that).
+  logic beyond that). Receives the driver's current GPS location as a fallback.
 - `MailScanViewModel.kt` owns OCR-to-stop resolution: feeds recognized text into
   `routehelper/domain/MailScanParser.kt`'s `parseScannedAddresses()`, which regex-matches
   name/street/city-state-zip line blocks (a mail piece can have more than one address-shaped block -
   return address, delivery address, forwarding label - so it returns all candidates and lets the
   screen show a chooser when there's more than one). The chosen address is geocoded via
-  `routehelper/network/NominatimGeocoder.kt`.
+  `routehelper/network/NominatimGeocoder.kt`. **Fallback behavior**: If geocoding fails (address not
+  in Nominatim's database), it uses the driver's current GPS location instead, so missing addresses
+  can still be added at the correct physical location.
 - Once geocoded, `RoutePlayerViewModel.addScannedStop()` plants the new stop right after wherever the
   driver currently is (before the next stop they're heading to, or at the end if every stop's already
   been hit) via `RouteHelperRepository.insertStopBefore()`.

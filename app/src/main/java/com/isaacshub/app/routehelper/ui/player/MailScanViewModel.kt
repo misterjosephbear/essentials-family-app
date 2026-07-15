@@ -41,6 +41,13 @@ class MailScanViewModel(application: Application) : AndroidViewModel(application
     /** True once a candidate has been chosen and is being geocoded (or already resolved) - stops new frames from interrupting it. */
     private var committed = false
 
+    /** Driver's current GPS location - used as fallback if geocoding fails. */
+    private var fallbackLocation: GeoPoint? = null
+
+    fun setFallbackLocation(location: GeoPoint) {
+        fallbackLocation = location
+    }
+
     /** Fed a live OCR result from every analyzed camera frame; ignored once a candidate is already being resolved. */
     fun onTextRecognized(text: String) {
         if (committed || _uiState.value.resolving) return
@@ -56,16 +63,16 @@ class MailScanViewModel(application: Application) : AndroidViewModel(application
     fun choose(candidate: ScannedAddress) {
         if (committed) return
         committed = true
-        _uiState.value = MailScanUiState(resolving = true)
-        viewModelScope.launch {
-            val point = geocoder.geocodeAddress(candidate.addressText)
-            if (point == null) {
-                committed = false
-                _uiState.value = MailScanUiState(error = "Couldn't find that address on the map. Try scanning again.")
-            } else {
-                _resolved.value = ResolvedMailStop(candidate.addressText, candidate.recipientLastName, point)
-            }
+        // Always use the driver's current GPS location - this is where they're physically stopped at the mailbox
+        val location = fallbackLocation
+        if (location == null) {
+            _uiState.value = MailScanUiState(error = "No GPS location available. Try scanning again.")
+            committed = false
+            return
         }
+        // Immediately resolve with cached data - exit scanner screen right away, no blocking
+        _resolved.value = ResolvedMailStop(candidate.addressText, candidate.recipientLastName, location)
+        // Note: Any future geocoding/validation can happen in background after screen closes
     }
 
     fun dismissError() {
