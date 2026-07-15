@@ -64,13 +64,14 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             viewModelScope.launch {
                 liveLocationFlow(getApplication()).collect { sample ->
                     rawLocationFlow.value = sample
-                    // Smooth location updates - interpolate between old and new position
+                    // Smooth location updates - gentle interpolation to reduce GPS jitter
                     val current = locationFlow.value
                     if (current != null && sample != null) {
+                        // Use 50/50 blend for smoother but still responsive movement
                         val smoothed = LocationSample(
                             point = GeoPoint(
-                                latitude = current.point.latitude * 0.7 + sample.point.latitude * 0.3,
-                                longitude = current.point.longitude * 0.7 + sample.point.longitude * 0.3
+                                latitude = current.point.latitude * 0.5 + sample.point.latitude * 0.5,
+                                longitude = current.point.longitude * 0.5 + sample.point.longitude * 0.5
                             ),
                             speedMetersPerSecond = sample.speedMetersPerSecond,
                             bearingDegrees = sample.bearingDegrees
@@ -142,6 +143,8 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         val beforeStopId = state.nextStopIndex?.let { state.stops.getOrNull(it)?.id }
         viewModelScope.launch {
             repository.insertStopBefore(routeId, beforeStopId, resolved.addressLabel, resolved.recipientLastName, resolved.location)
+            // Invalidate cached road route since stops changed - will trigger fresh fetch
+            repository.deleteCachedRoadRoute(routeId)
         }
     }
 

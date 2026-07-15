@@ -3,12 +3,15 @@ package com.isaacshub.app.routehelper.domain
 /** One address-shaped block pulled out of OCR'd mail text, plus the recipient's last name if a name line preceded it. */
 data class ScannedAddress(val addressText: String, val recipientLastName: String?)
 
+// More lenient street line regex - accepts any line starting with house number
 private val STREET_LINE_REGEX = Regex(
-    """^\d+[A-Za-z]?\s+.*\b(?:ST|STREET|AVE|AVENUE|DR|DRIVE|RD|ROAD|LN|LANE|CT|COURT|BLVD|BOULEVARD|WAY|PL|PLACE|CIR|CIRCLE|TRL|TRAIL|PKWY|PARKWAY|HWY|HIGHWAY|SQ|SQUARE|TER|TERRACE)\.?$""",
+    """^\d+[A-Za-z]?\s+.{3,}""",  // At least a house number and some street name (3+ chars)
     RegexOption.IGNORE_CASE
 )
-private val CITY_STATE_ZIP_REGEX = Regex("""^[A-Za-z .'-]+,?\s+[A-Z]{2}\s+\d{5}(-\d{4})?$""")
-private val NAME_LINE_REGEX = Regex("""^[A-Za-z.'-]+(?:\s+[A-Za-z.'-]+){1,3}$""")
+// More lenient city/state/zip - handles OCR errors in spacing and punctuation
+private val CITY_STATE_ZIP_REGEX = Regex("""^[A-Za-z .'-]+,?\s*[A-Z]{2}\s*\d{5}(-?\d{4})?$""")
+// More lenient name line - accepts 1-4 words with common name characters
+private val NAME_LINE_REGEX = Regex("""^[A-Za-z.'-]+(?:\s+[A-Za-z.'-]+){0,3}$""")
 
 /**
  * Finds candidate US mailing addresses in text OCR'd from a photographed mail piece, recognizing the

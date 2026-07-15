@@ -48,6 +48,13 @@ class MailScanViewModel(application: Application) : AndroidViewModel(application
         fallbackLocation = location
     }
 
+    /** Resets the scanner state for a new scan. Must be called when the scanner screen is opened. */
+    fun reset() {
+        committed = false
+        _resolved.value = null
+        _uiState.value = MailScanUiState()
+    }
+
     /** Fed a live OCR result from every analyzed camera frame; ignored once a candidate is already being resolved. */
     fun onTextRecognized(text: String) {
         if (committed || _uiState.value.resolving) return

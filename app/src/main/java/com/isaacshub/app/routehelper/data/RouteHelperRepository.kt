@@ -160,4 +160,7 @@ class RouteHelperRepository(
             )
         )
     }
+
+    /** Deletes cached road route - used when stops change and route needs recalculation. */
+    suspend fun deleteCachedRoadRoute(routeId: Long) = dao.deleteCachedRoadRoute(routeId)
 }

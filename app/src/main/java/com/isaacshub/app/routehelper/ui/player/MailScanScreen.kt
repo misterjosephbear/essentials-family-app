@@ -66,6 +66,11 @@ fun MailScanScreen(currentLocation: GeoPoint?, onResolved: (ResolvedMailStop) ->
     val state by viewModel.uiState.collectAsState()
     val resolved by viewModel.resolved.collectAsState()
 
+    // Reset scanner state each time the screen opens so it can scan multiple times
+    LaunchedEffect(Unit) {
+        viewModel.reset()
+    }
+
     LaunchedEffect(currentLocation) {
         currentLocation?.let { viewModel.setFallbackLocation(it) }
     }
