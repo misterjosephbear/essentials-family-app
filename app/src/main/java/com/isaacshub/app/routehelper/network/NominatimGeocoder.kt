@@ -17,6 +17,36 @@ data class ZipLocation(val center: GeoPoint, val county: String, val stateAbbrev
 /** Resolves a US ZIP code to a center point and its owning county/state, via the free Nominatim geocoder. */
 class NominatimGeocoder {
 
+    /** Resolves a free-text street address (e.g. one OCR'd off a mail piece) to a point. Null on no match or failure. */
+    suspend fun geocodeAddress(addressText: String): GeoPoint? = withContext(Dispatchers.IO) {
+        val encoded = URLEncoder.encode(addressText, "UTF-8")
+        val url = URL("https://nominatim.openstreetmap.org/search?q=$encoded&country=us&format=json&limit=1")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.setRequestProperty("User-Agent", USER_AGENT)
+        conn.connectTimeout = 15_000
+        conn.readTimeout = 15_000
+        try {
+            val code = conn.responseCode
+            if (code != HttpURLConnection.HTTP_OK) {
+                Log.w(TAG, "Nominatim returned HTTP $code for address \"$addressText\"")
+                return@withContext null
+            }
+            val body = conn.inputStream.bufferedReader().use { it.readText() }
+            val results = JSONArray(body)
+            if (results.length() == 0) {
+                Log.w(TAG, "Nominatim found no match for address \"$addressText\"")
+                return@withContext null
+            }
+            val result = results.getJSONObject(0)
+            GeoPoint(result.getString("lat").toDouble(), result.getString("lon").toDouble())
+        } catch (e: Exception) {
+            Log.w(TAG, "Nominatim lookup failed for address \"$addressText\"", e)
+            null
+        } finally {
+            conn.disconnect()
+        }
+    }
+
     suspend fun geocodeZip(zipCode: String): ZipLocation? = withContext(Dispatchers.IO) {
         val encodedZip = URLEncoder.encode(zipCode, "UTF-8")
         val url = URL(

@@ -90,6 +90,19 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    /**
+     * Slots a stop scanned off a mail piece in right after wherever the driver last was - i.e. just
+     * before the stop they're currently heading to (or at the end, if every stop's already been hit).
+     */
+    fun addScannedStop(resolved: ResolvedMailStop) {
+        val routeId = routeIdFlow.value ?: return
+        val state = uiState.value
+        val beforeStopId = state.nextStopIndex?.let { state.stops.getOrNull(it)?.id }
+        viewModelScope.launch {
+            repository.insertStopBefore(routeId, beforeStopId, resolved.addressLabel, resolved.recipientLastName, resolved.location)
+        }
+    }
+
     val uiState: StateFlow<RoutePlayerUiState> = combine(
         locationFlow,
         stopsFlow,

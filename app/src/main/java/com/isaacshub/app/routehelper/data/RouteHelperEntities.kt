@@ -34,5 +34,7 @@ data class RoutedStopEntity(
     val longitude: Double,
     /** Null for a stop added without matching a fetched candidate (shouldn't normally happen, but keeps this optional rather than a hard FK). */
     val candidateAddressId: Long?,
-    val createdAtEpochMillis: Long
+    val createdAtEpochMillis: Long,
+    /** Recipient's last name, when this stop was added by scanning a mail piece. Not otherwise used yet - reserved for a later feature. */
+    val recipientLastName: String? = null
 )
