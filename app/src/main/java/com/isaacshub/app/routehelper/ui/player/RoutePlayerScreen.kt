@@ -107,18 +107,22 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                     // Debug button to send logs to server
                     IconButton(onClick = {
                         scope.launch {
-                            snackbarHostState.showSnackbar("Sending debug logs...")
-                            val success1 = DebugLogger.sendLogsToServer(context, "Route Player Logs")
-                            val success2 = DebugLogger.sendRouteDebugInfo(
-                                routeId = routeId,
-                                stopCount = state.stops.size,
-                                roadRoutePointCount = state.roadRoutePoints?.size,
-                                debugInfo = state.roadRouteDebugInfo
-                            )
-                            if (success1 && success2) {
-                                snackbarHostState.showSnackbar("Debug logs sent successfully!")
-                            } else {
-                                snackbarHostState.showSnackbar("Failed to send logs. Check network connection.")
+                            try {
+                                snackbarHostState.showSnackbar("Sending logs...")
+                                val success1 = DebugLogger.sendLogsToServer(context, "Route Player Logs")
+                                val success2 = DebugLogger.sendRouteDebugInfo(
+                                    routeId = routeId,
+                                    stopCount = state.stops.size,
+                                    roadRoutePointCount = state.roadRoutePoints?.size,
+                                    debugInfo = state.roadRouteDebugInfo
+                                )
+                                if (success1 && success2) {
+                                    snackbarHostState.showSnackbar("✓ Logs sent successfully!", duration = androidx.compose.material3.SnackbarDuration.Short)
+                                } else {
+                                    snackbarHostState.showSnackbar("✗ Failed to send logs", duration = androidx.compose.material3.SnackbarDuration.Long)
+                                }
+                            } catch (e: Exception) {
+                                snackbarHostState.showSnackbar("Error: ${e.message}", duration = androidx.compose.material3.SnackbarDuration.Long)
                             }
                         }
                     }) {
