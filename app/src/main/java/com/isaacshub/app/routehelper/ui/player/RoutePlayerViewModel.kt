@@ -1,6 +1,7 @@
 package com.isaacshub.app.routehelper.ui.player
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.isaacshub.app.App
@@ -25,6 +26,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+private const val TAG = "RoutePlayerViewModel"
 
 data class RoutePlayerUiState(
     val currentLocation: GeoPoint? = null,
@@ -109,26 +112,35 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         .flatMapLatest { (routeId, stops) ->
             flow {
                 if (routeId == null || stops.size < 2) {
+                    Log.d(TAG, "Skipping road route fetch: routeId=$routeId, stops=${stops.size}")
                     emit(null)
                     return@flow
                 }
+
+                Log.d(TAG, "Fetching road route for ${stops.size} stops")
 
                 // Try cache first for instant offline display
                 val cached = repository.getCachedRoadRoute(routeId)
                 if (cached != null) {
                     val points = parsePolylineJson(cached.polylineJson)
+                    Log.d(TAG, "Using cached road route with ${points.size} points")
                     emit(points)
                 } else {
+                    Log.d(TAG, "No cached road route, emitting null while fetching")
                     emit(null)  // No cache, show straight lines while fetching
                 }
 
                 // Fetch fresh route online and cache it
                 val waypoints = stops.map { GeoPoint(it.latitude, it.longitude) }
+                Log.d(TAG, "Fetching from OSRM with waypoints: ${waypoints.joinToString { "(${it.latitude},${it.longitude})" }}")
                 val fetched = directionsFetcher.fetchDrivingRoute(waypoints)
                 if (fetched != null) {
+                    Log.d(TAG, "OSRM fetch succeeded with ${fetched.size} points, caching...")
                     // Cache for offline use
                     repository.cacheRoadRoute(routeId, fetched)
                     emit(fetched)
+                } else {
+                    Log.w(TAG, "OSRM fetch returned null")
                 }
             }
         }

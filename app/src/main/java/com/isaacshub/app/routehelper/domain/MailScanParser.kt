@@ -3,15 +3,17 @@ package com.isaacshub.app.routehelper.domain
 /** One address-shaped block pulled out of OCR'd mail text, plus the recipient's last name if a name line preceded it. */
 data class ScannedAddress(val addressText: String, val recipientLastName: String?)
 
-// More lenient street line regex - accepts any line starting with house number
+// Very lenient street line regex - just needs to start with digits and have some text
+// OCR can introduce errors, so we're very permissive
 private val STREET_LINE_REGEX = Regex(
-    """^\d+[A-Za-z]?\s+.{3,}""",  // At least a house number and some street name (3+ chars)
+    """^\d+[A-Za-z]?\s+.{2,}""",  // House number + at least 2 more chars
     RegexOption.IGNORE_CASE
 )
-// More lenient city/state/zip - handles OCR errors in spacing and punctuation
-private val CITY_STATE_ZIP_REGEX = Regex("""^[A-Za-z .'-]+,?\s*[A-Z]{2}\s*\d{5}(-?\d{4})?$""")
-// More lenient name line - accepts 1-4 words with common name characters
-private val NAME_LINE_REGEX = Regex("""^[A-Za-z.'-]+(?:\s+[A-Za-z.'-]+){0,3}$""")
+// Lenient city/state/ZIP - accepts various spacing/punctuation patterns
+// State code might have lowercase letters from OCR errors
+private val CITY_STATE_ZIP_REGEX = Regex("""^[A-Za-z .'-]+,?\s*[A-Za-z]{2}\s*\d{5}(-?\s*\d{4})?$""", RegexOption.IGNORE_CASE)
+// Very lenient name line - 1-5 words with letters, spaces, dots, hyphens, apostrophes
+private val NAME_LINE_REGEX = Regex("""^[A-Za-z.'\- ]+$""")
 
 /**
  * Finds candidate US mailing addresses in text OCR'd from a photographed mail piece, recognizing the

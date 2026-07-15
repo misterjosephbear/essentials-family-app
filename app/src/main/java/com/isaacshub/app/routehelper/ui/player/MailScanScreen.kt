@@ -62,14 +62,11 @@ import com.isaacshub.app.routehelper.domain.GeoPoint
 @Composable
 fun MailScanScreen(currentLocation: GeoPoint?, onResolved: (ResolvedMailStop) -> Unit, onCancel: () -> Unit) {
     val context = LocalContext.current
-    val viewModel: MailScanViewModel = viewModel()
+    // Use a unique key to get a fresh ViewModel instance for each dialog opening
+    // This ensures clean state for each scan session
+    val viewModel: MailScanViewModel = viewModel(key = "mail_scan_${remember { System.currentTimeMillis() }}")
     val state by viewModel.uiState.collectAsState()
     val resolved by viewModel.resolved.collectAsState()
-
-    // Reset scanner state each time the screen opens so it can scan multiple times
-    LaunchedEffect(Unit) {
-        viewModel.reset()
-    }
 
     LaunchedEffect(currentLocation) {
         currentLocation?.let { viewModel.setFallbackLocation(it) }
