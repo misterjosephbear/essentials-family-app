@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -107,8 +108,17 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
     /**
      * Road route with offline caching: checks cache first, then fetches online if needed.
      * Emits cached route immediately if available, then fetches fresh route in background.
+     *
+     * Uses distinctUntilChanged to prevent re-fetching when stops emit multiple times with same data.
      */
     private val roadRouteFlow: Flow<List<GeoPoint>?> = combine(routeIdFlow, stopsFlow) { routeId, stops -> routeId to stops }
+        .distinctUntilChanged { old, new ->
+            // Only re-fetch if route ID or stop count/positions actually changed
+            old.first == new.first && old.second.size == new.second.size &&
+                old.second.zip(new.second).all { (a, b) ->
+                    a.latitude == b.latitude && a.longitude == b.longitude
+                }
+        }
         .flatMapLatest { (routeId, stops) ->
             flow {
                 if (routeId == null || stops.size < 2) {
