@@ -40,7 +40,9 @@ data class RoutePlayerUiState(
      * The road-following path through [stops], fetched from OSRM. Null while it's still loading or if
      * the fetch failed (no signal, etc.) - the map falls back to a straight line between stops then.
      */
-    val roadRoutePoints: List<GeoPoint>? = null
+    val roadRoutePoints: List<GeoPoint>? = null,
+    /** Debug info about road route status */
+    val roadRouteDebugInfo: String = ""
 )
 
 /**
@@ -111,7 +113,9 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
      *
      * Uses distinctUntilChanged to prevent re-fetching when stops emit multiple times with same data.
      */
-    private val roadRouteFlow: Flow<List<GeoPoint>?> = combine(routeIdFlow, stopsFlow) { routeId, stops -> routeId to stops }
+    private data class RoadRouteResult(val points: List<GeoPoint>?, val debugInfo: String)
+
+    private val roadRouteFlow: Flow<RoadRouteResult> = combine(routeIdFlow, stopsFlow) { routeId, stops -> routeId to stops }
         .distinctUntilChanged { old, new ->
             // Only re-fetch if route ID or stop count/positions actually changed
             old.first == new.first && old.second.size == new.second.size &&
@@ -123,7 +127,7 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             flow {
                 if (routeId == null || stops.size < 2) {
                     Log.d(TAG, "Skipping road route fetch: routeId=$routeId, stops=${stops.size}")
-                    emit(null)
+                    emit(RoadRouteResult(null, "No route or < 2 stops"))
                     return@flow
                 }
 
@@ -134,10 +138,10 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
                 if (cached != null) {
                     val points = parsePolylineJson(cached.polylineJson)
                     Log.d(TAG, "Using cached road route with ${points.size} points")
-                    emit(points)
+                    emit(RoadRouteResult(points, "Cached: ${points.size} pts"))
                 } else {
                     Log.d(TAG, "No cached road route, emitting null while fetching")
-                    emit(null)  // No cache, show straight lines while fetching
+                    emit(RoadRouteResult(null, "Fetching..."))  // No cache, show straight lines while fetching
                 }
 
                 // Fetch fresh route online and cache it
@@ -148,9 +152,10 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
                     Log.d(TAG, "OSRM fetch succeeded with ${fetched.size} points, caching...")
                     // Cache for offline use
                     repository.cacheRoadRoute(routeId, fetched)
-                    emit(fetched)
+                    emit(RoadRouteResult(fetched, "OSRM: ${fetched.size} pts"))
                 } else {
                     Log.w(TAG, "OSRM fetch returned null")
+                    emit(RoadRouteResult(cached?.let { parsePolylineJson(it.polylineJson) }, "OSRM fetch failed"))
                 }
             }
         }
@@ -182,7 +187,8 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             mapBearingDegrees = bearing,
             stops = stops,
             nextStopIndex = nextIndex.takeIf { it < stops.size },
-            roadRoutePoints = roadRoute
+            roadRoutePoints = roadRoute.points,
+            roadRouteDebugInfo = roadRoute.debugInfo
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), RoutePlayerUiState())
 

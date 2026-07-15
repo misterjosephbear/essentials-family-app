@@ -129,6 +129,14 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                         }
                         else -> Text("Route complete!", style = MaterialTheme.typography.titleMedium)
                     }
+                    // Debug info for road route status
+                    if (state.roadRouteDebugInfo.isNotEmpty()) {
+                        Text(
+                            "Road route: ${state.roadRouteDebugInfo}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
                 }
             }
 
