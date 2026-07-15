@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
@@ -35,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -47,8 +49,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.isaacshub.app.debug.DebugLogger
 import com.isaacshub.app.routehelper.domain.GeoPoint
 import com.isaacshub.app.routehelper.ui.common.newOsmMapView
+import kotlinx.coroutines.launch
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.util.GeoPoint as OsmGeoPoint
@@ -85,6 +89,7 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
     val state by viewModel.uiState.collectAsState()
     var isScanning by remember { mutableStateOf(false) }
     var isFreeCam by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -93,6 +98,22 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                 navigationIcon = {
                     IconButton(onClick = onDone) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Exit route player")
+                    }
+                },
+                actions = {
+                    // Debug button to send logs to server
+                    IconButton(onClick = {
+                        scope.launch {
+                            DebugLogger.sendLogsToServer(context, "Route Player Logs")
+                            DebugLogger.sendRouteDebugInfo(
+                                routeId = routeId,
+                                stopCount = state.stops.size,
+                                roadRoutePointCount = state.roadRoutePoints?.size,
+                                debugInfo = state.roadRouteDebugInfo
+                            )
+                        }
+                    }) {
+                        Icon(Icons.Filled.BugReport, contentDescription = "Send debug logs to server")
                     }
                 }
             )
