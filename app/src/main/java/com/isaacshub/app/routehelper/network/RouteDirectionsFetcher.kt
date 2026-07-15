@@ -41,7 +41,7 @@ class RouteDirectionsFetcher {
     }
 
     /**
-     * Detects turn-around points (where the route reverses direction) and duplicates those waypoints.
+     * Detects turn-around points (where the route reverses direction) and inserts virtual waypoints.
      * This forces OSRM to route to the address and then back out the same way, rather than continuing
      * to the end of the street to find a turnaround.
      */
@@ -66,8 +66,15 @@ class RouteDirectionsFetcher {
             // If the bearing changes by more than 90 degrees, this is a turn-around point
             if (bearingDiff > 90.0) {
                 Log.d(TAG, "Detected turnaround at waypoint $i: bearing change ${bearingDiff.toInt()}° (in: ${bearingIn.toInt()}°, out: ${bearingOut.toInt()}°)")
+
+                // Add the actual stop
                 result.add(current)
-                result.add(current)  // Duplicate to force routing through it twice
+
+                // Insert a virtual waypoint 20 meters past the stop in the incoming direction
+                // This forces OSRM to route: prev -> current -> virtual -> current -> next
+                val virtualPoint = offsetPoint(current, bearingIn, distanceMeters = 20.0)
+                result.add(virtualPoint)
+                result.add(current)  // Add the stop again to route back to it
             } else {
                 result.add(current)
             }
@@ -75,6 +82,33 @@ class RouteDirectionsFetcher {
 
         result.add(waypoints.last())
         return result
+    }
+
+    /**
+     * Create a new point offset from the given point by a distance in a specific bearing.
+     * Used to create virtual turnaround waypoints.
+     */
+    private fun offsetPoint(point: GeoPoint, bearingDegrees: Double, distanceMeters: Double): GeoPoint {
+        val earthRadiusMeters = 6371000.0
+        val bearingRad = Math.toRadians(bearingDegrees)
+        val latRad = Math.toRadians(point.latitude)
+        val lonRad = Math.toRadians(point.longitude)
+        val angularDistance = distanceMeters / earthRadiusMeters
+
+        val newLatRad = kotlin.math.asin(
+            kotlin.math.sin(latRad) * kotlin.math.cos(angularDistance) +
+            kotlin.math.cos(latRad) * kotlin.math.sin(angularDistance) * kotlin.math.cos(bearingRad)
+        )
+
+        val newLonRad = lonRad + kotlin.math.atan2(
+            kotlin.math.sin(bearingRad) * kotlin.math.sin(angularDistance) * kotlin.math.cos(latRad),
+            kotlin.math.cos(angularDistance) - kotlin.math.sin(latRad) * kotlin.math.sin(newLatRad)
+        )
+
+        return GeoPoint(
+            latitude = Math.toDegrees(newLatRad),
+            longitude = Math.toDegrees(newLonRad)
+        )
     }
 
     /**
