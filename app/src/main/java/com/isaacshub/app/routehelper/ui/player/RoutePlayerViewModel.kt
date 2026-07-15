@@ -147,15 +147,21 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
                 // Fetch fresh route online and cache it
                 val waypoints = stops.map { GeoPoint(it.latitude, it.longitude) }
                 Log.d(TAG, "Fetching from OSRM with waypoints: ${waypoints.joinToString { "(${it.latitude},${it.longitude})" }}")
-                val fetched = directionsFetcher.fetchDrivingRoute(waypoints)
-                if (fetched != null) {
-                    Log.d(TAG, "OSRM fetch succeeded with ${fetched.size} points, caching...")
-                    // Cache for offline use
-                    repository.cacheRoadRoute(routeId, fetched)
-                    emit(RoadRouteResult(fetched, "OSRM: ${fetched.size} pts"))
-                } else {
-                    Log.w(TAG, "OSRM fetch returned null")
-                    emit(RoadRouteResult(cached?.let { parsePolylineJson(it.polylineJson) }, "OSRM fetch failed"))
+
+                try {
+                    val fetched = directionsFetcher.fetchDrivingRoute(waypoints)
+                    if (fetched != null) {
+                        Log.d(TAG, "OSRM fetch succeeded with ${fetched.size} points, caching...")
+                        // Cache for offline use
+                        repository.cacheRoadRoute(routeId, fetched)
+                        emit(RoadRouteResult(fetched, "OSRM: ${fetched.size} pts"))
+                    } else {
+                        Log.w(TAG, "OSRM fetch returned null - check logs for details")
+                        emit(RoadRouteResult(cached?.let { parsePolylineJson(it.polylineJson) }, "OSRM failed (${stops.size} stops)"))
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "OSRM fetch threw exception", e)
+                    emit(RoadRouteResult(cached?.let { parsePolylineJson(it.polylineJson) }, "OSRM error: ${e.message?.take(30)}"))
                 }
             }
         }
