@@ -1,17 +1,26 @@
 package com.isaacshub.app.routehelper.domain
 
 /** One address-shaped block pulled out of OCR'd mail text, plus the recipient's last name if a name line preceded it. */
-data class ScannedAddress(val addressText: String, val recipientLastName: String?)
+data class ScannedAddress(
+    val addressText: String,
+    val recipientLastName: String?,
+    val streetNumber: String,
+    val streetName: String,
+    val city: String?,
+    val state: String?,
+    val zip: String?
+)
 
-// Very lenient street line regex - just needs to start with digits and have some text
-// OCR can introduce errors, so we're very permissive
+// Very lenient street line regex - captures house number and street name separately
 private val STREET_LINE_REGEX = Regex(
-    """^\d+[A-Za-z]?\s+.{2,}""",  // House number + at least 2 more chars
+    """^(\d+[A-Za-z]?)\s+(.{2,})$""",  // Group 1: House number, Group 2: Street name
     RegexOption.IGNORE_CASE
 )
-// Lenient city/state/ZIP - accepts various spacing/punctuation patterns
-// State code might have lowercase letters from OCR errors
-private val CITY_STATE_ZIP_REGEX = Regex("""^[A-Za-z .'-]+,?\s*[A-Za-z]{2}\s*\d{5}(-?\s*\d{4})?$""", RegexOption.IGNORE_CASE)
+// Lenient city/state/ZIP - captures each component separately
+private val CITY_STATE_ZIP_REGEX = Regex(
+    """^([A-Za-z .'-]+?),?\s*([A-Za-z]{2})\s*(\d{5})(?:-?\s*\d{4})?$""",  // Group 1: City, Group 2: State, Group 3: ZIP
+    RegexOption.IGNORE_CASE
+)
 // Very lenient name line - 1-5 words with letters, spaces, dots, hyphens, apostrophes
 private val NAME_LINE_REGEX = Regex("""^[A-Za-z.'\- ]+$""")
 
@@ -28,12 +37,30 @@ fun parseScannedAddresses(recognizedText: String): List<ScannedAddress> {
     val results = mutableListOf<ScannedAddress>()
     for (i in lines.indices) {
         val line = lines[i]
-        if (!STREET_LINE_REGEX.matches(line)) continue
-        val cityStateZip = lines.getOrNull(i + 1)?.takeIf { CITY_STATE_ZIP_REGEX.matches(it) }
-        val addressText = if (cityStateZip != null) "$line, $cityStateZip" else line
+        val streetMatch = STREET_LINE_REGEX.matchEntire(line) ?: continue
+
+        val streetNumber = streetMatch.groupValues[1]
+        val streetName = streetMatch.groupValues[2].trim()
+
+        // Try to find city/state/ZIP on next line
+        val cityStateZipLine = lines.getOrNull(i + 1)
+        val cityStateZipMatch = cityStateZipLine?.let { CITY_STATE_ZIP_REGEX.matchEntire(it) }
+
+        val city = cityStateZipMatch?.groupValues?.get(1)?.trim()
+        val state = cityStateZipMatch?.groupValues?.get(2)?.trim()?.uppercase()
+        val zip = cityStateZipMatch?.groupValues?.get(3)?.trim()
+
+        val addressText = if (cityStateZipLine != null && cityStateZipMatch != null) {
+            "$line, $cityStateZipLine"
+        } else {
+            line
+        }
+
+        // Try to find name on previous line
         val nameLine = lines.getOrNull(i - 1)?.takeIf { NAME_LINE_REGEX.matches(it) }
         val lastName = nameLine?.trim()?.split(Regex("\\s+"))?.lastOrNull()?.let(::toTitleCase)
-        results.add(ScannedAddress(addressText, lastName))
+
+        results.add(ScannedAddress(addressText, lastName, streetNumber, streetName, city, state, zip))
     }
     return results.distinctBy { it.addressText.uppercase() }
 }

@@ -60,7 +60,13 @@ import com.isaacshub.app.routehelper.domain.GeoPoint
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MailScanScreen(currentLocation: GeoPoint?, onResolved: (ResolvedMailStop) -> Unit, onCancel: () -> Unit) {
+fun MailScanScreen(
+    currentLocation: GeoPoint?,
+    routeZip: String?,
+    currentRoadName: String?,
+    onResolved: (ResolvedMailStop) -> Unit,
+    onCancel: () -> Unit
+) {
     val context = LocalContext.current
     // Use a unique key to get a fresh ViewModel instance for each dialog opening
     // This ensures clean state for each scan session
@@ -70,6 +76,12 @@ fun MailScanScreen(currentLocation: GeoPoint?, onResolved: (ResolvedMailStop) ->
 
     LaunchedEffect(currentLocation) {
         currentLocation?.let { viewModel.setFallbackLocation(it) }
+    }
+    LaunchedEffect(routeZip) {
+        routeZip?.let { viewModel.setRouteZip(it) }
+    }
+    LaunchedEffect(currentRoadName) {
+        currentRoadName?.let { viewModel.setCurrentRoadName(it) }
     }
     LaunchedEffect(resolved) { resolved?.let(onResolved) }
 
@@ -114,6 +126,14 @@ fun MailScanScreen(currentLocation: GeoPoint?, onResolved: (ResolvedMailStop) ->
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text("Hold the address side of the mail piece up to the front camera.", style = MaterialTheme.typography.bodyMedium)
+                    state.validationStatus?.let { status ->
+                        Text(
+                            text = status,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (status.startsWith("Wrong")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                 }
             }
 

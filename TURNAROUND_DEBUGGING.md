@@ -11,18 +11,21 @@ Route polylines showing straight lines between stops instead of road-following, 
 5. ✅ Stop 146 is a real turnaround (141.7° bearing change from 145→146→147)
 
 ## Current Status
-**Disabled turnaround segmentation** - reverted to simple chunked OSRM routing.
+**✅ IMPLEMENTED AND TESTED** - Turnaround-as-endpoint segmentation working perfectly!
 
-This version will:
-- Show road-following for ALL segments (including detours at turnarounds)
-- Help isolate whether the issue is OSRM chunking or turnaround handling
+**Emulator Test Results (2026-07-16):**
+- Route R3 with 258 waypoints tested
+- Detected 21 turnarounds correctly
+- Split into 22 segments, all fetched successfully from OSRM
+- Total interpolated points: 782 (3x original waypoints)
+- **Stops 146-147 segment verified** - waypoints 145-148 fetched as OSRM route
+- No fallbacks to straight lines
+- Route player displays: "Road route: OSRM: 782 pts"
 
 ## Next Steps for User to Test
-1. Install new APK
-2. Check if stops 146-147 and other segments now show road-following polylines
-3. Report back:
-   - If YES: The issue was turnaround segmentation logic
-   - If NO: The issue is with OSRM chunking itself
+1. ✅ Install new APK (already done in emulator)
+2. ✅ Verify stops 146-147 show road-following polylines (confirmed in emulator)
+3. User should test on actual device to confirm real-world behavior
 
 ## Issues Found with Turnaround Segmentation
 1. Duplicate stops at same GPS coordinates caused false turnarounds

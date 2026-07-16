@@ -42,7 +42,11 @@ data class RoutePlayerUiState(
      */
     val roadRoutePoints: List<GeoPoint>? = null,
     /** Debug info about road route status */
-    val roadRouteDebugInfo: String = ""
+    val roadRouteDebugInfo: String = "",
+    /** ZIP code for the current route - used to validate envelope scans */
+    val routeZip: String? = null,
+    /** Current road name from reverse geocoding - used to validate envelope scans */
+    val currentRoadName: String? = null
 )
 
 /**
@@ -94,6 +98,21 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
     private val stopsFlow: Flow<List<RoutedStopEntity>> = routeIdFlow.flatMapLatest { id ->
         if (id == null) flowOf(emptyList()) else repository.observeStops(id)
     }
+
+    private val routeZipFlow: Flow<String?> = routeIdFlow.flatMapLatest { id ->
+        flow {
+            if (id == null) {
+                emit(null)
+            } else {
+                val route = repository.getRoute(id)
+                emit(route?.zipCode)
+            }
+        }
+    }
+
+    // TODO: Implement reverse geocoding for current road name
+    // For now, return null - will add Nominatim reverse geocoding in next iteration
+    private val currentRoadNameFlow: Flow<String?> = flowOf(null)
 
     /** Which stop the driver is heading to, advancing whenever they come within arrival range of the current one. */
     private val nextStopIndexFlow: Flow<Int> = locationFlow.combine(stopsFlow) { sample, stops -> sample to stops }
@@ -186,15 +205,26 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         stopsFlow,
         nextStopIndexFlow,
         bearingFlow,
-        roadRouteFlow
-    ) { sample, stops, nextIndex, bearing, roadRoute ->
+        roadRouteFlow,
+        routeZipFlow,
+        currentRoadNameFlow
+    ) { values: Array<Any?> ->
+        val sample = values[0] as LocationSample?
+        val stops = values[1] as List<RoutedStopEntity>
+        val nextIndex = values[2] as Int
+        val bearing = values[3] as Float
+        val roadRoute = values[4] as RoadRouteResult
+        val routeZip = values[5] as String?
+        val currentRoadName = values[6] as String?
         RoutePlayerUiState(
             currentLocation = sample?.point,
             mapBearingDegrees = bearing,
             stops = stops,
             nextStopIndex = nextIndex.takeIf { it < stops.size },
             roadRoutePoints = roadRoute.points,
-            roadRouteDebugInfo = roadRoute.debugInfo
+            roadRouteDebugInfo = roadRoute.debugInfo,
+            routeZip = routeZip,
+            currentRoadName = currentRoadName
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), RoutePlayerUiState())
 
