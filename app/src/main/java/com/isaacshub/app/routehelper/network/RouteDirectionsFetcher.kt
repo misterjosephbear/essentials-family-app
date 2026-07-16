@@ -44,6 +44,7 @@ class RouteDirectionsFetcher {
 
     /**
      * Detects indices of waypoints that are turn-around points (where bearing changes > 90°).
+     * Skips duplicate locations (multiple stops at same GPS coordinates).
      */
     private fun detectTurnarounds(waypoints: List<GeoPoint>): List<Int> {
         if (waypoints.size < 3) return emptyList()
@@ -54,6 +55,12 @@ class RouteDirectionsFetcher {
             val prev = waypoints[i - 1]
             val current = waypoints[i]
             val next = waypoints[i + 1]
+
+            // Skip if current point is duplicate of prev or next
+            if (isDuplicate(current, prev) || isDuplicate(current, next)) {
+                Log.d(TAG, "Skipping waypoint $i (duplicate location)")
+                continue
+            }
 
             val bearingIn = calculateBearing(prev, current)
             val bearingOut = calculateBearing(current, next)
@@ -66,6 +73,16 @@ class RouteDirectionsFetcher {
         }
 
         return turnarounds
+    }
+
+    /**
+     * Check if two points are at the same location (within ~1 meter).
+     */
+    private fun isDuplicate(p1: GeoPoint, p2: GeoPoint): Boolean {
+        val latDiff = kotlin.math.abs(p1.latitude - p2.latitude)
+        val lonDiff = kotlin.math.abs(p1.longitude - p2.longitude)
+        // ~0.00001 degrees is approximately 1 meter
+        return latDiff < 0.00001 && lonDiff < 0.00001
     }
 
     /**
