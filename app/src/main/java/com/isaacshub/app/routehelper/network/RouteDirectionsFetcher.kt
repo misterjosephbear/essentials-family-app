@@ -109,11 +109,19 @@ class RouteDirectionsFetcher {
                     fetchSingleRoute(segment) ?: segment // Fallback to straight if fetch fails
                 }
 
-                // Add segment, avoiding duplicates at joins
+                // Add segment, avoiding duplicates
+                // First segment or if last point in result doesn't match first point of segment
                 if (result.isEmpty()) {
                     result.addAll(segmentRoute)
                 } else {
-                    result.addAll(segmentRoute.drop(1))
+                    // Check if we need to drop first point to avoid duplicate
+                    val lastPoint = result.last()
+                    val firstNewPoint = segmentRoute.first()
+                    if (isDuplicate(lastPoint, firstNewPoint)) {
+                        result.addAll(segmentRoute.drop(1))
+                    } else {
+                        result.addAll(segmentRoute)
+                    }
                 }
             }
 
@@ -121,8 +129,8 @@ class RouteDirectionsFetcher {
             if (turnaroundIdx < waypoints.size - 1) {
                 val nextStop = waypoints[turnaroundIdx + 1]
 
-                // Add straight line from turnaround stop (already in result) to next stop (driver does K-turn here)
-                // Don't add turnaroundStop again - it's already at the end of the segment we just added
+                // The turnaround stop is already the last point in result from the segment we just added
+                // Just add the next stop to create the K-turn line
                 result.add(nextStop)
 
                 Log.d(TAG, "Added straight-line turnaround at waypoint $turnaroundIdx")
