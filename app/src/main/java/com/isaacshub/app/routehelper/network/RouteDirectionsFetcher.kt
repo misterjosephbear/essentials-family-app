@@ -77,16 +77,20 @@ class RouteDirectionsFetcher {
         var segmentStart = 0
 
         for (turnaroundIdx in turnaroundIndices.sorted() + listOf(waypoints.size)) {
-            // Fetch OSRM route up to (but not including) the turnaround
+            // Fetch OSRM route up to the turnaround (or end of route)
             if (turnaroundIdx > segmentStart) {
-                val segment = waypoints.subList(segmentStart, turnaroundIdx + if (turnaroundIdx < waypoints.size) 1 else 0)
-                val segmentRoute = if (segment.size > MAX_WAYPOINTS_PER_REQUEST) {
-                    fetchRouteInChunks(segment)
-                } else {
-                    fetchSingleRoute(segment)
-                }
+                val segmentEnd = if (turnaroundIdx < waypoints.size) turnaroundIdx + 1 else turnaroundIdx
+                val segment = waypoints.subList(segmentStart, segmentEnd)
 
-                if (segmentRoute == null) return null
+                // For very short segments (1-2 stops), just use straight lines
+                val segmentRoute = if (segment.size <= 2) {
+                    Log.d(TAG, "Using straight line for short segment ($segmentStart to $turnaroundIdx, ${segment.size} stops)")
+                    segment
+                } else if (segment.size > MAX_WAYPOINTS_PER_REQUEST) {
+                    fetchRouteInChunks(segment) ?: segment // Fallback to straight if fetch fails
+                } else {
+                    fetchSingleRoute(segment) ?: segment // Fallback to straight if fetch fails
+                }
 
                 // Add segment, avoiding duplicates at joins
                 if (result.isEmpty()) {
