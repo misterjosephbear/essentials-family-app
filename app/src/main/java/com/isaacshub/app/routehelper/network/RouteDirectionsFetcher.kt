@@ -26,9 +26,17 @@ class RouteDirectionsFetcher {
     suspend fun fetchDrivingRoute(waypoints: List<GeoPoint>): List<GeoPoint>? = withContext(Dispatchers.IO) {
         if (waypoints.size < 2) return@withContext null
 
-        // For now, just use OSRM for the entire route without turnaround handling
-        // This will show detours at turnarounds, but at least all segments will have road-following
-        Log.d(TAG, "Fetching route for ${waypoints.size} waypoints")
+        // Detect turnarounds and split route at those points
+        // This makes OSRM treat turnaround stops as endpoints, forcing it to turn around there
+        val turnaroundIndices = detectTurnarounds(waypoints)
+
+        if (turnaroundIndices.isNotEmpty()) {
+            Log.d(TAG, "Detected ${turnaroundIndices.size} turnarounds, splitting route at those points")
+            return@withContext fetchRouteWithTurnaroundSplits(waypoints, turnaroundIndices)
+        }
+
+        // No turnarounds - fetch normally
+        Log.d(TAG, "Fetching route for ${waypoints.size} waypoints (no turnarounds)")
 
         if (waypoints.size > MAX_WAYPOINTS_PER_REQUEST) {
             Log.d(TAG, "Route has ${waypoints.size} waypoints, splitting into chunks of $MAX_WAYPOINTS_PER_REQUEST")
@@ -36,6 +44,62 @@ class RouteDirectionsFetcher {
         }
 
         fetchSingleRoute(waypoints)
+    }
+
+    /**
+     * Fetch route by splitting at turnaround points. Each segment treats the turnaround as an endpoint,
+     * forcing OSRM to create a U-turn at that location instead of routing far past it.
+     */
+    private suspend fun fetchRouteWithTurnaroundSplits(waypoints: List<GeoPoint>, turnaroundIndices: List<Int>): List<GeoPoint>? {
+        val result = mutableListOf<GeoPoint>()
+        var segmentStart = 0
+
+        // Split at each turnaround
+        for (turnaroundIdx in turnaroundIndices.sorted() + listOf(waypoints.size - 1)) {
+            if (turnaroundIdx <= segmentStart) continue
+
+            // Segment from segmentStart to turnaround (inclusive)
+            val segment = waypoints.subList(segmentStart, turnaroundIdx + 1)
+
+            Log.d(TAG, "Fetching segment: waypoints $segmentStart to $turnaroundIdx (${segment.size} stops, ends at turnaround)")
+
+            // Fetch OSRM for this segment (turnaround is the endpoint)
+            val segmentRoute = if (segment.size > MAX_WAYPOINTS_PER_REQUEST) {
+                fetchRouteInChunks(segment)
+            } else {
+                fetchSingleRoute(segment)
+            }
+
+            if (segmentRoute == null) {
+                Log.w(TAG, "OSRM failed for segment, using straight lines")
+                // Fallback to straight lines for this segment
+                if (result.isEmpty()) {
+                    result.addAll(segment)
+                } else {
+                    result.addAll(segment.drop(1)) // Drop duplicate start point
+                }
+            } else {
+                // Add OSRM result
+                if (result.isEmpty()) {
+                    result.addAll(segmentRoute)
+                } else {
+                    // Check if last point matches first point of new segment
+                    val lastPoint = result.last()
+                    val firstNewPoint = segmentRoute.first()
+                    if (isDuplicate(lastPoint, firstNewPoint)) {
+                        result.addAll(segmentRoute.drop(1))
+                    } else {
+                        result.addAll(segmentRoute)
+                    }
+                }
+            }
+
+            // Next segment starts at the turnaround (so it's both the end of this segment and start of next)
+            segmentStart = turnaroundIdx
+        }
+
+        Log.d(TAG, "Combined route has ${result.size} total points")
+        return result
     }
 
     /**
