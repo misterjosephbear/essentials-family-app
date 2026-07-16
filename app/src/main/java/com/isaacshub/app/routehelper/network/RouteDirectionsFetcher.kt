@@ -65,14 +65,18 @@ class RouteDirectionsFetcher {
 
             // If the bearing changes by more than 90 degrees, this is a turn-around point
             if (bearingDiff > 90.0) {
+                // Insert a virtual waypoint 50 meters past the stop in the incoming direction
+                // This forces OSRM to route: prev -> current -> virtual -> current -> next
+                // Using 50m to ensure OSRM doesn't optimize it away
+                val virtualPoint = offsetPoint(current, bearingIn, distanceMeters = 50.0)
+
                 Log.d(TAG, "Detected turnaround at waypoint $i: bearing change ${bearingDiff.toInt()}° (in: ${bearingIn.toInt()}°, out: ${bearingOut.toInt()}°)")
+                Log.d(TAG, "  Stop: (${current.latitude}, ${current.longitude})")
+                Log.d(TAG, "  Virtual: (${virtualPoint.latitude}, ${virtualPoint.longitude})")
+                Log.d(TAG, "  Pattern: stop -> virtual 20m ahead -> back to stop -> next")
 
                 // Add the actual stop
                 result.add(current)
-
-                // Insert a virtual waypoint 20 meters past the stop in the incoming direction
-                // This forces OSRM to route: prev -> current -> virtual -> current -> next
-                val virtualPoint = offsetPoint(current, bearingIn, distanceMeters = 20.0)
                 result.add(virtualPoint)
                 result.add(current)  // Add the stop again to route back to it
             } else {

@@ -3,6 +3,7 @@ package com.isaacshub.app.routehelper.data
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -59,7 +60,7 @@ interface RouteHelperDao {
     @Query("SELECT COALESCE(MAX(sequenceOrder), -1) FROM routed_stops WHERE routeId = :routeId")
     suspend fun maxSequenceOrder(routeId: Long): Int
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCachedRoadRoute(cachedRoute: CachedRoadRouteEntity)
 
     @Query("SELECT * FROM cached_road_routes WHERE routeId = :routeId")
