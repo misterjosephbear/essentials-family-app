@@ -26,14 +26,10 @@ class RouteDirectionsFetcher {
     suspend fun fetchDrivingRoute(waypoints: List<GeoPoint>): List<GeoPoint>? = withContext(Dispatchers.IO) {
         if (waypoints.size < 2) return@withContext null
 
-        // Detect turn-around points and handle them specially
-        val turnaroundIndices = detectTurnarounds(waypoints)
-        if (turnaroundIndices.isNotEmpty()) {
-            Log.d(TAG, "Detected ${turnaroundIndices.size} turnarounds at indices: $turnaroundIndices")
-            return@withContext fetchRouteWithTurnarounds(waypoints, turnaroundIndices)
-        }
+        // For now, just use OSRM for the entire route without turnaround handling
+        // This will show detours at turnarounds, but at least all segments will have road-following
+        Log.d(TAG, "Fetching route for ${waypoints.size} waypoints")
 
-        // No turnarounds - process normally
         if (waypoints.size > MAX_WAYPOINTS_PER_REQUEST) {
             Log.d(TAG, "Route has ${waypoints.size} waypoints, splitting into chunks of $MAX_WAYPOINTS_PER_REQUEST")
             return@withContext fetchRouteInChunks(waypoints)
