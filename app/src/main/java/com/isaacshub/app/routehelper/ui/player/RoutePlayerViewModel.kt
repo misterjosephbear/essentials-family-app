@@ -130,11 +130,12 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
     private val nextStopIndexFlow: Flow<Int> = locationFlow.combine(stopsFlow) { sample, stops -> sample to stops }
         .scan(StopAdvanceState(0, null)) { state, (sample, stops) ->
             val location = sample?.point
+            val speed = sample?.speedMetersPerSecond ?: 0f
             val points = stops.map { GeoPoint(it.latitude, it.longitude) }
             if (location == null) {
                 StopAdvanceState(state.index.coerceAtMost(points.size), null)
             } else {
-                val newIndex = advanceToNextStop(location, state.previousLocation, points, state.index)
+                val newIndex = advanceToNextStop(location, state.previousLocation, points, state.index, speed)
                 StopAdvanceState(newIndex, location)
             }
         }

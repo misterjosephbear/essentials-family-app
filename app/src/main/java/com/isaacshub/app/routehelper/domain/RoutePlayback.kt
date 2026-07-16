@@ -9,12 +9,15 @@ const val STOP_ARRIVAL_RADIUS_METERS = 3.0
  */
 const val STOP_PASSED_RADIUS_METERS = 9.0
 
+/** Minimum speed (m/s) required to trigger auto-skip (about 2 mph). Prevents skipping when stationary. */
+private const val MIN_SKIP_SPEED_MPS = 1.0f
+
 /**
  * Advances to the next stop based on the driver's current location and previous location.
  *
  * Rules:
  * 1. If within STOP_ARRIVAL_RADIUS of any remaining stop, jump to that stop (or earliest if multiple)
- * 2. If moving and the next stop is now STOP_PASSED_RADIUS behind us, skip it (passed without stopping)
+ * 2. If moving fast enough and the next stop is now STOP_PASSED_RADIUS behind us, skip it (passed without stopping)
  * 3. Otherwise stay at current index
  *
  * Never advances past the end of [stops] - once every stop has been reached, index holds at `stops.size`.
@@ -23,7 +26,8 @@ fun advanceToNextStop(
     currentLocation: GeoPoint,
     previousLocation: GeoPoint?,
     stops: List<GeoPoint>,
-    currentIndex: Int
+    currentIndex: Int,
+    speedMetersPerSecond: Float
 ): Int {
     val index = currentIndex.coerceIn(0, stops.size)
     if (index >= stops.size) return index
@@ -35,14 +39,17 @@ fun advanceToNextStop(
         }
     }
 
-    // If we have a previous location and we're moving, check if we passed the next stop
-    if (previousLocation != null && index < stops.size) {
+    // Only auto-skip if moving at reasonable speed (prevents GPS drift from skipping while stopped)
+    if (previousLocation != null && index < stops.size && speedMetersPerSecond >= MIN_SKIP_SPEED_MPS) {
         val nextStop = stops[index]
         val distanceToPrev = distanceMeters(previousLocation, nextStop)
         val distanceToCurrent = distanceMeters(currentLocation, nextStop)
 
-        // If the stop is now behind us (distance increasing) and far enough behind, skip it
-        if (distanceToCurrent > distanceToPrev && distanceToCurrent > STOP_PASSED_RADIUS_METERS) {
+        // Must be moving away from stop (distance increasing) AND far enough behind
+        // AND the previous location was closer than the pass radius (ensures we actually approached it)
+        if (distanceToCurrent > distanceToPrev &&
+            distanceToCurrent > STOP_PASSED_RADIUS_METERS &&
+            distanceToPrev < STOP_PASSED_RADIUS_METERS) {
             return index + 1  // Skip this stop, advance to next
         }
     }
