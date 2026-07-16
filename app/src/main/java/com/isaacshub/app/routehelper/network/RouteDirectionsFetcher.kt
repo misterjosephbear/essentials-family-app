@@ -26,65 +26,90 @@ class RouteDirectionsFetcher {
     suspend fun fetchDrivingRoute(waypoints: List<GeoPoint>): List<GeoPoint>? = withContext(Dispatchers.IO) {
         if (waypoints.size < 2) return@withContext null
 
-        // Detect and duplicate turn-around points where the route reverses direction
-        val processedWaypoints = insertTurnaroundDuplicates(waypoints)
-        Log.d(TAG, "Processed ${waypoints.size} waypoints -> ${processedWaypoints.size} (with turnarounds)")
-
-        // If too many waypoints, split into chunks and fetch each chunk
-        if (processedWaypoints.size > MAX_WAYPOINTS_PER_REQUEST) {
-            Log.d(TAG, "Route has ${processedWaypoints.size} waypoints, splitting into chunks of $MAX_WAYPOINTS_PER_REQUEST")
-            return@withContext fetchRouteInChunks(processedWaypoints)
+        // Detect turn-around points and handle them specially
+        val turnaroundIndices = detectTurnarounds(waypoints)
+        if (turnaroundIndices.isNotEmpty()) {
+            Log.d(TAG, "Detected ${turnaroundIndices.size} turnarounds at indices: $turnaroundIndices")
+            return@withContext fetchRouteWithTurnarounds(waypoints, turnaroundIndices)
         }
 
-        // Single request for routes under the limit
-        fetchSingleRoute(processedWaypoints)
+        // No turnarounds - process normally
+        if (waypoints.size > MAX_WAYPOINTS_PER_REQUEST) {
+            Log.d(TAG, "Route has ${waypoints.size} waypoints, splitting into chunks of $MAX_WAYPOINTS_PER_REQUEST")
+            return@withContext fetchRouteInChunks(waypoints)
+        }
+
+        fetchSingleRoute(waypoints)
     }
 
     /**
-     * Detects turn-around points (where the route reverses direction) and inserts virtual waypoints.
-     * This forces OSRM to route to the address and then back out the same way, rather than continuing
-     * to the end of the street to find a turnaround.
+     * Detects indices of waypoints that are turn-around points (where bearing changes > 90°).
      */
-    private fun insertTurnaroundDuplicates(waypoints: List<GeoPoint>): List<GeoPoint> {
-        if (waypoints.size < 3) return waypoints
+    private fun detectTurnarounds(waypoints: List<GeoPoint>): List<Int> {
+        if (waypoints.size < 3) return emptyList()
 
-        val result = mutableListOf<GeoPoint>()
-        result.add(waypoints[0])
+        val turnarounds = mutableListOf<Int>()
 
         for (i in 1 until waypoints.size - 1) {
             val prev = waypoints[i - 1]
             val current = waypoints[i]
             val next = waypoints[i + 1]
 
-            // Calculate bearing from prev->current and current->next
             val bearingIn = calculateBearing(prev, current)
             val bearingOut = calculateBearing(current, next)
-
-            // Calculate the absolute difference in bearing (normalized to 0-180 range)
             val bearingDiff = normalizeBearingDiff(bearingOut - bearingIn)
 
-            // If the bearing changes by more than 90 degrees, this is a turn-around point
             if (bearingDiff > 90.0) {
-                // Insert a virtual waypoint 50 meters past the stop in the incoming direction
-                // This forces OSRM to route: prev -> current -> virtual -> current -> next
-                // Using 50m to ensure OSRM doesn't optimize it away
-                val virtualPoint = offsetPoint(current, bearingIn, distanceMeters = 50.0)
-
-                Log.d(TAG, "Detected turnaround at waypoint $i: bearing change ${bearingDiff.toInt()}° (in: ${bearingIn.toInt()}°, out: ${bearingOut.toInt()}°)")
-                Log.d(TAG, "  Stop: (${current.latitude}, ${current.longitude})")
-                Log.d(TAG, "  Virtual: (${virtualPoint.latitude}, ${virtualPoint.longitude})")
-                Log.d(TAG, "  Pattern: stop -> virtual 20m ahead -> back to stop -> next")
-
-                // Add the actual stop
-                result.add(current)
-                result.add(virtualPoint)
-                result.add(current)  // Add the stop again to route back to it
-            } else {
-                result.add(current)
+                turnarounds.add(i)
+                Log.d(TAG, "Detected turnaround at waypoint $i: bearing change ${bearingDiff.toInt()}°")
             }
         }
 
-        result.add(waypoints.last())
+        return turnarounds
+    }
+
+    /**
+     * Fetches route with turnarounds by splitting into segments and handling turnarounds with straight lines.
+     * For turnaround stops, we skip the OSRM routing since the driver does a K-turn right at the address.
+     */
+    private suspend fun fetchRouteWithTurnarounds(waypoints: List<GeoPoint>, turnaroundIndices: List<Int>): List<GeoPoint>? {
+        val result = mutableListOf<GeoPoint>()
+        var segmentStart = 0
+
+        for (turnaroundIdx in turnaroundIndices.sorted() + listOf(waypoints.size)) {
+            // Fetch OSRM route up to (but not including) the turnaround
+            if (turnaroundIdx > segmentStart) {
+                val segment = waypoints.subList(segmentStart, turnaroundIdx + if (turnaroundIdx < waypoints.size) 1 else 0)
+                val segmentRoute = if (segment.size > MAX_WAYPOINTS_PER_REQUEST) {
+                    fetchRouteInChunks(segment)
+                } else {
+                    fetchSingleRoute(segment)
+                }
+
+                if (segmentRoute == null) return null
+
+                // Add segment, avoiding duplicates at joins
+                if (result.isEmpty()) {
+                    result.addAll(segmentRoute)
+                } else {
+                    result.addAll(segmentRoute.drop(1))
+                }
+            }
+
+            // Handle turnaround with straight line back
+            if (turnaroundIdx < waypoints.size - 1) {
+                val turnaroundStop = waypoints[turnaroundIdx]
+                val nextStop = waypoints[turnaroundIdx + 1]
+
+                // Add straight line from turnaround back to next stop (driver does K-turn here)
+                result.add(turnaroundStop)
+                result.add(nextStop)
+
+                Log.d(TAG, "Added straight-line turnaround at waypoint $turnaroundIdx")
+                segmentStart = turnaroundIdx + 1
+            }
+        }
+
         return result
     }
 
