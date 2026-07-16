@@ -119,11 +119,10 @@ class RouteDirectionsFetcher {
 
             // Handle turnaround with straight line back
             if (turnaroundIdx < waypoints.size - 1) {
-                val turnaroundStop = waypoints[turnaroundIdx]
                 val nextStop = waypoints[turnaroundIdx + 1]
 
-                // Add straight line from turnaround back to next stop (driver does K-turn here)
-                result.add(turnaroundStop)
+                // Add straight line from turnaround stop (already in result) to next stop (driver does K-turn here)
+                // Don't add turnaroundStop again - it's already at the end of the segment we just added
                 result.add(nextStop)
 
                 Log.d(TAG, "Added straight-line turnaround at waypoint $turnaroundIdx")
