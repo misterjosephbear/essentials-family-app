@@ -100,27 +100,36 @@ class RouteDirectionsFetcher {
                 val segment = waypoints.subList(segmentStart, segmentEnd)
 
                 // For very short segments (1-2 stops), just use straight lines
-                val segmentRoute = if (segment.size <= 2) {
+                val (segmentRoute, isOsrmRoute) = if (segment.size <= 2) {
                     Log.d(TAG, "Using straight line for short segment ($segmentStart to $turnaroundIdx, ${segment.size} stops)")
-                    segment
+                    Pair(segment, false)
                 } else if (segment.size > MAX_WAYPOINTS_PER_REQUEST) {
-                    fetchRouteInChunks(segment) ?: segment // Fallback to straight if fetch fails
+                    val osrmResult = fetchRouteInChunks(segment)
+                    Pair(osrmResult ?: segment, osrmResult != null)
                 } else {
-                    fetchSingleRoute(segment) ?: segment // Fallback to straight if fetch fails
+                    val osrmResult = fetchSingleRoute(segment)
+                    Pair(osrmResult ?: segment, osrmResult != null)
                 }
 
                 // Add segment, avoiding duplicates
-                // First segment or if last point in result doesn't match first point of segment
                 if (result.isEmpty()) {
                     result.addAll(segmentRoute)
                 } else {
-                    // Check if we need to drop first point to avoid duplicate
                     val lastPoint = result.last()
                     val firstNewPoint = segmentRoute.first()
-                    if (isDuplicate(lastPoint, firstNewPoint)) {
+
+                    // Only drop duplicate if:
+                    // 1. Points are actually duplicates AND
+                    // 2. This is an OSRM route (not fallback waypoints)
+                    // For fallback waypoints, we need to keep all points since there's no interpolation
+                    if (isDuplicate(lastPoint, firstNewPoint) && isOsrmRoute) {
                         result.addAll(segmentRoute.drop(1))
+                        Log.d(TAG, "Dropped duplicate first point from OSRM segment")
                     } else {
                         result.addAll(segmentRoute)
+                        if (!isOsrmRoute && isDuplicate(lastPoint, firstNewPoint)) {
+                            Log.d(TAG, "Kept duplicate waypoint (fallback, not OSRM)")
+                        }
                     }
                 }
             }
