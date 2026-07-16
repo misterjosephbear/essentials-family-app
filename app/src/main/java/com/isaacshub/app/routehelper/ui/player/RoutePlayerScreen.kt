@@ -147,7 +147,6 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                 modifier = Modifier.fillMaxSize().clipToBounds()
             )
 
-            val nextStop = state.nextStopIndex?.let { state.stops.getOrNull(it) }
             Card(
                 modifier = Modifier.align(Alignment.TopCenter).padding(16.dp).fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -158,9 +157,51 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                             "This route has no stops yet.",
                             style = MaterialTheme.typography.titleMedium
                         )
-                        nextStop != null -> {
+                        state.isAtStop && state.clusterStops.isNotEmpty() -> {
+                            // Currently stopped at a stop
+                            Text("Currently at:", style = MaterialTheme.typography.titleMedium)
+                            state.clusterStops.forEach { stop ->
+                                Text(
+                                    stop.addressLabel,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                                )
+                                stop.note?.let { note ->
+                                    Text(
+                                        note,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                            }
+                        }
+                        state.clusterStops.size > 1 -> {
+                            // Multiple stops clustered together
+                            Text("Next stops:", style = MaterialTheme.typography.titleMedium)
+                            state.clusterStops.forEach { stop ->
+                                Text(
+                                    stop.addressLabel,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                                )
+                                stop.note?.let { note ->
+                                    Text(
+                                        note,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                            }
+                        }
+                        state.clusterStops.size == 1 -> {
+                            // Single next stop
+                            val nextStop = state.clusterStops.first()
                             Text("Next stop: ${nextStop.addressLabel}", style = MaterialTheme.typography.titleMedium)
-                            Text("Package: feature coming soon", style = MaterialTheme.typography.bodySmall)
+                            nextStop.note?.let { note ->
+                                Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                            }
                         }
                         else -> Text("Route complete!", style = MaterialTheme.typography.titleMedium)
                     }

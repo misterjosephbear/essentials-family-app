@@ -4,11 +4,27 @@ package com.isaacshub.app.routehelper.domain
 const val STOP_ARRIVAL_RADIUS_METERS = 3.0
 
 /**
- * If the driver is currently within [STOP_ARRIVAL_RADIUS_METERS] of ANY remaining stop, fast-forwards to
- * that stop (or the earliest one in sequence if multiple are nearby). Otherwise stays at the current index.
- * Never advances past the end of [stops] - once every stop has been reached, the index holds at `stops.size`.
+ * How far behind the driver a stop can be before it's considered "passed" and auto-skipped.
+ * This allows skipping stops when driving past them without stopping (30 feet ≈ 9 meters).
  */
-fun advanceToNextStop(currentLocation: GeoPoint, stops: List<GeoPoint>, currentIndex: Int): Int {
+const val STOP_PASSED_RADIUS_METERS = 9.0
+
+/**
+ * Advances to the next stop based on the driver's current location and previous location.
+ *
+ * Rules:
+ * 1. If within STOP_ARRIVAL_RADIUS of any remaining stop, jump to that stop (or earliest if multiple)
+ * 2. If moving and the next stop is now STOP_PASSED_RADIUS behind us, skip it (passed without stopping)
+ * 3. Otherwise stay at current index
+ *
+ * Never advances past the end of [stops] - once every stop has been reached, index holds at `stops.size`.
+ */
+fun advanceToNextStop(
+    currentLocation: GeoPoint,
+    previousLocation: GeoPoint?,
+    stops: List<GeoPoint>,
+    currentIndex: Int
+): Int {
     val index = currentIndex.coerceIn(0, stops.size)
     if (index >= stops.size) return index
 
@@ -19,7 +35,19 @@ fun advanceToNextStop(currentLocation: GeoPoint, stops: List<GeoPoint>, currentI
         }
     }
 
-    return index  // No nearby stops, stay at current position
+    // If we have a previous location and we're moving, check if we passed the next stop
+    if (previousLocation != null && index < stops.size) {
+        val nextStop = stops[index]
+        val distanceToPrev = distanceMeters(previousLocation, nextStop)
+        val distanceToCurrent = distanceMeters(currentLocation, nextStop)
+
+        // If the stop is now behind us (distance increasing) and far enough behind, skip it
+        if (distanceToCurrent > distanceToPrev && distanceToCurrent > STOP_PASSED_RADIUS_METERS) {
+            return index + 1  // Skip this stop, advance to next
+        }
+    }
+
+    return index  // No nearby stops and didn't pass any, stay at current position
 }
 
 /** Below this speed a fresh GPS bearing reading is too noisy to trust, so the map keeps its last known heading. */

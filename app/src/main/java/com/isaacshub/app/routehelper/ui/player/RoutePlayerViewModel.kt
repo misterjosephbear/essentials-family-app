@@ -10,7 +10,9 @@ import com.isaacshub.app.routehelper.data.RoutedStopEntity
 import com.isaacshub.app.routehelper.domain.GeoPoint
 import com.isaacshub.app.routehelper.domain.LocationSample
 import com.isaacshub.app.routehelper.domain.advanceToNextStop
+import com.isaacshub.app.routehelper.domain.distanceMeters
 import com.isaacshub.app.routehelper.domain.resolveMapBearing
+import com.isaacshub.app.routehelper.domain.STOP_ARRIVAL_RADIUS_METERS
 import com.isaacshub.app.routehelper.location.liveLocationFlow
 import com.isaacshub.app.routehelper.network.RouteDirectionsFetcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -24,11 +26,15 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private const val TAG = "RoutePlayerViewModel"
+
+/** How close stops must be to be considered a cluster (15 meters ≈ 50 feet). */
+private const val STOP_CLUSTER_RADIUS_METERS = 15.0
 
 data class RoutePlayerUiState(
     val currentLocation: GeoPoint? = null,
@@ -46,7 +52,11 @@ data class RoutePlayerUiState(
     /** ZIP code for the current route - used to validate envelope scans */
     val routeZip: String? = null,
     /** Current road name from reverse geocoding - used to validate envelope scans */
-    val currentRoadName: String? = null
+    val currentRoadName: String? = null,
+    /** True if the driver is currently stopped at a stop (within arrival radius) */
+    val isAtStop: Boolean = false,
+    /** List of stops in the current cluster (next stops that are close together) */
+    val clusterStops: List<RoutedStopEntity> = emptyList()
 )
 
 /**
@@ -115,12 +125,20 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
     private val currentRoadNameFlow: Flow<String?> = flowOf(null)
 
     /** Which stop the driver is heading to, advancing whenever they come within arrival range of the current one. */
+    private data class StopAdvanceState(val index: Int, val previousLocation: GeoPoint?)
+
     private val nextStopIndexFlow: Flow<Int> = locationFlow.combine(stopsFlow) { sample, stops -> sample to stops }
-        .scan(0) { previousIndex, (sample, stops) ->
+        .scan(StopAdvanceState(0, null)) { state, (sample, stops) ->
             val location = sample?.point
             val points = stops.map { GeoPoint(it.latitude, it.longitude) }
-            if (location == null) previousIndex.coerceAtMost(points.size) else advanceToNextStop(location, points, previousIndex)
+            if (location == null) {
+                StopAdvanceState(state.index.coerceAtMost(points.size), null)
+            } else {
+                val newIndex = advanceToNextStop(location, state.previousLocation, points, state.index)
+                StopAdvanceState(newIndex, location)
+            }
         }
+        .map { it.index }
 
     private val bearingFlow: Flow<Float> = locationFlow.scan(0f) { previousBearing, sample ->
         sample?.let { resolveMapBearing(it, previousBearing) } ?: previousBearing
@@ -216,15 +234,49 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         val roadRoute = values[4] as RoadRouteResult
         val routeZip = values[5] as String?
         val currentRoadName = values[6] as String?
+
+        // Calculate if driver is currently at a stop
+        val currentLocation = sample?.point
+        val isAtStop = if (currentLocation != null && nextIndex < stops.size) {
+            val nextStop = stops[nextIndex]
+            val nextStopPoint = GeoPoint(nextStop.latitude, nextStop.longitude)
+            distanceMeters(currentLocation, nextStopPoint) < STOP_ARRIVAL_RADIUS_METERS
+        } else {
+            false
+        }
+
+        // Calculate cluster of nearby stops
+        val clusterStops = if (currentLocation != null && nextIndex < stops.size) {
+            val cluster = mutableListOf<RoutedStopEntity>()
+            cluster.add(stops[nextIndex])
+            // Find consecutive stops within cluster radius
+            for (i in (nextIndex + 1) until stops.size) {
+                val prevStop = stops[i - 1]
+                val currentStop = stops[i]
+                val prevPoint = GeoPoint(prevStop.latitude, prevStop.longitude)
+                val currentPoint = GeoPoint(currentStop.latitude, currentStop.longitude)
+                if (distanceMeters(prevPoint, currentPoint) < STOP_CLUSTER_RADIUS_METERS) {
+                    cluster.add(currentStop)
+                } else {
+                    break  // Stop clustering when gap is too large
+                }
+            }
+            cluster
+        } else {
+            emptyList()
+        }
+
         RoutePlayerUiState(
-            currentLocation = sample?.point,
+            currentLocation = currentLocation,
             mapBearingDegrees = bearing,
             stops = stops,
             nextStopIndex = nextIndex.takeIf { it < stops.size },
             roadRoutePoints = roadRoute.points,
             roadRouteDebugInfo = roadRoute.debugInfo,
             routeZip = routeZip,
-            currentRoadName = currentRoadName
+            currentRoadName = currentRoadName,
+            isAtStop = isAtStop,
+            clusterStops = clusterStops
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), RoutePlayerUiState())
 
