@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -93,6 +94,8 @@ fun MailScanScreen(
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         hasCameraPermission = granted
     }
+    var useFrontCamera by remember { mutableStateOf(true) }
+
     LaunchedEffect(Unit) {
         if (!hasCameraPermission) permissionLauncher.launch(Manifest.permission.CAMERA)
     }
@@ -106,13 +109,21 @@ fun MailScanScreen(
                     IconButton(onClick = onCancel) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel scan")
                     }
+                },
+                actions = {
+                    IconButton(onClick = { useFrontCamera = !useFrontCamera }) {
+                        Icon(Icons.Filled.Cameraswitch, contentDescription = "Switch camera")
+                    }
                 }
             )
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (hasCameraPermission) {
-                MailCameraPreview(onTextRecognized = viewModel::onTextRecognized)
+                MailCameraPreview(
+                    useFrontCamera = useFrontCamera,
+                    onTextRecognized = viewModel::onTextRecognized
+                )
             } else {
                 Text(
                     "Camera access is needed to scan a mail piece.",
@@ -182,16 +193,20 @@ fun MailScanScreen(
 }
 
 @Composable
-private fun MailCameraPreview(onTextRecognized: (String) -> Unit) {
+private fun MailCameraPreview(useFrontCamera: Boolean, onTextRecognized: (String) -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val onTextRecognizedState = rememberUpdatedState(onTextRecognized)
+    val cameraSelector = if (useFrontCamera) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
 
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
             val previewView = PreviewView(ctx)
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+            previewView
+        },
+        update = { previewView ->
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
             cameraProviderFuture.addListener({
                 val cameraProvider = cameraProviderFuture.get()
                 val preview = Preview.Builder().build().also {
@@ -203,7 +218,7 @@ private fun MailCameraPreview(onTextRecognized: (String) -> Unit) {
                 val imageAnalysis = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
-                imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(ctx)) { imageProxy ->
+                imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
                     processImageProxy(recognizer, imageProxy, onTextRecognizedState.value)
                 }
 
@@ -211,15 +226,14 @@ private fun MailCameraPreview(onTextRecognized: (String) -> Unit) {
                     cameraProvider.unbindAll()
                     cameraProvider.bindToLifecycle(
                         lifecycleOwner,
-                        CameraSelector.DEFAULT_FRONT_CAMERA,
+                        cameraSelector,
                         preview,
                         imageAnalysis
                     )
                 } catch (_: Exception) {
                     // Camera bind can fail if the lifecycle is already destroyed by the time this runs.
                 }
-            }, ContextCompat.getMainExecutor(ctx))
-            previewView
+            }, ContextCompat.getMainExecutor(context))
         }
     )
 }
