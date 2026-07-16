@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.isaacshub.app.App
+import com.isaacshub.app.routehelper.data.RouteHelperDatabase
 import com.isaacshub.app.sleep.data.SleepDatabase
 import com.isaacshub.app.timetracking.data.TimeTrackingDatabase
 import com.isaacshub.app.vault.data.VaultApiClient
@@ -12,7 +13,7 @@ import kotlinx.coroutines.flow.first
 import java.io.File
 
 private const val REMOTE_FOLDER = "AppBackup"
-private val DATABASE_FILE_NAMES = listOf("sleep.db", "time_tracking.db")
+private val DATABASE_FILE_NAMES = listOf("sleep.db", "time_tracking.db", "route_helper.db")
 
 /**
  * Backs up every Room database and every app preference to the paired server, so nothing is lost
@@ -33,6 +34,7 @@ class AppDataBackupWorker(
 
         checkpointWal(SleepDatabase.getInstance(applicationContext))
         checkpointWal(TimeTrackingDatabase.getInstance(applicationContext))
+        checkpointWal(RouteHelperDatabase.getInstance(applicationContext))
 
         var allSucceeded = true
         for (dbName in DATABASE_FILE_NAMES) {
