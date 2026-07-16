@@ -36,7 +36,8 @@ data class RouteBuilderUiState(
     val nearestAddressSlots: List<CandidateAddressEntity?> = List(SLOT_COUNT) { null },
     val pendingCandidateIds: Set<Long> = emptySet(),
     val routedStops: List<RoutedStopEntity> = emptyList(),
-    val canUndo: Boolean = false
+    val canUndo: Boolean = false,
+    val routeZip: String? = null
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -72,6 +73,17 @@ class RouteBuilderViewModel(application: Application) : AndroidViewModel(applica
         if (id == null) flowOf(emptyList()) else repository.observeStops(id)
     }
 
+    private val routeZipFlow: Flow<String?> = routeIdFlow.flatMapLatest { id ->
+        kotlinx.coroutines.flow.flow {
+            if (id == null) {
+                emit(null)
+            } else {
+                val route = repository.getRoute(id)
+                emit(route?.zipCode)
+            }
+        }
+    }
+
     /** The current top [SLOT_COUNT] nearest unrouted candidates, re-ranked on every location/candidate change. */
     private val nearestRawFlow: Flow<List<CandidateAddress>> = combine(locationFlow, candidatesFlow) { sample, candidates ->
         val location = sample?.point
@@ -99,15 +111,23 @@ class RouteBuilderViewModel(application: Application) : AndroidViewModel(applica
         stickySlotIdsFlow,
         candidatesFlow,
         stopsFlow,
-        pendingStopsFlow
-    ) { sample, slotIds, candidates, stops, pending ->
+        pendingStopsFlow,
+        routeZipFlow
+    ) { values: Array<Any?> ->
+        val sample = values[0] as LocationSample?
+        val slotIds = values[1] as List<Long?>
+        val candidates = values[2] as List<CandidateAddressEntity>
+        val stops = values[3] as List<RoutedStopEntity>
+        val pending = values[4] as List<PendingStop>
+        val routeZip = values[5] as String?
         val byId = candidates.associateBy { it.id }
         RouteBuilderUiState(
             currentLocation = sample?.point,
             nearestAddressSlots = slotIds.map { id -> id?.let { byId[it] } },
             pendingCandidateIds = pending.map { it.candidate.id }.toSet(),
             routedStops = stops,
-            canUndo = stops.isNotEmpty()
+            canUndo = stops.isNotEmpty(),
+            routeZip = routeZip
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), RouteBuilderUiState())
 
@@ -144,5 +164,18 @@ class RouteBuilderViewModel(application: Application) : AndroidViewModel(applica
     fun undo() {
         val routeId = routeIdFlow.value ?: return
         viewModelScope.launch { repository.undoLastStop(routeId) }
+    }
+
+    fun addScannedStop(resolved: com.isaacshub.app.routehelper.ui.player.ResolvedMailStop) {
+        val routeId = routeIdFlow.value ?: return
+        viewModelScope.launch {
+            repository.addStop(
+                routeId = routeId,
+                candidateId = null,  // Scanned stops don't have a candidate ID
+                addressLabel = resolved.addressLabel,
+                note = resolved.recipientLastName,
+                location = resolved.location
+            )
+        }
     }
 }

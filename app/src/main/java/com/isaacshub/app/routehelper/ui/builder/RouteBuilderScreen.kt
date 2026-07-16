@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,10 +37,13 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isaacshub.app.routehelper.ui.common.AddressActionCard
 import com.isaacshub.app.routehelper.ui.common.newOsmMapView
+import com.isaacshub.app.routehelper.ui.player.MailScanScreen
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.util.GeoPoint as OsmGeoPoint
 
@@ -69,6 +74,7 @@ fun RouteBuilderScreen(routeId: Long) {
     }
 
     val state by viewModel.uiState.collectAsState()
+    var isScanning by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -80,6 +86,11 @@ fun RouteBuilderScreen(routeId: Long) {
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { isScanning = true }) {
+                Icon(Icons.Filled.CameraAlt, contentDescription = "Scan mail piece")
+            }
         }
     ) { padding ->
         if (!hasLocationPermission) {
@@ -125,6 +136,21 @@ fun RouteBuilderScreen(routeId: Long) {
                     }
                 }
             }
+        }
+    }
+
+    if (isScanning) {
+        Dialog(onDismissRequest = { isScanning = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            MailScanScreen(
+                currentLocation = state.currentLocation,
+                routeZip = state.routeZip,
+                currentRoadName = null,
+                onResolved = { resolved ->
+                    viewModel.addScannedStop(resolved)
+                    isScanning = false
+                },
+                onCancel = { isScanning = false }
+            )
         }
     }
 }
