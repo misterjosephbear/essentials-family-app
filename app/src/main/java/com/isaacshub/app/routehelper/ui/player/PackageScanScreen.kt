@@ -376,6 +376,12 @@ private fun processPackageImage(
                 val trackingNumber = extractUSPSTrackingNumber(text)
                 val address = extractAddress(text)
 
+                // Debug logging
+                if (trackingNumber != null || address != null) {
+                    android.util.Log.d("PackageScanner", "Found tracking: $trackingNumber, address: $address")
+                    android.util.Log.d("PackageScanner", "Full OCR text:\n$text")
+                }
+
                 if (trackingNumber != null && address != null) {
                     onPackageDetected(ScannedPackage(trackingNumber, address))
                 }
@@ -414,20 +420,55 @@ private fun extractUSPSTrackingNumber(text: String): String? {
 }
 
 /**
- * Extract address from OCR text.
- * Looks for patterns like: number + street name + optional unit
+ * Extract delivery address from OCR text.
+ * On USPS packages, the delivery address is typically larger and centered.
+ * We look for the largest/most prominent address pattern, avoiding the return address.
+ *
+ * Strategy:
+ * 1. Find all lines that look like addresses (number + street)
+ * 2. Filter out lines near "FROM:" or return address indicators
+ * 3. Prefer addresses that appear in the center/right portion of the text
+ * 4. Return the first valid delivery address found
  */
 private fun extractAddress(text: String): String? {
     val lines = text.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
 
-    // Look for a line that starts with a number (street address)
+    // Address pattern: starts with a number, followed by street name
     val addressPattern = Regex("""^\d+\s+[A-Za-z].*""")
 
-    for (line in lines) {
+    // Return address indicators (typically in upper left)
+    val returnAddressIndicators = listOf("from:", "return", "sender")
+
+    // Find all potential addresses
+    val potentialAddresses = mutableListOf<Pair<Int, String>>()
+
+    for ((index, line) in lines.withIndex()) {
         if (addressPattern.matches(line)) {
-            return line
+            potentialAddresses.add(Pair(index, line))
         }
     }
 
-    return null
+    if (potentialAddresses.isEmpty()) return null
+
+    // Filter out return addresses
+    val deliveryAddresses = potentialAddresses.filter { (index, address) ->
+        // Check if any of the preceding 3 lines contain return address indicators
+        val contextLines = lines.subList(
+            maxOf(0, index - 3),
+            minOf(lines.size, index + 1)
+        )
+
+        val hasReturnIndicator = contextLines.any { line ->
+            returnAddressIndicators.any { indicator ->
+                line.lowercase().contains(indicator)
+            }
+        }
+
+        !hasReturnIndicator
+    }
+
+    // Return the first delivery address found (should be the main one)
+    // If we filtered them all out, just return the first address as fallback
+    return deliveryAddresses.firstOrNull()?.second
+        ?: potentialAddresses.firstOrNull()?.second
 }

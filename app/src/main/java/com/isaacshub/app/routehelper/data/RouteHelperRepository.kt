@@ -184,18 +184,39 @@ class RouteHelperRepository(
         val packages = dao.observePackages(routeId)
         val stops = dao.getStopsOnce(routeId)
 
+        android.util.Log.d("PackageMatching", "Attempting to match packages for route $routeId")
+        android.util.Log.d("PackageMatching", "Found ${stops.size} stops in route")
+
         // Match packages to stops by comparing addresses
         packages.collect { pkgList ->
+            android.util.Log.d("PackageMatching", "Matching ${pkgList.size} packages")
+
             for (pkg in pkgList) {
-                if (pkg.routedStopId != null) continue  // Already matched
+                if (pkg.routedStopId != null) {
+                    android.util.Log.d("PackageMatching", "Package ${pkg.trackingNumber} already matched to stop ${pkg.routedStopId}")
+                    continue  // Already matched
+                }
+
+                android.util.Log.d("PackageMatching", "Looking for match for package: ${pkg.addressLabel}")
 
                 // Find best matching stop
                 val matchedStop = stops.find { stop ->
-                    addressesMatch(pkg.addressLabel, stop.addressLabel)
+                    val matches = addressesMatch(pkg.addressLabel, stop.addressLabel)
+                    if (matches) {
+                        android.util.Log.d("PackageMatching", "  ✓ Matched with stop: ${stop.addressLabel}")
+                    }
+                    matches
                 }
 
                 if (matchedStop != null) {
                     dao.setPackageStop(pkg.id, matchedStop.id)
+                    android.util.Log.d("PackageMatching", "Package ${pkg.trackingNumber} matched to stop ${matchedStop.id}")
+                } else {
+                    android.util.Log.w("PackageMatching", "  ✗ No match found for package: ${pkg.addressLabel}")
+                    android.util.Log.w("PackageMatching", "  Available stops:")
+                    stops.forEach { stop ->
+                        android.util.Log.w("PackageMatching", "    - ${stop.addressLabel}")
+                    }
                 }
             }
         }
