@@ -592,9 +592,9 @@ private fun addArrowMarkers(mapView: org.osmdroid.views.MapView, segment: List<G
         val arrowLon = p1.longitude + (p2.longitude - p1.longitude) * t
         val arrowPoint = GeoPoint(arrowLat, arrowLon)
 
-        // Calculate bearing FROM this arrow point TO the next point on the segment
-        // This ensures arrows point in the actual direction of travel along the offset path
-        val bearing = calculateBearing(arrowPoint, p2)
+        // Calculate bearing FROM previous point TO this arrow point
+        // This gives us the direction of travel along the segment
+        val bearing = calculateBearing(p1, arrowPoint)
 
         // Create a scaled arrow marker
         mapView.overlays.add(
