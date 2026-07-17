@@ -183,11 +183,23 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                             // Currently stopped at a stop
                             Text("Currently at:", style = MaterialTheme.typography.titleMedium)
                             state.clusterStops.forEach { stop ->
-                                Text(
-                                    stop.addressLabel,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp)
-                                )
+                                Row(
+                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        stop.addressLabel,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    val packageCount = state.packageCountsByStop[stop.id] ?: 0
+                                    if (packageCount > 0) {
+                                        Text(
+                                            " 📦×$packageCount",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
                                 stop.note?.let { note ->
                                     Text(
                                         note,
@@ -202,11 +214,23 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                             // Multiple stops clustered together
                             Text("Next stops:", style = MaterialTheme.typography.titleMedium)
                             state.clusterStops.forEach { stop ->
-                                Text(
-                                    stop.addressLabel,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp)
-                                )
+                                Row(
+                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        stop.addressLabel,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    val packageCount = state.packageCountsByStop[stop.id] ?: 0
+                                    if (packageCount > 0) {
+                                        Text(
+                                            " 📦×$packageCount",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
                                 stop.note?.let { note ->
                                     Text(
                                         note,
@@ -220,7 +244,13 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                         state.clusterStops.size == 1 -> {
                             // Single next stop
                             val nextStop = state.clusterStops.first()
-                            Text("Next stop: ${nextStop.addressLabel}", style = MaterialTheme.typography.titleMedium)
+                            val packageCount = state.packageCountsByStop[nextStop.id] ?: 0
+                            val stopText = if (packageCount > 0) {
+                                "${nextStop.addressLabel} 📦×$packageCount"
+                            } else {
+                                nextStop.addressLabel
+                            }
+                            Text("Next stop: $stopText", style = MaterialTheme.typography.titleMedium)
                             nextStop.note?.let { note ->
                                 Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                             }
