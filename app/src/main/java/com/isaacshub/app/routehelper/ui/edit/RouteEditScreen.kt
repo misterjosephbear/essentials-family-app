@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -230,6 +231,8 @@ private fun AddSectionDialog(
     var selectedEndStop by remember { mutableStateOf<RoutedStopEntity?>(null) }
     var startDropdownExpanded by remember { mutableStateOf(false) }
     var endDropdownExpanded by remember { mutableStateOf(false) }
+    var startSearchQuery by remember { mutableStateOf("") }
+    var endSearchQuery by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -245,62 +248,128 @@ private fun AddSectionDialog(
                     singleLine = true
                 )
 
-                // Start stop dropdown
+                // Start stop dropdown with search
                 ExposedDropdownMenuBox(
                     expanded = startDropdownExpanded,
                     onExpandedChange = { startDropdownExpanded = it }
                 ) {
                     OutlinedTextField(
-                        value = selectedStartStop?.addressLabel ?: "",
-                        onValueChange = {},
-                        readOnly = true,
+                        value = if (startDropdownExpanded) startSearchQuery else (selectedStartStop?.addressLabel ?: ""),
+                        onValueChange = {
+                            startSearchQuery = it
+                            if (!startDropdownExpanded) startDropdownExpanded = true
+                        },
                         label = { Text("Start Address") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = startDropdownExpanded) },
+                        placeholder = { Text("Search or select...") },
+                        trailingIcon = {
+                            if (startSearchQuery.isNotEmpty() && startDropdownExpanded) {
+                                IconButton(onClick = { startSearchQuery = "" }) {
+                                    Icon(Icons.Filled.Clear, "Clear search")
+                                }
+                            } else {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = startDropdownExpanded)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        singleLine = true
                     )
+
+                    // Filter stops based on search query
+                    val filteredStops = stops.filterIndexed { index, stop ->
+                        startSearchQuery.isEmpty() ||
+                        stop.addressLabel.contains(startSearchQuery, ignoreCase = true) ||
+                        "${index + 1}".contains(startSearchQuery)
+                    }
+
                     ExposedDropdownMenu(
                         expanded = startDropdownExpanded,
-                        onDismissRequest = { startDropdownExpanded = false }
+                        onDismissRequest = {
+                            startDropdownExpanded = false
+                            startSearchQuery = ""
+                        }
                     ) {
-                        stops.forEachIndexed { index, stop ->
+                        if (filteredStops.isEmpty()) {
                             DropdownMenuItem(
-                                text = { Text("${index + 1}. ${stop.addressLabel}") },
-                                onClick = {
-                                    selectedStartStop = stop
-                                    startDropdownExpanded = false
-                                }
+                                text = { Text("No matches found", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline) },
+                                onClick = {},
+                                enabled = false
                             )
+                        } else {
+                            filteredStops.forEachIndexed { _, stop ->
+                                val stopIndex = stops.indexOf(stop) + 1
+                                DropdownMenuItem(
+                                    text = { Text("$stopIndex. ${stop.addressLabel}") },
+                                    onClick = {
+                                        selectedStartStop = stop
+                                        startDropdownExpanded = false
+                                        startSearchQuery = ""
+                                    }
+                                )
+                            }
                         }
                     }
                 }
 
-                // End stop dropdown
+                // End stop dropdown with search
                 ExposedDropdownMenuBox(
                     expanded = endDropdownExpanded,
                     onExpandedChange = { endDropdownExpanded = it }
                 ) {
                     OutlinedTextField(
-                        value = selectedEndStop?.addressLabel ?: "",
-                        onValueChange = {},
-                        readOnly = true,
+                        value = if (endDropdownExpanded) endSearchQuery else (selectedEndStop?.addressLabel ?: ""),
+                        onValueChange = {
+                            endSearchQuery = it
+                            if (!endDropdownExpanded) endDropdownExpanded = true
+                        },
                         label = { Text("End Address") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = endDropdownExpanded) },
+                        placeholder = { Text("Search or select...") },
+                        trailingIcon = {
+                            if (endSearchQuery.isNotEmpty() && endDropdownExpanded) {
+                                IconButton(onClick = { endSearchQuery = "" }) {
+                                    Icon(Icons.Filled.Clear, "Clear search")
+                                }
+                            } else {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = endDropdownExpanded)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        singleLine = true
                     )
+
+                    // Filter stops based on search query
+                    val filteredEndStops = stops.filterIndexed { index, stop ->
+                        endSearchQuery.isEmpty() ||
+                        stop.addressLabel.contains(endSearchQuery, ignoreCase = true) ||
+                        "${index + 1}".contains(endSearchQuery)
+                    }
+
                     ExposedDropdownMenu(
                         expanded = endDropdownExpanded,
-                        onDismissRequest = { endDropdownExpanded = false }
+                        onDismissRequest = {
+                            endDropdownExpanded = false
+                            endSearchQuery = ""
+                        }
                     ) {
-                        stops.forEachIndexed { index, stop ->
+                        if (filteredEndStops.isEmpty()) {
                             DropdownMenuItem(
-                                text = { Text("${index + 1}. ${stop.addressLabel}") },
-                                onClick = {
-                                    selectedEndStop = stop
-                                    endDropdownExpanded = false
-                                }
+                                text = { Text("No matches found", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline) },
+                                onClick = {},
+                                enabled = false
                             )
+                        } else {
+                            filteredEndStops.forEachIndexed { _, stop ->
+                                val stopIndex = stops.indexOf(stop) + 1
+                                DropdownMenuItem(
+                                    text = { Text("$stopIndex. ${stop.addressLabel}") },
+                                    onClick = {
+                                        selectedEndStop = stop
+                                        endDropdownExpanded = false
+                                        endSearchQuery = ""
+                                    }
+                                )
+                            }
                         }
                     }
                 }
