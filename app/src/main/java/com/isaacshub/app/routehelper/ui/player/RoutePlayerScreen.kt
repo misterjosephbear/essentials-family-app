@@ -590,17 +590,18 @@ private fun addArrowMarkers(mapView: org.osmdroid.views.MapView, segment: List<G
 
         val arrowLat = p1.latitude + (p2.latitude - p1.latitude) * t
         val arrowLon = p1.longitude + (p2.longitude - p1.longitude) * t
+        val arrowPoint = GeoPoint(arrowLat, arrowLon)
+
+        // Calculate bearing FROM this arrow point TO the next point on the segment
+        // This ensures arrows point in the actual direction of travel along the offset path
+        val bearing = calculateBearing(arrowPoint, p2)
 
         // Create a scaled arrow marker
         mapView.overlays.add(
             Marker(mapView).apply {
                 position = OsmGeoPoint(arrowLat, arrowLon)
-                // Use a simple arrow character or icon
                 icon = createArrowIcon(scaleFactor)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-
-                // Calculate rotation based on bearing
-                val bearing = calculateBearing(p1, p2)
                 rotation = bearing.toFloat()
             }
         )

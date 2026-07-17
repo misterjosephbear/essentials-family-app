@@ -208,10 +208,17 @@ private fun PackageCameraScanner(
     var sectionsForLastPackage by remember { mutableStateOf<List<String>>(emptyList()) }
     var lastScannedTrackingNumber by remember { mutableStateOf<String?>(null) }
 
-    // Access repository to get sections
+    // Access repository to get sections and route stops
     val context = LocalContext.current
     val app = context.applicationContext as com.isaacshub.app.App
     val repository = app.routeHelperRepository
+
+    // Load route stops for address validation
+    var routeStops by remember { mutableStateOf<List<com.isaacshub.app.routehelper.data.RoutedStopEntity>>(emptyList()) }
+    LaunchedEffect(routeId) {
+        routeStops = repository.getStopsOnce(routeId)
+        android.util.Log.d("PackageScanner", "Loaded ${routeStops.size} stops for route $routeId")
+    }
 
     // When a package is scanned, look up its sections and re-enable scanning after cooldown
     LaunchedEffect(lastScannedPackage) {
@@ -257,6 +264,7 @@ private fun PackageCameraScanner(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             PackageCameraPreview(
                 useFrontCamera = useFrontCamera,
+                routeStops = routeStops,
                 onPackageDetected = { pkg ->
                     // Only scan if we're not in cooldown and it's a new tracking number
                     if (canScan && pkg.trackingNumber != lastScannedTrackingNumber) {
@@ -344,11 +352,13 @@ private fun PackageCameraScanner(
 @Composable
 private fun PackageCameraPreview(
     useFrontCamera: Boolean,
+    routeStops: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>,
     onPackageDetected: (ScannedPackage) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val onPackageDetectedState = rememberUpdatedState(onPackageDetected)
+    val routeStopsState = rememberUpdatedState(routeStops)
 
     val recognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
 
@@ -369,7 +379,7 @@ private fun PackageCameraPreview(
                         .build()
                         .also {
                             it.setAnalyzer(executor) { imageProxy ->
-                                processPackageImage(imageProxy, recognizer, onPackageDetectedState.value)
+                                processPackageImage(imageProxy, recognizer, routeStopsState.value, onPackageDetectedState.value)
                             }
                         }
 
@@ -408,7 +418,7 @@ private fun PackageCameraPreview(
                     .build()
                     .also {
                         it.setAnalyzer(executor) { imageProxy ->
-                            processPackageImage(imageProxy, recognizer, onPackageDetectedState.value)
+                            processPackageImage(imageProxy, recognizer, routeStopsState.value, onPackageDetectedState.value)
                         }
                     }
 
@@ -440,6 +450,7 @@ private fun PackageCameraPreview(
 private fun processPackageImage(
     imageProxy: ImageProxy,
     recognizer: TextRecognizer,
+    routeStops: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>,
     onPackageDetected: (ScannedPackage) -> Unit
 ) {
     @androidx.camera.core.ExperimentalGetImage
@@ -450,7 +461,7 @@ private fun processPackageImage(
             .addOnSuccessListener { visionText ->
                 val text = visionText.text
                 val trackingNumber = extractUSPSTrackingNumber(text)
-                val address = extractAddress(text)
+                val address = extractAddress(text, routeStops)
 
                 // Debug logging
                 if (trackingNumber != null || address != null) {
@@ -496,7 +507,7 @@ private fun extractUSPSTrackingNumber(text: String): String? {
 }
 
 /**
- * Extract delivery address from OCR text.
+ * Extract delivery address from OCR text with route validation.
  * On USPS packages, the delivery address is typically larger and centered.
  * We look for the largest/most prominent address pattern, avoiding the return address.
  *
@@ -505,9 +516,10 @@ private fun extractUSPSTrackingNumber(text: String): String? {
  * 2. Filter out lines near "FROM:" or return address indicators
  * 3. Prefer addresses in middle section of text (delivery label is centered)
  * 4. Prefer longer addresses (delivery address typically more complete)
- * 5. Return the most likely delivery address
+ * 5. VALIDATE against actual route stops - reject if not on route
+ * 6. Return the most likely delivery address that matches a route stop
  */
-private fun extractAddress(text: String): String? {
+private fun extractAddress(text: String, routeStops: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>): String? {
     val lines = text.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
 
     // Address pattern: starts with a number, followed by street name
@@ -601,5 +613,26 @@ private fun extractAddress(text: String): String? {
     }
     android.util.Log.d("AddressExtraction", "Selected: ${bestCandidate?.text}")
 
-    return bestCandidate?.text
+    // VALIDATE: Check if the extracted address matches any stop on the route
+    val extractedAddress = bestCandidate?.text ?: return null
+
+    // Normalize for comparison (lowercase, trim spaces)
+    val normalizedExtracted = extractedAddress.lowercase().trim()
+
+    // Check for fuzzy match with route stops
+    val matchingStop = routeStops.find { stop ->
+        val normalizedStop = stop.addressLabel.lowercase().trim()
+        // Exact match or one contains the other (handles abbreviated vs full addresses)
+        normalizedStop == normalizedExtracted ||
+        normalizedStop.contains(normalizedExtracted) ||
+        normalizedExtracted.contains(normalizedStop)
+    }
+
+    if (matchingStop != null) {
+        android.util.Log.d("AddressExtraction", "✓ VALIDATED: Address found on route (matched: ${matchingStop.addressLabel})")
+        return extractedAddress
+    } else {
+        android.util.Log.w("AddressExtraction", "✗ REJECTED: Address '$extractedAddress' NOT on route (${routeStops.size} stops checked)")
+        return null  // Reject addresses not on the route
+    }
 }

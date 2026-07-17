@@ -200,24 +200,28 @@ private fun generateUturnArc(
     val arcPoints = mutableListOf<GeoPoint>()
     arcPoints.add(arcStart)
 
-    // For U-turns, we want the arc to go OUTWARD (the long way around)
-    // Calculate the outer arc bearing by going the opposite direction
+    // For U-turns with right-side offset, ALWAYS go the LONG way (outward arc)
+    // This means going BACKWARDS through bearing space (subtract instead of add)
     val bearingDiff = normalizeBearingDiff(offsetBearingOut - offsetBearingIn)
-    val goLongWay = bearingDiff < 180.0  // If short way is < 180, we need to go the long way
 
-    // Generate intermediate arc points
+    // Determine if we should go backwards (long way) or forwards (short way)
+    // For U-turns, the short way would cut across the road - we want the long way
+    val goBackwards = bearingDiff < 180.0
+
+    // Generate intermediate arc points - always going the OUTWARD direction
     for (i in 1 until UTURN_ARC_POINTS) {
         val t = i.toDouble() / UTURN_ARC_POINTS
 
-        // Interpolate bearing going the LONG way (outward arc for U-turn)
-        val bearing = if (goLongWay) {
-            // Go the opposite direction (add 360 to force long way)
-            val start = offsetBearingIn
-            val end = if (offsetBearingOut > offsetBearingIn) offsetBearingOut - 360.0 else offsetBearingOut
-            ((start + (end - start) * t) + 360.0) % 360.0
+        // Interpolate bearing going the correct direction
+        val bearing = if (goBackwards) {
+            // Go backwards (subtract) to make the long outward arc
+            val fullCircle = offsetBearingIn - 360.0 + bearingDiff
+            val interpolated = offsetBearingIn - ((360.0 - bearingDiff) * t)
+            (interpolated + 360.0) % 360.0
         } else {
-            // Already going long way
-            interpolateBearing(offsetBearingIn, offsetBearingOut, t)
+            // Go forwards - already the long way
+            val interpolated = offsetBearingIn + (bearingDiff * t)
+            interpolated % 360.0
         }
 
         // Create wider arc by increasing distance at the midpoint
