@@ -203,18 +203,20 @@ private fun PackageCameraScanner(
     onCancel: () -> Unit
 ) {
     var useFrontCamera by remember { mutableStateOf(false) }
-    var scanning by remember { mutableStateOf(true) }
+    var canScan by remember { mutableStateOf(true) }
     var lastScannedPackage by remember { mutableStateOf<ScannedPackage?>(null) }
     var sectionsForLastPackage by remember { mutableStateOf<List<String>>(emptyList()) }
+    var lastScannedTrackingNumber by remember { mutableStateOf<String?>(null) }
 
     // Access repository to get sections
     val context = LocalContext.current
     val app = context.applicationContext as com.isaacshub.app.App
     val repository = app.routeHelperRepository
 
-    // When a package is scanned, look up its sections
+    // When a package is scanned, look up its sections and re-enable scanning after cooldown
     LaunchedEffect(lastScannedPackage) {
         lastScannedPackage?.let { pkg ->
+            // Look up sections
             val stops = repository.getStopsOnce(routeId)
             val matchingStop = stops.find { stop ->
                 stop.addressLabel.contains(pkg.addressLabel, ignoreCase = true) ||
@@ -227,6 +229,10 @@ private fun PackageCameraScanner(
             } else {
                 sectionsForLastPackage = emptyList()
             }
+
+            // Re-enable scanning after 2 second cooldown
+            kotlinx.coroutines.delay(2000)
+            canScan = true
         }
     }
 
@@ -252,8 +258,10 @@ private fun PackageCameraScanner(
             PackageCameraPreview(
                 useFrontCamera = useFrontCamera,
                 onPackageDetected = { pkg ->
-                    if (scanning) {
-                        scanning = false
+                    // Only scan if we're not in cooldown and it's a new tracking number
+                    if (canScan && pkg.trackingNumber != lastScannedTrackingNumber) {
+                        canScan = false
+                        lastScannedTrackingNumber = pkg.trackingNumber
                         lastScannedPackage = pkg
                         onPackageScanned(pkg)
                     }
@@ -262,17 +270,31 @@ private fun PackageCameraScanner(
 
             Card(
                 modifier = Modifier.align(Alignment.TopCenter).padding(16.dp).fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                colors = if (canScan) {
+                    CardDefaults.cardColors()
+                } else {
+                    CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                }
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
-                        "Point camera at package label",
-                        style = MaterialTheme.typography.bodyMedium
+                        if (canScan) "Ready to scan" else "Processing...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (canScan) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSecondaryContainer
                     )
                     Text(
-                        "Make sure tracking number and address are visible",
+                        if (canScan) {
+                            "Point camera at package label"
+                        } else {
+                            "Wait 2 seconds between scans"
+                        },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = if (canScan) {
+                            MaterialTheme.colorScheme.outline
+                        } else {
+                            MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                        },
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
@@ -313,19 +335,6 @@ private fun PackageCameraScanner(
                             )
                         }
                     }
-                }
-            }
-
-            if (!scanning) {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator()
-                    Text(
-                        "Processing...",
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
                 }
             }
         }
@@ -494,8 +503,9 @@ private fun extractUSPSTrackingNumber(text: String): String? {
  * Strategy:
  * 1. Find all lines that look like addresses (number + street)
  * 2. Filter out lines near "FROM:" or return address indicators
- * 3. Prefer addresses that appear in the center/right portion of the text
- * 4. Return the first valid delivery address found
+ * 3. Prefer addresses in middle section of text (delivery label is centered)
+ * 4. Prefer longer addresses (delivery address typically more complete)
+ * 5. Return the most likely delivery address
  */
 private fun extractAddress(text: String): String? {
     val lines = text.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
@@ -504,38 +514,92 @@ private fun extractAddress(text: String): String? {
     val addressPattern = Regex("""^\d+\s+[A-Za-z].*""")
 
     // Return address indicators (typically in upper left)
-    val returnAddressIndicators = listOf("from:", "return", "sender")
+    val returnAddressIndicators = listOf("from:", "return", "sender", "ship from")
 
-    // Find all potential addresses
-    val potentialAddresses = mutableListOf<Pair<Int, String>>()
+    // Delivery indicators that suggest this is the delivery address
+    val deliveryIndicators = listOf("deliver to", "ship to", "to:")
+
+    // Find all potential addresses with metadata
+    data class AddressCandidate(
+        val index: Int,
+        val text: String,
+        val length: Int,
+        val isNearDeliveryIndicator: Boolean,
+        val isNearReturnIndicator: Boolean,
+        val positionScore: Double  // Higher for addresses in middle of text
+    )
+
+    val candidates = mutableListOf<AddressCandidate>()
 
     for ((index, line) in lines.withIndex()) {
         if (addressPattern.matches(line)) {
-            potentialAddresses.add(Pair(index, line))
-        }
-    }
+            // Check context for indicators
+            val contextLines = lines.subList(
+                maxOf(0, index - 3),
+                minOf(lines.size, index + 2)
+            )
 
-    if (potentialAddresses.isEmpty()) return null
-
-    // Filter out return addresses
-    val deliveryAddresses = potentialAddresses.filter { (index, address) ->
-        // Check if any of the preceding 3 lines contain return address indicators
-        val contextLines = lines.subList(
-            maxOf(0, index - 3),
-            minOf(lines.size, index + 1)
-        )
-
-        val hasReturnIndicator = contextLines.any { line ->
-            returnAddressIndicators.any { indicator ->
-                line.lowercase().contains(indicator)
+            val hasDeliveryIndicator = contextLines.any { contextLine ->
+                deliveryIndicators.any { indicator ->
+                    contextLine.lowercase().contains(indicator)
+                }
             }
-        }
 
-        !hasReturnIndicator
+            val hasReturnIndicator = contextLines.any { contextLine ->
+                returnAddressIndicators.any { indicator ->
+                    contextLine.lowercase().contains(indicator)
+                }
+            }
+
+            // Position score: prefer addresses in middle third of text
+            val relativePosition = index.toDouble() / lines.size.coerceAtLeast(1)
+            val positionScore = when {
+                relativePosition < 0.25 -> 0.3  // Top quarter (likely return address)
+                relativePosition > 0.75 -> 0.5  // Bottom quarter
+                else -> 1.0  // Middle half (likely delivery address)
+            }
+
+            candidates.add(AddressCandidate(
+                index = index,
+                text = line,
+                length = line.length,
+                isNearDeliveryIndicator = hasDeliveryIndicator,
+                isNearReturnIndicator = hasReturnIndicator,
+                positionScore = positionScore
+            ))
+        }
     }
 
-    // Return the first delivery address found (should be the main one)
-    // If we filtered them all out, just return the first address as fallback
-    return deliveryAddresses.firstOrNull()?.second
-        ?: potentialAddresses.firstOrNull()?.second
+    if (candidates.isEmpty()) return null
+
+    // Score each candidate
+    val scoredCandidates = candidates.map { candidate ->
+        var score = 0.0
+
+        // Strong positive: near delivery indicator
+        if (candidate.isNearDeliveryIndicator) score += 10.0
+
+        // Strong negative: near return indicator
+        if (candidate.isNearReturnIndicator) score -= 20.0
+
+        // Prefer middle position
+        score += candidate.positionScore * 5.0
+
+        // Prefer longer addresses (more complete)
+        score += (candidate.length / 50.0).coerceAtMost(3.0)
+
+        Pair(candidate, score)
+    }
+
+    // Get the highest scoring candidate
+    val bestCandidate = scoredCandidates.maxByOrNull { it.second }?.first
+
+    // Log for debugging
+    android.util.Log.d("AddressExtraction", "Candidates found: ${candidates.size}")
+    scoredCandidates.forEach { (candidate, score) ->
+        android.util.Log.d("AddressExtraction", "  ${candidate.text} (score: $score)")
+    }
+    android.util.Log.d("AddressExtraction", "Selected: ${bestCandidate?.text}")
+
+    return bestCandidate?.text
 }

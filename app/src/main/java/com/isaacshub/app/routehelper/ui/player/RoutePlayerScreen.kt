@@ -246,12 +246,25 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                             // Single next stop
                             val nextStop = state.clusterStops.first()
                             val packageCount = state.packageCountsByStop[nextStop.id] ?: 0
+                            val nextPackageAddress = state.nextPackageAddressByStop[nextStop.id]
+
                             val stopText = if (packageCount > 0) {
                                 "${nextStop.addressLabel} 📦×$packageCount"
                             } else {
                                 nextStop.addressLabel
                             }
                             Text("Next stop: $stopText", style = MaterialTheme.typography.titleMedium)
+
+                            // Show next package address if available
+                            nextPackageAddress?.let { pkgAddr ->
+                                Text(
+                                    "Next package: $pkgAddr",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+
                             nextStop.note?.let { note ->
                                 Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                             }

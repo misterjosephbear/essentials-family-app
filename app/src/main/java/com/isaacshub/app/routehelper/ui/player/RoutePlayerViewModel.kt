@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.isaacshub.app.App
 import com.isaacshub.app.routehelper.data.CachedRoadRouteEntity
+import com.isaacshub.app.routehelper.data.PackageEntity
 import com.isaacshub.app.routehelper.data.RoutedStopEntity
 import com.isaacshub.app.routehelper.domain.GeoPoint
 import com.isaacshub.app.routehelper.domain.LocationSample
@@ -58,7 +59,9 @@ data class RoutePlayerUiState(
     /** List of stops in the current cluster (next stops that are close together) */
     val clusterStops: List<RoutedStopEntity> = emptyList(),
     /** Map of stop ID to package count for that stop */
-    val packageCountsByStop: Map<Long, Int> = emptyMap()
+    val packageCountsByStop: Map<Long, Int> = emptyMap(),
+    /** Map of stop ID to first package address for that stop (for "next package" display) */
+    val nextPackageAddressByStop: Map<Long, String> = emptyMap()
 )
 
 /**
@@ -109,6 +112,10 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
 
     private val stopsFlow: Flow<List<RoutedStopEntity>> = routeIdFlow.flatMapLatest { id ->
         if (id == null) flowOf(emptyList()) else repository.observeStops(id)
+    }
+
+    private val packagesFlow: Flow<List<PackageEntity>> = routeIdFlow.flatMapLatest { id ->
+        if (id == null) flowOf(emptyList()) else repository.observeUndeliveredPackages(id)
     }
 
     private val routeZipFlow: Flow<String?> = routeIdFlow.flatMapLatest { id ->
@@ -228,7 +235,8 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         bearingFlow,
         roadRouteFlow,
         routeZipFlow,
-        currentRoadNameFlow
+        currentRoadNameFlow,
+        packagesFlow
     ) { values: Array<Any?> ->
         val sample = values[0] as LocationSample?
         val stops = values[1] as List<RoutedStopEntity>
@@ -237,6 +245,7 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         val roadRoute = values[4] as RoadRouteResult
         val routeZip = values[5] as String?
         val currentRoadName = values[6] as String?
+        val packages = values[7] as List<PackageEntity>
 
         // Calculate if driver is currently at a stop
         val currentLocation = sample?.point
@@ -269,6 +278,22 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             emptyList()
         }
 
+        // Calculate package counts and next package address for each stop
+        val packageCountsByStop = mutableMapOf<Long, Int>()
+        val nextPackageAddressByStop = mutableMapOf<Long, String>()
+
+        packages.forEach { pkg ->
+            pkg.routedStopId?.let { stopId ->
+                // Increment count
+                packageCountsByStop[stopId] = (packageCountsByStop[stopId] ?: 0) + 1
+
+                // Store first package address for this stop
+                if (!nextPackageAddressByStop.containsKey(stopId)) {
+                    nextPackageAddressByStop[stopId] = pkg.addressLabel
+                }
+            }
+        }
+
         RoutePlayerUiState(
             currentLocation = currentLocation,
             mapBearingDegrees = bearing,
@@ -279,7 +304,9 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             routeZip = routeZip,
             currentRoadName = currentRoadName,
             isAtStop = isAtStop,
-            clusterStops = clusterStops
+            clusterStops = clusterStops,
+            packageCountsByStop = packageCountsByStop,
+            nextPackageAddressByStop = nextPackageAddressByStop
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), RoutePlayerUiState())
 
