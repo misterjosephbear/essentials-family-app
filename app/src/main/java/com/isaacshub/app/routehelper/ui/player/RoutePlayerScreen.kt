@@ -53,8 +53,13 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isaacshub.app.debug.DebugLogger
 import com.isaacshub.app.routehelper.domain.GeoPoint
+import com.isaacshub.app.routehelper.domain.distanceMeters
+import com.isaacshub.app.routehelper.domain.offsetPolylineRight
 import com.isaacshub.app.routehelper.ui.common.newOsmMapView
 import kotlinx.coroutines.launch
+import android.graphics.DashPathEffect
+import android.graphics.Paint
+import android.graphics.Path
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.util.GeoPoint as OsmGeoPoint
@@ -287,13 +292,44 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
         // loaded yet (or failed - no signal, etc.) so the driver still sees a path either way.
         val routeLine = state.roadRoutePoints ?: state.stops.map { GeoPoint(it.latitude, it.longitude) }
         if (routeLine.size >= 2) {
-            view.overlays.add(
-                Polyline(view).apply {
-                    setPoints(routeLine.map { OsmGeoPoint(it.latitude, it.longitude) })
-                    outlinePaint.color = routeLineColor
-                    outlinePaint.strokeWidth = 10f
+            // Offset polyline to the right and generate U-turn arcs
+            val offsetResult = offsetPolylineRight(routeLine)
+
+            // Draw offset segments (right side of road)
+            offsetResult.offsetSegments.forEach { segment ->
+                if (segment.size >= 2) {
+                    view.overlays.add(
+                        Polyline(view).apply {
+                            setPoints(segment.map { OsmGeoPoint(it.latitude, it.longitude) })
+                            outlinePaint.color = routeLineColor
+                            outlinePaint.strokeWidth = 10f
+                            // Add arrow pattern to show direction
+                            outlinePaint.style = Paint.Style.STROKE
+                            outlinePaint.strokeCap = Paint.Cap.ROUND
+                            outlinePaint.strokeJoin = Paint.Join.ROUND
+                        }
+                    )
+
+                    // Add arrow markers along the segment
+                    addArrowMarkers(view, segment)
                 }
-            )
+            }
+
+            // Draw U-turn arcs
+            offsetResult.uturnArcs.forEach { arc ->
+                if (arc.size >= 2) {
+                    view.overlays.add(
+                        Polyline(view).apply {
+                            setPoints(arc.map { OsmGeoPoint(it.latitude, it.longitude) })
+                            outlinePaint.color = routeLineColor
+                            outlinePaint.strokeWidth = 10f
+                            outlinePaint.style = Paint.Style.STROKE
+                            outlinePaint.strokeCap = Paint.Cap.ROUND
+                            outlinePaint.strokeJoin = Paint.Join.ROUND
+                        }
+                    )
+                }
+            }
         }
 
         state.stops.forEachIndexed { index, stop ->
@@ -329,5 +365,103 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
         }
 
         view.invalidate()
+    }
+}
+
+/**
+ * Add arrow markers along a polyline segment to show direction of travel.
+ * Places arrows at regular intervals along the segment.
+ */
+private fun addArrowMarkers(mapView: org.osmdroid.views.MapView, segment: List<GeoPoint>) {
+    if (segment.size < 2) return
+
+    // Calculate total path length
+    var totalDistance = 0.0
+    val segmentDistances = mutableListOf<Double>()
+    for (i in 1 until segment.size) {
+        val dist = distanceMeters(segment[i - 1], segment[i])
+        segmentDistances.add(dist)
+        totalDistance += dist
+    }
+
+    // Place arrows every 50 meters
+    val arrowInterval = 50.0
+    val numArrows = (totalDistance / arrowInterval).toInt().coerceAtLeast(1)
+
+    for (arrowIdx in 1..numArrows) {
+        val targetDistance = arrowIdx * arrowInterval
+        var accumulated = 0.0
+        var segmentIdx = 0
+
+        // Find which segment this arrow should be on
+        while (segmentIdx < segmentDistances.size && accumulated + segmentDistances[segmentIdx] < targetDistance) {
+            accumulated += segmentDistances[segmentIdx]
+            segmentIdx++
+        }
+
+        if (segmentIdx >= segmentDistances.size) break
+
+        // Interpolate position within the segment
+        val remainingDist = targetDistance - accumulated
+        val segmentDist = segmentDistances[segmentIdx]
+        val t = if (segmentDist > 0) remainingDist / segmentDist else 0.0
+
+        val p1 = segment[segmentIdx]
+        val p2 = segment[segmentIdx + 1]
+
+        val arrowLat = p1.latitude + (p2.latitude - p1.latitude) * t
+        val arrowLon = p1.longitude + (p2.longitude - p1.longitude) * t
+
+        // Create a small arrow marker
+        mapView.overlays.add(
+            Marker(mapView).apply {
+                position = OsmGeoPoint(arrowLat, arrowLon)
+                // Use a simple arrow character or icon
+                icon = createArrowIcon()
+                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+
+                // Calculate rotation based on bearing
+                val bearing = calculateBearing(p1, p2)
+                rotation = bearing.toFloat()
+            }
+        )
+    }
+}
+
+/**
+ * Calculate bearing from point A to point B in degrees.
+ */
+private fun calculateBearing(from: GeoPoint, to: GeoPoint): Double {
+    val lat1 = Math.toRadians(from.latitude)
+    val lat2 = Math.toRadians(to.latitude)
+    val dLon = Math.toRadians(to.longitude - from.longitude)
+
+    val y = kotlin.math.sin(dLon) * kotlin.math.cos(lat2)
+    val x = kotlin.math.cos(lat1) * kotlin.math.sin(lat2) -
+            kotlin.math.sin(lat1) * kotlin.math.cos(lat2) * kotlin.math.cos(dLon)
+
+    val bearing = Math.toDegrees(kotlin.math.atan2(y, x))
+    return (bearing + 360.0) % 360.0
+}
+
+/**
+ * Create a simple arrow icon for direction markers.
+ */
+private fun createArrowIcon(): android.graphics.drawable.Drawable {
+    return android.graphics.drawable.ShapeDrawable().apply {
+        intrinsicWidth = 24
+        intrinsicHeight = 24
+        paint.color = routeLineColor
+        paint.style = Paint.Style.FILL
+
+        // Create arrow shape
+        val path = Path()
+        path.moveTo(12f, 0f)  // Top point
+        path.lineTo(0f, 24f)  // Bottom left
+        path.lineTo(12f, 18f) // Middle notch
+        path.lineTo(24f, 24f) // Bottom right
+        path.close()
+
+        shape = object : android.graphics.drawable.shapes.PathShape(path, 24f, 24f) {}
     }
 }
