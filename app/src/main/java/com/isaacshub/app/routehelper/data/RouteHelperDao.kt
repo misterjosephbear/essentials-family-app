@@ -93,4 +93,36 @@ interface RouteHelperDao {
 
     @Delete
     suspend fun deletePackage(pkg: PackageEntity)
+
+    // Section queries
+    @Insert
+    suspend fun insertSection(section: RouteSectionEntity): Long
+
+    @Query("SELECT * FROM route_sections WHERE routeId = :routeId ORDER BY name ASC")
+    fun observeSections(routeId: Long): Flow<List<RouteSectionEntity>>
+
+    @Query("SELECT * FROM route_sections WHERE routeId = :routeId ORDER BY name ASC")
+    suspend fun getSectionsOnce(routeId: Long): List<RouteSectionEntity>
+
+    @Delete
+    suspend fun deleteSection(section: RouteSectionEntity)
+
+    @Update
+    suspend fun updateSection(section: RouteSectionEntity)
+
+    /**
+     * Get all sections that contain a specific stop.
+     * A stop is in a section if it falls within the section's start and end stops by sequence order.
+     */
+    @Query("""
+        SELECT s.* FROM route_sections s
+        INNER JOIN routed_stops start_stop ON s.startStopId = start_stop.id
+        INNER JOIN routed_stops end_stop ON s.endStopId = end_stop.id
+        INNER JOIN routed_stops target_stop ON target_stop.id = :stopId
+        WHERE s.routeId = :routeId
+        AND target_stop.sequenceOrder >= start_stop.sequenceOrder
+        AND target_stop.sequenceOrder <= end_stop.sequenceOrder
+        ORDER BY s.name ASC
+    """)
+    suspend fun getSectionsForStop(routeId: Long, stopId: Long): List<RouteSectionEntity>
 }

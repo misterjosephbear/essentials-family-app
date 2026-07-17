@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.isaacshub.app.App
 import com.isaacshub.app.routehelper.data.RouteHelperRouteEntity
+import com.isaacshub.app.routehelper.data.RouteSectionEntity
 import com.isaacshub.app.routehelper.data.RoutedStopEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +18,8 @@ import kotlinx.coroutines.launch
 
 data class RouteEditUiState(
     val route: RouteHelperRouteEntity? = null,
-    val stops: List<RoutedStopEntity> = emptyList()
+    val stops: List<RoutedStopEntity> = emptyList(),
+    val sections: List<RouteSectionEntity> = emptyList()
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -37,8 +39,14 @@ class RouteEditViewModel(application: Application) : AndroidViewModel(applicatio
         if (id == null) flowOf(emptyList()) else repository.observeStops(id)
     }
 
-    val uiState: StateFlow<RouteEditUiState> = kotlinx.coroutines.flow.combine(routeFlow, stopsFlow) { route, stops ->
-        RouteEditUiState(route = route, stops = stops)
+    private val sectionsFlow = routeIdFlow.flatMapLatest { id ->
+        if (id == null) flowOf(emptyList()) else repository.observeSections(id)
+    }
+
+    val uiState: StateFlow<RouteEditUiState> = kotlinx.coroutines.flow.combine(
+        routeFlow, stopsFlow, sectionsFlow
+    ) { route, stops, sections ->
+        RouteEditUiState(route = route, stops = stops, sections = sections)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), RouteEditUiState())
 
     fun moveUp(stop: RoutedStopEntity) {
@@ -53,5 +61,16 @@ class RouteEditViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun deleteStop(stop: RoutedStopEntity) {
         viewModelScope.launch { repository.deleteStop(stop) }
+    }
+
+    fun addSection(name: String, startStopId: Long, endStopId: Long) {
+        val routeId = routeIdFlow.value ?: return
+        viewModelScope.launch {
+            repository.addSection(routeId, name, startStopId, endStopId)
+        }
+    }
+
+    fun deleteSection(section: RouteSectionEntity) {
+        viewModelScope.launch { repository.deleteSection(section) }
     }
 }

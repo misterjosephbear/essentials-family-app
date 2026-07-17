@@ -63,3 +63,17 @@ data class PackageEntity(
     val isDelivered: Boolean = false,
     val scannedAtEpochMillis: Long
 )
+
+/** A named section of a route (e.g., "2B", "Around the lake"). Sections are defined by a range of stops. */
+@Entity(tableName = "route_sections")
+data class RouteSectionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val routeId: Long,
+    /** Display name for this section (e.g., "2B", "Around the lake") */
+    val name: String,
+    /** Stop ID where this section begins (inclusive) */
+    val startStopId: Long,
+    /** Stop ID where this section ends (inclusive) */
+    val endStopId: Long,
+    val createdAtEpochMillis: Long
+)

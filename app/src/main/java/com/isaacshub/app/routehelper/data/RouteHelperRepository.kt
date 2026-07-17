@@ -58,6 +58,8 @@ class RouteHelperRepository(
 
     fun observeStops(routeId: Long): Flow<List<RoutedStopEntity>> = dao.observeStops(routeId)
 
+    suspend fun getStopsOnce(routeId: Long): List<RoutedStopEntity> = dao.getStopsOnce(routeId)
+
     /** Adds a stop at the driver's current [location], marking its source candidate (if any) as routed. */
     suspend fun addStop(routeId: Long, candidateId: Long?, addressLabel: String, note: String?, location: GeoPoint) {
         val nextOrder = dao.maxSequenceOrder(routeId) + 1
@@ -234,6 +236,31 @@ class RouteHelperRepository(
 
     suspend fun getUndeliveredPackageCountForStop(routeId: Long, stopId: Long): Int {
         return dao.getUndeliveredPackageCountForStop(routeId, stopId)
+    }
+
+    // Section management
+    suspend fun addSection(routeId: Long, name: String, startStopId: Long, endStopId: Long): Long {
+        return dao.insertSection(
+            RouteSectionEntity(
+                routeId = routeId,
+                name = name,
+                startStopId = startStopId,
+                endStopId = endStopId,
+                createdAtEpochMillis = System.currentTimeMillis()
+            )
+        )
+    }
+
+    fun observeSections(routeId: Long): Flow<List<RouteSectionEntity>> = dao.observeSections(routeId)
+
+    suspend fun getSectionsOnce(routeId: Long): List<RouteSectionEntity> = dao.getSectionsOnce(routeId)
+
+    suspend fun deleteSection(section: RouteSectionEntity) = dao.deleteSection(section)
+
+    suspend fun updateSection(section: RouteSectionEntity) = dao.updateSection(section)
+
+    suspend fun getSectionsForStop(routeId: Long, stopId: Long): List<RouteSectionEntity> {
+        return dao.getSectionsForStop(routeId, stopId)
     }
 
     /**

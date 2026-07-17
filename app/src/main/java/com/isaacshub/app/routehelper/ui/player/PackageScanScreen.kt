@@ -68,6 +68,7 @@ data class ScannedPackage(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PackageScanScreen(
+    routeId: Long,
     scannedPackages: List<ScannedPackage>,
     onPackageScanned: (ScannedPackage) -> Unit,
     onPackageDeleted: (ScannedPackage) -> Unit,
@@ -120,6 +121,7 @@ fun PackageScanScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (isScanning && hasCameraPermission) {
                 PackageCameraScanner(
+                    routeId = routeId,
                     onPackageScanned = { pkg ->
                         onPackageScanned(pkg)
                         isScanning = false
@@ -196,11 +198,37 @@ fun PackageScanScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PackageCameraScanner(
+    routeId: Long,
     onPackageScanned: (ScannedPackage) -> Unit,
     onCancel: () -> Unit
 ) {
     var useFrontCamera by remember { mutableStateOf(false) }
     var scanning by remember { mutableStateOf(true) }
+    var lastScannedPackage by remember { mutableStateOf<ScannedPackage?>(null) }
+    var sectionsForLastPackage by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    // Access repository to get sections
+    val context = LocalContext.current
+    val app = context.applicationContext as com.isaacshub.app.App
+    val repository = app.routeHelperRepository
+
+    // When a package is scanned, look up its sections
+    LaunchedEffect(lastScannedPackage) {
+        lastScannedPackage?.let { pkg ->
+            val stops = repository.getStopsOnce(routeId)
+            val matchingStop = stops.find { stop ->
+                stop.addressLabel.contains(pkg.addressLabel, ignoreCase = true) ||
+                pkg.addressLabel.contains(stop.addressLabel, ignoreCase = true)
+            }
+
+            if (matchingStop != null) {
+                val sections = repository.getSectionsForStop(routeId, matchingStop.id)
+                sectionsForLastPackage = sections.map { it.name }
+            } else {
+                sectionsForLastPackage = emptyList()
+            }
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -226,6 +254,7 @@ private fun PackageCameraScanner(
                 onPackageDetected = { pkg ->
                     if (scanning) {
                         scanning = false
+                        lastScannedPackage = pkg
                         onPackageScanned(pkg)
                     }
                 }
@@ -246,6 +275,44 @@ private fun PackageCameraScanner(
                         color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(top = 4.dp)
                     )
+                }
+            }
+
+            // Show last scanned package and sections at the bottom
+            if (lastScannedPackage != null) {
+                Card(
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp).fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            "Last Scanned:",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            lastScannedPackage!!.addressLabel,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+
+                        if (sectionsForLastPackage.isNotEmpty()) {
+                            Text(
+                                "Sections: ${sectionsForLastPackage.joinToString(", ")}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        } else {
+                            Text(
+                                "No sections assigned",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
                 }
             }
 

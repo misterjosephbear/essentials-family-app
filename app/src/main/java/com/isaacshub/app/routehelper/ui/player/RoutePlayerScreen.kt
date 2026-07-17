@@ -314,6 +314,7 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
         val scannedPackages by viewModel.observePackages().collectAsState(initial = emptyList())
         Dialog(onDismissRequest = { isScanningPackages = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             PackageScanScreen(
+                routeId = routeId,
                 scannedPackages = scannedPackages.map { pkg ->
                     ScannedPackage(pkg.trackingNumber, pkg.addressLabel)
                 },
