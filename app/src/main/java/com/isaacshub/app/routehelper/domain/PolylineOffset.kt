@@ -8,16 +8,17 @@ import kotlin.math.*
  */
 
 /** Offset distance from center line in meters (right side of road). */
-private const val OFFSET_DISTANCE_METERS = 4.0
+private const val OFFSET_DISTANCE_METERS = 6.0
 
 /** Radius for U-turn arcs in meters. */
-private const val UTURN_ARC_RADIUS_METERS = 6.0
+private const val UTURN_ARC_RADIUS_METERS = 8.0
 
 /** Number of points to use when generating a U-turn arc. */
 private const val UTURN_ARC_POINTS = 12
 
-/** Minimum bearing change to consider a point a turnaround (degrees). */
-private const val TURNAROUND_THRESHOLD_DEGREES = 90.0
+/** Minimum bearing change to consider a point a turnaround (degrees).
+ * Set to 135° to only create arcs for actual U-turns, not regular corners. */
+private const val TURNAROUND_THRESHOLD_DEGREES = 135.0
 
 /**
  * Result of offsetting a polyline: contains the offset segments and turnaround arc segments.

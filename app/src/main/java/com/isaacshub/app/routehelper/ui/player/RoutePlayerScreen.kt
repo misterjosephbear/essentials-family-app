@@ -395,7 +395,8 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
 
             // Base line width (thicker than before)
             val baseLineWidth = 20f
-            val scaledLineWidth = baseLineWidth * scaleFactor
+            // Cap line width to prevent "blob" effect when zoomed out (max 40px)
+            val scaledLineWidth = (baseLineWidth * scaleFactor).coerceAtMost(40f)
 
             // Draw offset segments (right side of road)
             offsetResult.offsetSegments.forEach { segment ->
