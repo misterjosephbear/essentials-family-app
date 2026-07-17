@@ -17,7 +17,8 @@ data class PayPeriodSummary(
     val mileagePay: Double,
     val projectedMiles: Double,
     val flatDeductions: Double,
-    val percentDeductions: Double
+    val percentDeductions: Double,
+    val overtimeHours: Double = 0.0  // Total overtime hours across both weeks
 ) {
     val grossPay: Double get() = regularPay + overtimePay + mileagePay
     val totalDeductions: Double get() = flatDeductions + percentDeductions
@@ -54,6 +55,7 @@ fun computePayPeriodSummary(
     var overtimePay = 0.0
     var mileagePay = 0.0
     var projectedMiles = 0.0
+    var totalOvertimeHours = 0.0
 
     for (weekRange in listOf(week1Range, week2Range)) {
         val weekEntries = entries.filter { it.localDate(zone) in weekRange }
@@ -84,6 +86,7 @@ fun computePayPeriodSummary(
         overtimePay += overtimeHours * hourlyRate * (overtimeMultiplier - 1.0)
         mileagePay += weekMiles * emaRate
         projectedMiles += weekMiles
+        totalOvertimeHours += overtimeHours
     }
 
     val grossPay = regularPay + overtimePay + mileagePay
@@ -100,6 +103,7 @@ fun computePayPeriodSummary(
         mileagePay = mileagePay,
         projectedMiles = projectedMiles,
         flatDeductions = flatDeductions,
-        percentDeductions = percentDeductions
+        percentDeductions = percentDeductions,
+        overtimeHours = totalOvertimeHours
     )
 }

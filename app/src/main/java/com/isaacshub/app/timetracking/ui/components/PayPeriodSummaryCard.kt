@@ -34,6 +34,13 @@ fun PayPeriodSummaryCard(
             "${formatCurrency(summary.mileagePay)} from mileage (${formatNumber(summary.projectedMiles)} mi)",
             style = MaterialTheme.typography.bodyMedium
         )
+        if (summary.overtimeHours > 0) {
+            Text(
+                "Current overtime this pay period: ${formatNumber(summary.overtimeHours)} hrs",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
         if (summary.overtimePay > 0) {
             Text(
                 "Includes ${formatCurrency(summary.overtimePay)} overtime premium",
