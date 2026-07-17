@@ -63,7 +63,8 @@ private fun isGranted(context: android.content.Context, permission: String) =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VaultHomeScreen(
-    onPair: () -> Unit
+    onPair: () -> Unit,
+    onRestore: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val viewModel: VaultHomeViewModel = viewModel()
@@ -150,15 +151,26 @@ fun VaultHomeScreen(
                     "App data: " + formatLastRun(state.lastBackupEpochMillis, "never backed up yet"),
                     style = MaterialTheme.typography.bodyMedium
                 )
-                Button(
-                    onClick = viewModel::backupNow,
-                    enabled = !state.backingUpAppData,
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (state.backingUpAppData) {
-                        LoadingButtonContent(label = "Backing up...")
-                    } else {
-                        Text("Back up now")
+                    Button(
+                        onClick = viewModel::backupNow,
+                        enabled = !state.backingUpAppData,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (state.backingUpAppData) {
+                            LoadingButtonContent(label = "Backing up...")
+                        } else {
+                            Text("Back up now")
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = onRestore,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Restore")
                     }
                 }
 

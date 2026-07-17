@@ -186,4 +186,40 @@ class VaultApiClient(private val connection: VaultConnection, preferredBaseUrl: 
         }
         uploaded ?: false
     }
+
+    /**
+     * Downloads a file from [remotePath] in the vault to [destinationFile].
+     * Returns true if successful, false if the file doesn't exist or download failed.
+     */
+    suspend fun downloadFile(remotePath: String, destinationFile: File): Boolean = withContext(Dispatchers.IO) {
+        val downloaded = tryEachBaseUrl { baseUrl ->
+            val conn = contentUrl(baseUrl, remotePath).openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("Authorization", "Bearer ${connection.apiKey}")
+            conn.connectTimeout = 6_000
+            conn.readTimeout = 60_000
+            try {
+                if (conn.responseCode != HttpURLConnection.HTTP_OK) {
+                    return@tryEachBaseUrl false
+                }
+
+                // Download to temp file first, then move on success
+                val tempFile = File(destinationFile.parentFile, "${destinationFile.name}.tmp")
+                tempFile.parentFile?.mkdirs()
+
+                conn.inputStream.use { input ->
+                    tempFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                // Move temp file to final destination
+                tempFile.renameTo(destinationFile)
+                true
+            } finally {
+                conn.disconnect()
+            }
+        }
+        downloaded ?: false
+    }
 }

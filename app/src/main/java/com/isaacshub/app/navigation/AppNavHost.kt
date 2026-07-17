@@ -48,6 +48,8 @@ import com.isaacshub.app.update.UpdateBanner
 import com.isaacshub.app.update.UpdateViewModel
 import com.isaacshub.app.vault.ui.home.VaultHomeScreen
 import com.isaacshub.app.vault.ui.pairing.PairingScreen
+import com.isaacshub.app.vault.ui.restore.RestoreScreen
+import com.isaacshub.app.vault.ui.restore.RestoreViewModel
 
 private data class TopLevelDestination(val route: String, val label: String, val icon: ImageVector)
 
@@ -197,12 +199,22 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
 
             composable(Routes.VAULT_HOME) {
                 VaultHomeScreen(
-                    onPair = { navController.navigate(Routes.VAULT_PAIRING) }
+                    onPair = { navController.navigate(Routes.VAULT_PAIRING) },
+                    onRestore = { navController.navigate(Routes.VAULT_RESTORE) }
                 )
             }
             composable(Routes.VAULT_PAIRING) {
                 PairingScreen(
                     onPaired = { navController.popBackStack() }
+                )
+            }
+            composable(Routes.VAULT_RESTORE) {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val app = context.applicationContext as com.isaacshub.app.App
+                val restoreViewModel = RestoreViewModel(context, app.vaultPreferencesRepository)
+                RestoreScreen(
+                    viewModel = restoreViewModel,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 

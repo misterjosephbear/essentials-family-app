@@ -24,6 +24,7 @@ object Routes {
 
     const val VAULT_HOME = "vault_home"
     const val VAULT_PAIRING = "vault_pairing"
+    const val VAULT_RESTORE = "vault_restore"
 
     const val ROUTE_HELPER_HOME = "route_helper_home"
     const val ROUTE_BUILDER_BASE = "route_builder"
