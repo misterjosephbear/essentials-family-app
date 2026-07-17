@@ -58,7 +58,8 @@ import java.util.concurrent.Executors
 
 data class ScannedPackage(
     val trackingNumber: String,
-    val addressLabel: String
+    val addressLabel: String,
+    val sequenceNumber: Int? = null
 )
 
 /**
@@ -168,10 +169,30 @@ fun PackageScanScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        pkg.addressLabel,
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Show sequence number if available
+                                        pkg.sequenceNumber?.let { seq ->
+                                            Card(
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                                                )
+                                            ) {
+                                                Text(
+                                                    "#$seq",
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            pkg.addressLabel,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    }
                                     Text(
                                         "Tracking: ${pkg.trackingNumber}",
                                         style = MaterialTheme.typography.bodySmall,
@@ -616,17 +637,8 @@ private fun extractAddress(text: String, routeStops: List<com.isaacshub.app.rout
     // VALIDATE: Check if the extracted address matches any stop on the route
     val extractedAddress = bestCandidate?.text ?: return null
 
-    // Normalize for comparison (lowercase, trim spaces)
-    val normalizedExtracted = extractedAddress.lowercase().trim()
-
-    // Check for fuzzy match with route stops
-    val matchingStop = routeStops.find { stop ->
-        val normalizedStop = stop.addressLabel.lowercase().trim()
-        // Exact match or one contains the other (handles abbreviated vs full addresses)
-        normalizedStop == normalizedExtracted ||
-        normalizedStop.contains(normalizedExtracted) ||
-        normalizedExtracted.contains(normalizedStop)
-    }
+    // Improved fuzzy matching with the route stops
+    val matchingStop = findBestAddressMatch(extractedAddress, routeStops)
 
     if (matchingStop != null) {
         android.util.Log.d("AddressExtraction", "✓ VALIDATED: Address found on route (matched: ${matchingStop.addressLabel})")
@@ -634,5 +646,122 @@ private fun extractAddress(text: String, routeStops: List<com.isaacshub.app.rout
     } else {
         android.util.Log.w("AddressExtraction", "✗ REJECTED: Address '$extractedAddress' NOT on route (${routeStops.size} stops checked)")
         return null  // Reject addresses not on the route
+    }
+}
+
+/**
+ * Find the best matching stop for an extracted address using fuzzy matching.
+ * Handles street name abbreviations and variations.
+ */
+private fun findBestAddressMatch(
+    extractedAddress: String,
+    routeStops: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>
+): com.isaacshub.app.routehelper.data.RoutedStopEntity? {
+    val normalizedExtracted = normalizeAddress(extractedAddress)
+
+    // First try exact match
+    routeStops.find { stop ->
+        normalizeAddress(stop.addressLabel) == normalizedExtracted
+    }?.let { return it }
+
+    // Try matching just the street number (address numbers must match)
+    val extractedNumber = extractAddressNumber(normalizedExtracted)
+    if (extractedNumber == null) {
+        // No number found, try substring matching
+        return routeStops.find { stop ->
+            val normalizedStop = normalizeAddress(stop.addressLabel)
+            normalizedStop.contains(normalizedExtracted) ||
+            normalizedExtracted.contains(normalizedStop)
+        }
+    }
+
+    // Find stops with matching address number
+    val candidatesWithMatchingNumber = routeStops.filter { stop ->
+        extractAddressNumber(normalizeAddress(stop.addressLabel)) == extractedNumber
+    }
+
+    if (candidatesWithMatchingNumber.isEmpty()) {
+        return null  // No stops with matching number
+    }
+
+    if (candidatesWithMatchingNumber.size == 1) {
+        return candidatesWithMatchingNumber.first()  // Only one match, return it
+    }
+
+    // Multiple stops with same number - use fuzzy matching on street name
+    val extractedStreet = extractStreetName(normalizedExtracted)
+    return candidatesWithMatchingNumber.maxByOrNull { stop ->
+        val stopStreet = extractStreetName(normalizeAddress(stop.addressLabel))
+        calculateStreetNameSimilarity(extractedStreet, stopStreet)
+    }
+}
+
+/**
+ * Normalize an address for comparison:
+ * - Lowercase
+ * - Remove extra whitespace
+ * - Expand common abbreviations
+ */
+private fun normalizeAddress(address: String): String {
+    return address
+        .lowercase()
+        .trim()
+        .replace(Regex("\\s+"), " ")  // Collapse multiple spaces
+        .replace("saint", "st")
+        .replace("avenue", "ave")
+        .replace("street", "st")
+        .replace("drive", "dr")
+        .replace("road", "rd")
+        .replace("boulevard", "blvd")
+        .replace("lane", "ln")
+        .replace("court", "ct")
+        .replace("place", "pl")
+        .replace("circle", "cir")
+        .replace("north", "n")
+        .replace("south", "s")
+        .replace("east", "e")
+        .replace("west", "w")
+}
+
+/**
+ * Extract the address number from a normalized address.
+ * E.g., "1006 jackson st" -> 1006
+ */
+private fun extractAddressNumber(normalizedAddress: String): Int? {
+    return normalizedAddress.split(" ").firstOrNull()?.toIntOrNull()
+}
+
+/**
+ * Extract the street name from a normalized address (everything after the number).
+ * E.g., "1006 jackson st" -> "jackson st"
+ */
+private fun extractStreetName(normalizedAddress: String): String {
+    val parts = normalizedAddress.split(" ", limit = 2)
+    return if (parts.size > 1) parts[1] else normalizedAddress
+}
+
+/**
+ * Calculate similarity between two street names.
+ * Returns a score from 0.0 (no match) to 1.0 (perfect match).
+ */
+private fun calculateStreetNameSimilarity(street1: String, street2: String): Double {
+    // Exact match
+    if (street1 == street2) return 1.0
+
+    // One contains the other
+    if (street1.contains(street2) || street2.contains(street1)) return 0.8
+
+    // Check if key words match (ignoring common suffixes)
+    val words1 = street1.split(" ").filter { it.length > 2 }  // Filter out short words like "st"
+    val words2 = street2.split(" ").filter { it.length > 2 }
+
+    val matchingWords = words1.count { w1 ->
+        words2.any { w2 -> w1 == w2 || w1.startsWith(w2) || w2.startsWith(w1) }
+    }
+
+    return if (words1.isEmpty() || words2.isEmpty()) {
+        0.0
+    } else {
+        matchingWords.toDouble() / maxOf(words1.size, words2.size)
     }
 }

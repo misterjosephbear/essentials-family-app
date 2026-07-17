@@ -64,6 +64,19 @@ data class PackageEntity(
     val scannedAtEpochMillis: Long
 )
 
+/** Package with stop sequence number for display */
+data class PackageWithSequence(
+    val id: Long,
+    val routeId: Long,
+    val trackingNumber: String,
+    val addressLabel: String,
+    val routedStopId: Long?,
+    val isDelivered: Boolean,
+    val scannedAtEpochMillis: Long,
+    /** Sequence number of the stop (1-based), null if not matched to a stop */
+    val sequenceNumber: Int?
+)
+
 /** A named section of a route (e.g., "2B", "Around the lake"). Sections are defined by a range of stops. */
 @Entity(tableName = "route_sections")
 data class RouteSectionEntity(

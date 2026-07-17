@@ -347,6 +347,11 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         if (id == null) flowOf(emptyList()) else repository.observePackages(id)
     }
 
+    /** Observe all packages with sequence numbers for this route */
+    fun observePackagesWithSequence() = routeIdFlow.flatMapLatest { id ->
+        if (id == null) flowOf(emptyList()) else repository.observePackagesWithSequence(id)
+    }
+
     /** Delete a package */
     fun deletePackage(pkg: com.isaacshub.app.routehelper.data.PackageEntity) {
         viewModelScope.launch {

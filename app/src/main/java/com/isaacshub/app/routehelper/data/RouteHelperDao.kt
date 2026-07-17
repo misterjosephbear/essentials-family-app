@@ -79,6 +79,16 @@ interface RouteHelperDao {
     @Query("SELECT * FROM packages WHERE routeId = :routeId AND isDelivered = 0 ORDER BY scannedAtEpochMillis ASC")
     fun observeUndeliveredPackages(routeId: Long): Flow<List<PackageEntity>>
 
+    @Query("""
+        SELECT p.id, p.routeId, p.trackingNumber, p.addressLabel, p.routedStopId, p.isDelivered,
+               p.scannedAtEpochMillis, s.sequenceOrder as sequenceNumber
+        FROM packages p
+        LEFT JOIN routed_stops s ON p.routedStopId = s.id
+        WHERE p.routeId = :routeId
+        ORDER BY p.scannedAtEpochMillis ASC
+    """)
+    fun observePackagesWithSequence(routeId: Long): Flow<List<PackageWithSequence>>
+
     @Query("UPDATE packages SET routedStopId = :stopId WHERE id = :packageId")
     suspend fun setPackageStop(packageId: Long, stopId: Long?)
 

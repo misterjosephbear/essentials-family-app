@@ -180,6 +180,8 @@ class RouteHelperRepository(
 
     fun observePackages(routeId: Long): Flow<List<PackageEntity>> = dao.observePackages(routeId)
 
+    fun observePackagesWithSequence(routeId: Long): Flow<List<PackageWithSequence>> = dao.observePackagesWithSequence(routeId)
+
     fun observeUndeliveredPackages(routeId: Long): Flow<List<PackageEntity>> = dao.observeUndeliveredPackages(routeId)
 
     suspend fun matchPackagesToStops(routeId: Long) {

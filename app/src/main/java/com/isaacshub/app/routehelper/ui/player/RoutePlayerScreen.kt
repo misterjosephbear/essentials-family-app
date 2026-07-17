@@ -327,20 +327,29 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
     }
 
     if (isScanningPackages) {
-        val scannedPackages by viewModel.observePackages().collectAsState(initial = emptyList())
+        val scannedPackages by viewModel.observePackagesWithSequence().collectAsState(initial = emptyList())
         Dialog(onDismissRequest = { isScanningPackages = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             PackageScanScreen(
                 routeId = routeId,
                 scannedPackages = scannedPackages.map { pkg ->
-                    ScannedPackage(pkg.trackingNumber, pkg.addressLabel)
+                    ScannedPackage(pkg.trackingNumber, pkg.addressLabel, pkg.sequenceNumber)
                 },
                 onPackageScanned = { pkg ->
                     viewModel.addPackage(pkg.trackingNumber, pkg.addressLabel)
                 },
                 onPackageDeleted = { pkg ->
                     // Find the matching package entity and delete it
-                    scannedPackages.find { it.trackingNumber == pkg.trackingNumber }?.let {
-                        viewModel.deletePackage(it)
+                    scannedPackages.find { it.trackingNumber == pkg.trackingNumber }?.let { matchedPkg ->
+                        // Convert PackageWithSequence to PackageEntity for deletion
+                        viewModel.deletePackage(com.isaacshub.app.routehelper.data.PackageEntity(
+                            id = matchedPkg.id,
+                            routeId = matchedPkg.routeId,
+                            trackingNumber = matchedPkg.trackingNumber,
+                            addressLabel = matchedPkg.addressLabel,
+                            routedStopId = matchedPkg.routedStopId,
+                            isDelivered = matchedPkg.isDelivered,
+                            scannedAtEpochMillis = matchedPkg.scannedAtEpochMillis
+                        ))
                     }
                 },
                 onDone = { isScanningPackages = false }
