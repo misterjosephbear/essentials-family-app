@@ -62,7 +62,7 @@ fun currentWeekRange(today: LocalDate = LocalDate.now()): ClosedRange<LocalDate>
 }
 
 /**
- * Cumulative surplus/deficit (actual hours - 40) across every week before [today]'s week, going back
+ * Cumulative surplus/deficit (paid hours - 40) across every week before [today]'s week, going back
  * through all recorded history. Weeks with zero logged entries are skipped rather than counted as a
  * full -40 deficit - same "no data means we don't know" rule the sleep debt calculator uses - so this
  * only reflects weeks you actually tracked.
@@ -77,7 +77,15 @@ private fun computeCarryoverHours(
         .filter { it.localDate(zone).isBefore(currentWeekStart) }
         .groupBy { weekStartFor(it.localDate(zone)) }
         .values
-        .sumOf { weekEntries -> weekEntries.sumOf { it.actualHours } - OVERTIME_THRESHOLD_HOURS }
+        .sumOf { weekEntries ->
+            val weekPaidHours = weekEntries.sumOf { entry ->
+                when (entry.payType) {
+                    PayType.HOURLY -> entry.actualHours
+                    PayType.EVALUATION -> entry.evaluatedHours ?: 0.0
+                }
+            }
+            weekPaidHours - OVERTIME_THRESHOLD_HOURS
+        }
 }
 
 fun computeWeeklySummary(
