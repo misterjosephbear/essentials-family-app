@@ -16,6 +16,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -58,6 +60,7 @@ fun RouteHelperHomeScreen(
     val routes by viewModel.routes.collectAsState()
     val newRouteState by viewModel.newRouteState.collectAsState()
     var showNewRouteDialog by remember { mutableStateOf(false) }
+    var routeToDelete by remember { mutableStateOf<RouteHelperRouteEntity?>(null) }
 
     LaunchedEffect(newRouteState.createdRouteId) {
         newRouteState.createdRouteId?.let {
@@ -103,7 +106,7 @@ fun RouteHelperHomeScreen(
                         onClick = { onOpenRoute(route.id) },
                         onPlay = { onPlayRoute(route.id) },
                         onEdit = { onEditRoute(route.id) },
-                        onDelete = { viewModel.deleteRoute(route) }
+                        onDelete = { routeToDelete = route }
                     )
                 }
             }
@@ -116,6 +119,33 @@ fun RouteHelperHomeScreen(
             error = newRouteState.error,
             onCreate = viewModel::createRoute,
             onDismiss = { if (!newRouteState.creating) showNewRouteDialog = false }
+        )
+    }
+
+    // Delete confirmation dialog
+    routeToDelete?.let { route ->
+        AlertDialog(
+            onDismissRequest = { routeToDelete = null },
+            title = { Text("Delete Route?") },
+            text = {
+                Text("Are you sure you want to delete route \"${route.name}\"? This will delete all stops, sections, and packages for this route. This action cannot be undone.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteRoute(route)
+                        routeToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { routeToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 }

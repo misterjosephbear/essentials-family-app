@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -60,6 +61,8 @@ fun RouteEditScreen(routeId: Long) {
     val state by viewModel.uiState.collectAsState()
 
     var showAddSectionDialog by remember { mutableStateOf(false) }
+    var sectionToDelete by remember { mutableStateOf<RouteSectionEntity?>(null) }
+    var stopToDelete by remember { mutableStateOf<RoutedStopEntity?>(null) }
 
     Scaffold(
         topBar = {
@@ -108,7 +111,7 @@ fun RouteEditScreen(routeId: Long) {
                                     SectionRow(
                                         section = section,
                                         stops = state.stops,
-                                        onDelete = { viewModel.deleteSection(section) }
+                                        onDelete = { sectionToDelete = section }
                                     )
                                     Spacer(Modifier.height(4.dp))
                                 }
@@ -134,7 +137,7 @@ fun RouteEditScreen(routeId: Long) {
                         canMoveDown = index < state.stops.lastIndex,
                         onMoveUp = { viewModel.moveUp(stop) },
                         onMoveDown = { viewModel.moveDown(stop) },
-                        onDelete = { viewModel.deleteStop(stop) }
+                        onDelete = { stopToDelete = stop }
                     )
                 }
             }
@@ -148,6 +151,56 @@ fun RouteEditScreen(routeId: Long) {
             onConfirm = { name, startStop, endStop ->
                 viewModel.addSection(name, startStop.id, endStop.id)
                 showAddSectionDialog = false
+            }
+        )
+    }
+
+    // Delete section confirmation
+    sectionToDelete?.let { section ->
+        AlertDialog(
+            onDismissRequest = { sectionToDelete = null },
+            title = { Text("Delete Section?") },
+            text = { Text("Delete section \"${section.name}\"? This will not delete the stops, just the section grouping.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteSection(section)
+                        sectionToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { sectionToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Delete stop confirmation
+    stopToDelete?.let { stop ->
+        AlertDialog(
+            onDismissRequest = { stopToDelete = null },
+            title = { Text("Delete Stop?") },
+            text = { Text("Delete stop \"${stop.addressLabel}\"? This will remove it from the route and delete any associated packages.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteStop(stop)
+                        stopToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { stopToDelete = null }) {
+                    Text("Cancel")
+                }
             }
         )
     }
