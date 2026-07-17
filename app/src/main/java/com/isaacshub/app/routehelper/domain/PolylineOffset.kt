@@ -36,9 +36,10 @@ data class OffsetPolylineResult(
  *
  * @param points The original polyline points (center of road).
  * @param scaleFactor Scaling factor for offset distance (1.0 = normal, >1.0 = wider offset for zoomed out views).
+ * @param lineWidthPixels The width of the polyline in pixels (used to calculate offset distance).
  * @return OffsetPolylineResult containing offset segments and U-turn arcs.
  */
-fun offsetPolylineRight(points: List<GeoPoint>, scaleFactor: Float = 1.0f): OffsetPolylineResult {
+fun offsetPolylineRight(points: List<GeoPoint>, scaleFactor: Float = 1.0f, lineWidthPixels: Float = 10f): OffsetPolylineResult {
     if (points.size < 2) {
         return OffsetPolylineResult(emptyList(), emptyList())
     }
@@ -49,9 +50,11 @@ fun offsetPolylineRight(points: List<GeoPoint>, scaleFactor: Float = 1.0f): Offs
     // Split polyline at turnarounds
     val segments = splitAtTurnarounds(points, turnaroundIndices)
 
-    // Calculate scaled offset distance
-    val scaledOffsetDistance = OFFSET_DISTANCE_METERS * scaleFactor
-    val scaledArcRadius = UTURN_ARC_RADIUS_METERS * scaleFactor
+    // Calculate offset distance based on line width (convert pixels to meters)
+    // Rule: offset distance should equal line thickness, roughly 0.3 meters per pixel at zoom 18
+    val offsetDistanceMeters = lineWidthPixels * 0.3
+    val scaledOffsetDistance = offsetDistanceMeters * scaleFactor
+    val scaledArcRadius = scaledOffsetDistance * 1.33  // Arc radius proportional to offset
 
     // Offset each segment to the right
     val offsetSegments = segments.map { segment ->

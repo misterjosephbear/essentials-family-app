@@ -16,9 +16,10 @@ private const val MIN_SKIP_SPEED_MPS = 1.0f
  * Advances to the next stop based on the driver's current location and previous location.
  *
  * Rules:
- * 1. If within STOP_ARRIVAL_RADIUS of any remaining stop, jump to that stop (or earliest if multiple)
- * 2. If moving fast enough and the next stop is now STOP_PASSED_RADIUS behind us, skip it (passed without stopping)
- * 3. Otherwise stay at current index
+ * 1. If within STOP_ARRIVAL_RADIUS of any remaining stop, stay at that stop until moving away
+ * 2. If currently at a stop and moving away from it, advance to next stop
+ * 3. If moving fast enough and the next stop is now STOP_PASSED_RADIUS behind us, skip it (passed without stopping)
+ * 4. Otherwise stay at current index
  *
  * Never advances past the end of [stops] - once every stop has been reached, index holds at `stops.size`.
  */
@@ -32,10 +33,31 @@ fun advanceToNextStop(
     val index = currentIndex.coerceIn(0, stops.size)
     if (index >= stops.size) return index
 
-    // Check all remaining stops - if driver is near any of them, jump to the earliest one in sequence
-    for (i in index until stops.size) {
+    // Check if still at current stop
+    if (index < stops.size) {
+        val currentStop = stops[index]
+        val distanceToCurrentStop = distanceMeters(currentLocation, currentStop)
+
+        // If within arrival radius of current stop, stay there
+        if (distanceToCurrentStop < STOP_ARRIVAL_RADIUS_METERS) {
+            return index  // Stay at current stop until moving away
+        }
+
+        // If we were at this stop and are now moving away from it, advance to next stop
+        if (previousLocation != null && speedMetersPerSecond >= MIN_SKIP_SPEED_MPS) {
+            val prevDistanceToCurrentStop = distanceMeters(previousLocation, currentStop)
+            // If we were within arrival radius and now moving away, advance
+            if (prevDistanceToCurrentStop < STOP_ARRIVAL_RADIUS_METERS &&
+                distanceToCurrentStop > prevDistanceToCurrentStop) {
+                return index + 1  // Driver is leaving current stop, advance to next
+            }
+        }
+    }
+
+    // Check all remaining stops ahead - if driver is near any of them, jump to that stop
+    for (i in (index + 1) until stops.size) {
         if (distanceMeters(currentLocation, stops[i]) < STOP_ARRIVAL_RADIUS_METERS) {
-            return i + 1  // Advance to this stop (return i+1 to mark it as passed)
+            return i  // Jump to this stop (stay there until moving away)
         }
     }
 

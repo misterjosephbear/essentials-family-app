@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,9 +29,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -377,15 +380,21 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
     var hasCenteredOnce by remember { mutableStateOf(false) }
     val mapView = remember { newOsmMapView(context) }
     var currentZoomLevel by remember { mutableStateOf(18.0) }
+    var manualScaleOverride by remember { mutableStateOf<Float?>(null) }
+    var autoScaleFactor by remember { mutableStateOf(1f) }
 
     DisposableEffect(Unit) {
         onDispose { mapView.onDetach() }
     }
 
-    AndroidView(modifier = modifier, factory = { mapView }) { view ->
-        // Track zoom level for scaling
-        currentZoomLevel = view.zoomLevelDouble
-        view.overlays.clear()
+    // Show scale control slider when zoomed out enough
+    val showScaleControl = currentZoomLevel < 14.0
+
+    Box(modifier = modifier) {
+        AndroidView(modifier = Modifier.fillMaxSize(), factory = { mapView }) { view ->
+            // Track zoom level for scaling
+            currentZoomLevel = view.zoomLevelDouble
+            view.overlays.clear()
 
         // Only rotate map and follow GPS when free-cam is disabled
         if (!isFreeCam) {
@@ -401,16 +410,21 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
         // loaded yet (or failed - no signal, etc.) so the driver still sees a path either way.
         val routeLine = state.roadRoutePoints ?: state.stops.map { GeoPoint(it.latitude, it.longitude) }
         if (routeLine.size >= 2) {
-            // Calculate scale factor based on current zoom level
-            val scaleFactor = calculateScaleFactor(currentZoomLevel)
+            // Calculate scale factor - use manual override if set, otherwise auto-calculate
+            autoScaleFactor = calculateScaleFactor(currentZoomLevel)
+            val scaleFactor = manualScaleOverride ?: autoScaleFactor
+
+            // Base line width - reduced from 20f to be thinner at full scale
+            val baseLineWidth = 10f
+            // Scale line width but cap at reasonable sizes
+            val scaledLineWidth = when {
+                scaleFactor <= 1f -> (baseLineWidth * scaleFactor).coerceAtMost(15f)  // At full zoom or closer
+                else -> (baseLineWidth * scaleFactor).coerceAtMost(50f)  // When zoomed out
+            }
 
             // Offset polyline to the right and generate U-turn arcs
-            val offsetResult = offsetPolylineRight(routeLine, scaleFactor)
-
-            // Base line width (thicker than before)
-            val baseLineWidth = 20f
-            // Cap line width to prevent "blob" effect when zoomed out (max 40px)
-            val scaledLineWidth = (baseLineWidth * scaleFactor).coerceAtMost(40f)
+            // Pass line width so offset distance equals line thickness
+            val offsetResult = offsetPolylineRight(routeLine, scaleFactor, scaledLineWidth)
 
             // Draw offset segments (right side of road)
             offsetResult.offsetSegments.forEach { segment ->
@@ -486,6 +500,48 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
 
         view.invalidate()
     }
+
+        // Manual scale control slider (shown when zoomed out)
+        if (showScaleControl) {
+            Card(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+                    .fillMaxWidth(0.9f),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "Polyline Scale",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("Auto", style = MaterialTheme.typography.bodySmall)
+                        Slider(
+                            value = manualScaleOverride ?: autoScaleFactor,
+                            onValueChange = { manualScaleOverride = it },
+                            valueRange = 1f..100f,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text("${(manualScaleOverride ?: autoScaleFactor).toInt()}x", style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (manualScaleOverride != null) {
+                        TextButton(
+                            onClick = { manualScaleOverride = null },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("Reset to Auto")
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -505,8 +561,10 @@ private fun addArrowMarkers(mapView: org.osmdroid.views.MapView, segment: List<G
     }
 
     // Place arrows at scaled intervals (wider spacing when zoomed out)
+    // Use enhanced scaling to match the arrow size growth
     val baseArrowInterval = 50.0
-    val scaledArrowInterval = baseArrowInterval * scaleFactor
+    val enhancedScale = if (scaleFactor > 1f) scaleFactor * scaleFactor else scaleFactor
+    val scaledArrowInterval = baseArrowInterval * enhancedScale
     val numArrows = (totalDistance / scaledArrowInterval).toInt().coerceAtLeast(1)
 
     for (arrowIdx in 1..numArrows) {
@@ -567,10 +625,17 @@ private fun calculateBearing(from: GeoPoint, to: GeoPoint): Double {
 
 /**
  * Create a simple arrow icon for direction markers with scaling.
+ * Arrows scale more aggressively than polylines to stay visible when zoomed out.
  */
 private fun createArrowIcon(scaleFactor: Float): android.graphics.drawable.Drawable {
     val baseSize = 24f
-    val scaledSize = (baseSize * scaleFactor).toInt().coerceAtLeast(24).coerceAtMost(96)
+    // Apply square scaling to make arrows grow faster than polylines when zoomed out
+    val enhancedScale = if (scaleFactor > 1f) {
+        scaleFactor * scaleFactor
+    } else {
+        scaleFactor
+    }
+    val scaledSize = (baseSize * enhancedScale).toInt().coerceAtLeast(24).coerceAtMost(200)
     val half = scaledSize / 2f
     val notchY = scaledSize * 0.75f
 
