@@ -61,7 +61,11 @@ data class RoutePlayerUiState(
     /** Map of stop ID to package count for that stop */
     val packageCountsByStop: Map<Long, Int> = emptyMap(),
     /** Map of stop ID to first package address for that stop (for "next package" display) */
-    val nextPackageAddressByStop: Map<Long, String> = emptyMap()
+    val nextPackageAddressByStop: Map<Long, String> = emptyMap(),
+    /** Address of the next package stop (could be many stops ahead), null if no more packages */
+    val nextPackageAddress: String? = null,
+    /** Number of stops until the next package (0 if at package stop, null if no more packages) */
+    val stopsUntilNextPackage: Int? = null
 )
 
 /**
@@ -294,6 +298,22 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
 
+        // Find the next package location (could be many stops ahead)
+        var nextPackageAddress: String? = null
+        var stopsUntilNextPackage: Int? = null
+
+        if (nextIndex < stops.size) {
+            // Look through remaining stops to find the next one with packages
+            for (i in nextIndex until stops.size) {
+                val stop = stops[i]
+                if (packageCountsByStop[stop.id] ?: 0 > 0) {
+                    nextPackageAddress = nextPackageAddressByStop[stop.id]
+                    stopsUntilNextPackage = i - nextIndex
+                    break
+                }
+            }
+        }
+
         RoutePlayerUiState(
             currentLocation = currentLocation,
             mapBearingDegrees = bearing,
@@ -306,7 +326,9 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             isAtStop = isAtStop,
             clusterStops = clusterStops,
             packageCountsByStop = packageCountsByStop,
-            nextPackageAddressByStop = nextPackageAddressByStop
+            nextPackageAddressByStop = nextPackageAddressByStop,
+            nextPackageAddress = nextPackageAddress,
+            stopsUntilNextPackage = stopsUntilNextPackage
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), RoutePlayerUiState())
 

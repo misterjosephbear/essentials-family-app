@@ -249,7 +249,6 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                             // Single next stop
                             val nextStop = state.clusterStops.first()
                             val packageCount = state.packageCountsByStop[nextStop.id] ?: 0
-                            val nextPackageAddress = state.nextPackageAddressByStop[nextStop.id]
 
                             val stopText = if (packageCount > 0) {
                                 "${nextStop.addressLabel} 📦×$packageCount"
@@ -258,18 +257,24 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                             }
                             Text("Next stop: $stopText", style = MaterialTheme.typography.titleMedium)
 
-                            // Show next package address if available
-                            nextPackageAddress?.let { pkgAddr ->
+                            nextStop.note?.let { note ->
+                                Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                            }
+
+                            // Always show next package location (even if many stops ahead)
+                            state.nextPackageAddress?.let { pkgAddr ->
+                                val stopsAway = state.stopsUntilNextPackage ?: 0
+                                val distanceText = when (stopsAway) {
+                                    0 -> "at this stop"
+                                    1 -> "in 1 stop"
+                                    else -> "in $stopsAway stops"
+                                }
                                 Text(
-                                    "Next package: $pkgAddr",
+                                    "Next package at: $pkgAddr ($distanceText)",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(top = 4.dp)
                                 )
-                            }
-
-                            nextStop.note?.let { note ->
-                                Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                             }
                         }
                         else -> Text("Route complete!", style = MaterialTheme.typography.titleMedium)
