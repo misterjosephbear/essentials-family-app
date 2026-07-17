@@ -187,16 +187,28 @@ private fun generateUturnArc(
     val arcPoints = mutableListOf<GeoPoint>()
     arcPoints.add(arcStart)
 
-    // Calculate arc center (between the two offset directions)
-    val centerBearing = averageBearing(offsetBearingIn, offsetBearingOut)
-    val arcCenter = offsetPoint(turnaroundPoint, centerBearing, UTURN_ARC_RADIUS_METERS)
+    // For U-turns, we want the arc to go OUTWARD (the long way around)
+    // Calculate the outer arc bearing by going the opposite direction
+    val bearingDiff = normalizeBearingDiff(offsetBearingOut - offsetBearingIn)
+    val goLongWay = bearingDiff < 180.0  // If short way is < 180, we need to go the long way
 
     // Generate intermediate arc points
     for (i in 1 until UTURN_ARC_POINTS) {
         val t = i.toDouble() / UTURN_ARC_POINTS
-        // Interpolate around the arc
-        val bearing = interpolateBearing(offsetBearingIn, offsetBearingOut, t)
-        val distance = OFFSET_DISTANCE_METERS + (UTURN_ARC_RADIUS_METERS - OFFSET_DISTANCE_METERS) * sin(t * PI)
+
+        // Interpolate bearing going the LONG way (outward arc for U-turn)
+        val bearing = if (goLongWay) {
+            // Go the opposite direction (add 360 to force long way)
+            val start = offsetBearingIn
+            val end = if (offsetBearingOut > offsetBearingIn) offsetBearingOut - 360.0 else offsetBearingOut
+            ((start + (end - start) * t) + 360.0) % 360.0
+        } else {
+            // Already going long way
+            interpolateBearing(offsetBearingIn, offsetBearingOut, t)
+        }
+
+        // Create wider arc by increasing distance at the midpoint
+        val distance = OFFSET_DISTANCE_METERS + UTURN_ARC_RADIUS_METERS * sin(t * PI)
         val arcPoint = offsetPoint(turnaroundPoint, bearing, distance)
         arcPoints.add(arcPoint)
     }

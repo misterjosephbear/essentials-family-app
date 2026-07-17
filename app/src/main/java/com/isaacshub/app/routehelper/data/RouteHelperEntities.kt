@@ -47,3 +47,19 @@ data class CachedRoadRouteEntity(
     val polylineJson: String,
     val fetchedAtEpochMillis: Long
 )
+
+/** A scanned package with tracking number, scanned in the morning before route playback. */
+@Entity(tableName = "packages")
+data class PackageEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val routeId: Long,
+    /** USPS tracking number extracted from package label */
+    val trackingNumber: String,
+    /** Address label extracted from package */
+    val addressLabel: String,
+    /** Matched routed stop ID, null if not yet matched */
+    val routedStopId: Long? = null,
+    /** Whether this package has been delivered (marked complete during route playback) */
+    val isDelivered: Boolean = false,
+    val scannedAtEpochMillis: Long
+)

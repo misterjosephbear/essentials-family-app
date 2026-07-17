@@ -56,7 +56,9 @@ data class RoutePlayerUiState(
     /** True if the driver is currently stopped at a stop (within arrival radius) */
     val isAtStop: Boolean = false,
     /** List of stops in the current cluster (next stops that are close together) */
-    val clusterStops: List<RoutedStopEntity> = emptyList()
+    val clusterStops: List<RoutedStopEntity> = emptyList(),
+    /** Map of stop ID to package count for that stop */
+    val packageCountsByStop: Map<Long, Int> = emptyMap()
 )
 
 /**
@@ -294,6 +296,34 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         return (0 until array.length()).map { i ->
             val pair = array.getJSONArray(i)
             GeoPoint(latitude = pair.getDouble(0), longitude = pair.getDouble(1))
+        }
+    }
+
+    /** Get package count for a specific stop */
+    suspend fun getPackageCountForStop(stopId: Long): Int {
+        val routeId = routeIdFlow.value ?: return 0
+        return repository.getUndeliveredPackageCountForStop(routeId, stopId)
+    }
+
+    /** Add a scanned package */
+    fun addPackage(trackingNumber: String, addressLabel: String) {
+        val routeId = routeIdFlow.value ?: return
+        viewModelScope.launch {
+            repository.addPackage(routeId, trackingNumber, addressLabel)
+            // Match packages to stops
+            repository.matchPackagesToStops(routeId)
+        }
+    }
+
+    /** Observe all packages for this route */
+    fun observePackages() = routeIdFlow.flatMapLatest { id ->
+        if (id == null) flowOf(emptyList()) else repository.observePackages(id)
+    }
+
+    /** Delete a package */
+    fun deletePackage(pkg: com.isaacshub.app.routehelper.data.PackageEntity) {
+        viewModelScope.launch {
+            repository.deletePackage(pkg)
         }
     }
 }

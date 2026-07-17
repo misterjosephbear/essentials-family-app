@@ -2,6 +2,7 @@ package com.isaacshub.app.routehelper.ui.player
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
+import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -95,9 +97,19 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
 
     val state by viewModel.uiState.collectAsState()
     var isScanning by remember { mutableStateOf(false) }
+    var isScanningPackages by remember { mutableStateOf(false) }
     var isFreeCam by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Keep screen awake during route playback
+    DisposableEffect(Unit) {
+        val activity = context as? android.app.Activity
+        activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose {
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -109,6 +121,11 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                     }
                 },
                 actions = {
+                    // Package scanner button
+                    IconButton(onClick = { isScanningPackages = true }) {
+                        Icon(Icons.Filled.LocalShipping, contentDescription = "Scan packages")
+                    }
+
                     // Debug button to send logs to server
                     IconButton(onClick = {
                         scope.launch {
@@ -258,6 +275,27 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                     isScanning = false
                 },
                 onCancel = { isScanning = false }
+            )
+        }
+    }
+
+    if (isScanningPackages) {
+        val scannedPackages by viewModel.observePackages().collectAsState(initial = emptyList())
+        Dialog(onDismissRequest = { isScanningPackages = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            PackageScanScreen(
+                scannedPackages = scannedPackages.map { pkg ->
+                    ScannedPackage(pkg.trackingNumber, pkg.addressLabel)
+                },
+                onPackageScanned = { pkg ->
+                    viewModel.addPackage(pkg.trackingNumber, pkg.addressLabel)
+                },
+                onPackageDeleted = { pkg ->
+                    // Find the matching package entity and delete it
+                    scannedPackages.find { it.trackingNumber == pkg.trackingNumber }?.let {
+                        viewModel.deletePackage(it)
+                    }
+                },
+                onDone = { isScanningPackages = false }
             )
         }
     }

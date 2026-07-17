@@ -26,9 +26,25 @@ private val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
+private val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `packages` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `routeId` INTEGER NOT NULL,
+                `trackingNumber` TEXT NOT NULL,
+                `addressLabel` TEXT NOT NULL,
+                `routedStopId` INTEGER,
+                `isDelivered` INTEGER NOT NULL DEFAULT 0,
+                `scannedAtEpochMillis` INTEGER NOT NULL
+            )
+        """.trimIndent())
+    }
+}
+
 @Database(
-    entities = [RouteHelperRouteEntity::class, CandidateAddressEntity::class, RoutedStopEntity::class, CachedRoadRouteEntity::class],
-    version = 3,
+    entities = [RouteHelperRouteEntity::class, CandidateAddressEntity::class, RoutedStopEntity::class, CachedRoadRouteEntity::class, PackageEntity::class],
+    version = 4,
     exportSchema = true
 )
 abstract class RouteHelperDatabase : RoomDatabase() {
@@ -48,7 +64,7 @@ abstract class RouteHelperDatabase : RoomDatabase() {
                     // Same rule as every other database in this app: routes/stops are real user
                     // data - any future schema change needs an explicit Migration, never a
                     // destructive fallback.
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build().also { instance = it }
             }
     }

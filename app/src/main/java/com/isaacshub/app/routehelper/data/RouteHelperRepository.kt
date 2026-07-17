@@ -163,4 +163,84 @@ class RouteHelperRepository(
 
     /** Deletes cached road route - used when stops change and route needs recalculation. */
     suspend fun deleteCachedRoadRoute(routeId: Long) = dao.deleteCachedRoadRoute(routeId)
+
+    // Package management methods
+    suspend fun addPackage(routeId: Long, trackingNumber: String, addressLabel: String): Long {
+        return dao.insertPackage(
+            PackageEntity(
+                routeId = routeId,
+                trackingNumber = trackingNumber,
+                addressLabel = addressLabel,
+                scannedAtEpochMillis = System.currentTimeMillis()
+            )
+        )
+    }
+
+    fun observePackages(routeId: Long): Flow<List<PackageEntity>> = dao.observePackages(routeId)
+
+    fun observeUndeliveredPackages(routeId: Long): Flow<List<PackageEntity>> = dao.observeUndeliveredPackages(routeId)
+
+    suspend fun matchPackagesToStops(routeId: Long) {
+        val packages = dao.observePackages(routeId)
+        val stops = dao.getStopsOnce(routeId)
+
+        // Match packages to stops by comparing addresses
+        packages.collect { pkgList ->
+            for (pkg in pkgList) {
+                if (pkg.routedStopId != null) continue  // Already matched
+
+                // Find best matching stop
+                val matchedStop = stops.find { stop ->
+                    addressesMatch(pkg.addressLabel, stop.addressLabel)
+                }
+
+                if (matchedStop != null) {
+                    dao.setPackageStop(pkg.id, matchedStop.id)
+                }
+            }
+        }
+    }
+
+    suspend fun setPackageDelivered(packageId: Long, delivered: Boolean) {
+        dao.setPackageDelivered(packageId, delivered)
+    }
+
+    suspend fun deletePackage(pkg: PackageEntity) = dao.deletePackage(pkg)
+
+    fun observePackagesForStop(routeId: Long, stopId: Long): Flow<List<PackageEntity>> {
+        return dao.observePackagesForStop(routeId, stopId)
+    }
+
+    suspend fun getUndeliveredPackageCountForStop(routeId: Long, stopId: Long): Int {
+        return dao.getUndeliveredPackageCountForStop(routeId, stopId)
+    }
+
+    /**
+     * Check if two addresses are likely referring to the same location.
+     * Handles different formats and minor variations.
+     */
+    private fun addressesMatch(addr1: String, addr2: String): Boolean {
+        // Normalize addresses for comparison
+        val normalized1 = addr1.lowercase()
+            .replace(Regex("""[^\w\s]"""), "")  // Remove punctuation
+            .replace(Regex("""\s+"""), " ")      // Normalize spaces
+            .trim()
+
+        val normalized2 = addr2.lowercase()
+            .replace(Regex("""[^\w\s]"""), "")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+
+        // Extract street number and name
+        val num1 = normalized1.split(" ").firstOrNull()
+        val num2 = normalized2.split(" ").firstOrNull()
+
+        // If numbers don't match, it's not the same address
+        if (num1 != num2) return false
+
+        // Check if street names are similar (simple contains check)
+        // This handles cases like "123 Main St" vs "123 Main Street"
+        return normalized1.contains(normalized2.substringAfter(" ").take(6)) ||
+               normalized2.contains(normalized1.substringAfter(" ").take(6))
+    }
 }

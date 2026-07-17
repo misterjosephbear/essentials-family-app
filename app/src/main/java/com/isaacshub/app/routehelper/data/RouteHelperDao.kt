@@ -68,4 +68,29 @@ interface RouteHelperDao {
 
     @Query("DELETE FROM cached_road_routes WHERE routeId = :routeId")
     suspend fun deleteCachedRoadRoute(routeId: Long)
+
+    // Package queries
+    @Insert
+    suspend fun insertPackage(pkg: PackageEntity): Long
+
+    @Query("SELECT * FROM packages WHERE routeId = :routeId ORDER BY scannedAtEpochMillis ASC")
+    fun observePackages(routeId: Long): Flow<List<PackageEntity>>
+
+    @Query("SELECT * FROM packages WHERE routeId = :routeId AND isDelivered = 0 ORDER BY scannedAtEpochMillis ASC")
+    fun observeUndeliveredPackages(routeId: Long): Flow<List<PackageEntity>>
+
+    @Query("UPDATE packages SET routedStopId = :stopId WHERE id = :packageId")
+    suspend fun setPackageStop(packageId: Long, stopId: Long?)
+
+    @Query("UPDATE packages SET isDelivered = :delivered WHERE id = :packageId")
+    suspend fun setPackageDelivered(packageId: Long, delivered: Boolean)
+
+    @Query("SELECT * FROM packages WHERE routeId = :routeId AND routedStopId = :stopId AND isDelivered = 0")
+    fun observePackagesForStop(routeId: Long, stopId: Long): Flow<List<PackageEntity>>
+
+    @Query("SELECT COUNT(*) FROM packages WHERE routeId = :routeId AND routedStopId = :stopId AND isDelivered = 0")
+    suspend fun getUndeliveredPackageCountForStop(routeId: Long, stopId: Long): Int
+
+    @Delete
+    suspend fun deletePackage(pkg: PackageEntity)
 }
