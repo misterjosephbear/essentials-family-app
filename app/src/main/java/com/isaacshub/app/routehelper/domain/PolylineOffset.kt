@@ -34,9 +34,10 @@ data class OffsetPolylineResult(
  * Detects turnarounds and creates U-turn arcs to connect them.
  *
  * @param points The original polyline points (center of road).
+ * @param scaleFactor Scaling factor for offset distance (1.0 = normal, >1.0 = wider offset for zoomed out views).
  * @return OffsetPolylineResult containing offset segments and U-turn arcs.
  */
-fun offsetPolylineRight(points: List<GeoPoint>): OffsetPolylineResult {
+fun offsetPolylineRight(points: List<GeoPoint>, scaleFactor: Float = 1.0f): OffsetPolylineResult {
     if (points.size < 2) {
         return OffsetPolylineResult(emptyList(), emptyList())
     }
@@ -47,9 +48,13 @@ fun offsetPolylineRight(points: List<GeoPoint>): OffsetPolylineResult {
     // Split polyline at turnarounds
     val segments = splitAtTurnarounds(points, turnaroundIndices)
 
+    // Calculate scaled offset distance
+    val scaledOffsetDistance = OFFSET_DISTANCE_METERS * scaleFactor
+    val scaledArcRadius = UTURN_ARC_RADIUS_METERS * scaleFactor
+
     // Offset each segment to the right
     val offsetSegments = segments.map { segment ->
-        offsetSegmentRight(segment)
+        offsetSegmentRight(segment, scaledOffsetDistance)
     }
 
     // Generate U-turn arcs at turnaround points
@@ -59,7 +64,9 @@ fun offsetPolylineRight(points: List<GeoPoint>): OffsetPolylineResult {
             val arc = generateUturnArc(
                 turnaroundPoint = points[i],
                 fromPoint = points[i - 1],
-                toPoint = points[i + 1]
+                toPoint = points[i + 1],
+                offsetDistance = scaledOffsetDistance,
+                arcRadius = scaledArcRadius
             )
             uturnArcs.add(arc)
         }
@@ -128,7 +135,7 @@ private fun splitAtTurnarounds(points: List<GeoPoint>, turnaroundIndices: List<I
 /**
  * Offset a single segment to the right based on direction of travel.
  */
-private fun offsetSegmentRight(segment: List<GeoPoint>): List<GeoPoint> {
+private fun offsetSegmentRight(segment: List<GeoPoint>, offsetDistance: Double): List<GeoPoint> {
     if (segment.size < 2) return segment
 
     val offsetPoints = mutableListOf<GeoPoint>()
@@ -156,7 +163,7 @@ private fun offsetSegmentRight(segment: List<GeoPoint>): List<GeoPoint> {
 
         // Offset to the right (bearing + 90 degrees)
         val offsetBearing = (bearing + 90.0) % 360.0
-        val offsetPoint = offsetPoint(point, offsetBearing, OFFSET_DISTANCE_METERS)
+        val offsetPoint = offsetPoint(point, offsetBearing, offsetDistance)
         offsetPoints.add(offsetPoint)
     }
 
@@ -169,7 +176,9 @@ private fun offsetSegmentRight(segment: List<GeoPoint>): List<GeoPoint> {
 private fun generateUturnArc(
     turnaroundPoint: GeoPoint,
     fromPoint: GeoPoint,
-    toPoint: GeoPoint
+    toPoint: GeoPoint,
+    offsetDistance: Double,
+    arcRadius: Double
 ): List<GeoPoint> {
     val bearingIn = calculateBearing(fromPoint, turnaroundPoint)
     val bearingOut = calculateBearing(turnaroundPoint, toPoint)
@@ -180,8 +189,8 @@ private fun generateUturnArc(
     val offsetBearingOut = (bearingOut + 90.0) % 360.0  // Right offset of outgoing
 
     // Start and end points of the arc (offset from turnaround point)
-    val arcStart = offsetPoint(turnaroundPoint, offsetBearingIn, OFFSET_DISTANCE_METERS)
-    val arcEnd = offsetPoint(turnaroundPoint, offsetBearingOut, OFFSET_DISTANCE_METERS)
+    val arcStart = offsetPoint(turnaroundPoint, offsetBearingIn, offsetDistance)
+    val arcEnd = offsetPoint(turnaroundPoint, offsetBearingOut, offsetDistance)
 
     // Generate arc points between start and end
     val arcPoints = mutableListOf<GeoPoint>()
@@ -208,7 +217,7 @@ private fun generateUturnArc(
         }
 
         // Create wider arc by increasing distance at the midpoint
-        val distance = OFFSET_DISTANCE_METERS + UTURN_ARC_RADIUS_METERS * sin(t * PI)
+        val distance = offsetDistance + arcRadius * sin(t * PI)
         val arcPoint = offsetPoint(turnaroundPoint, bearing, distance)
         arcPoints.add(arcPoint)
     }

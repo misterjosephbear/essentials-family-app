@@ -65,6 +65,7 @@ import android.graphics.Path
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.util.GeoPoint as OsmGeoPoint
+import kotlin.math.pow
 
 /**
  * The live "GPS" screen for a route already built with the route builder: rotates the map so the
@@ -333,17 +334,43 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
 
 private val routeLineColor = Color(0xFF1A73E8).toArgb()
 
+/**
+ * Calculate scaling factors for map elements based on zoom level.
+ * As you zoom out (lower zoom), elements scale up to remain visible.
+ *
+ * @param zoomLevel Current map zoom level (typically 1-21)
+ * @return Scaling factor (1.0 at zoom 18, increases as zoom decreases)
+ */
+private fun calculateScaleFactor(zoomLevel: Double): Float {
+    // Reference zoom level where scale = 1.0
+    val referenceZoom = 18.0
+    // Scale increases as zoom decreases (zoom out)
+    // Formula: scale = 2^(referenceZoom - currentZoom)
+    return 2.0.pow((referenceZoom - zoomLevel).coerceAtLeast(0.0)).toFloat().coerceAtMost(16f)
+}
+
+/**
+ * Determine if stop markers should be visible at current zoom level.
+ * Hide markers when zoomed out too far to reduce clutter.
+ */
+private fun shouldShowStopMarkers(zoomLevel: Double): Boolean {
+    return zoomLevel >= 14.0  // Hide markers below zoom level 14
+}
+
 @Composable
 private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var hasCenteredOnce by remember { mutableStateOf(false) }
     val mapView = remember { newOsmMapView(context) }
+    var currentZoomLevel by remember { mutableStateOf(18.0) }
 
     DisposableEffect(Unit) {
         onDispose { mapView.onDetach() }
     }
 
     AndroidView(modifier = modifier, factory = { mapView }) { view ->
+        // Track zoom level for scaling
+        currentZoomLevel = view.zoomLevelDouble
         view.overlays.clear()
 
         // Only rotate map and follow GPS when free-cam is disabled
@@ -360,8 +387,15 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
         // loaded yet (or failed - no signal, etc.) so the driver still sees a path either way.
         val routeLine = state.roadRoutePoints ?: state.stops.map { GeoPoint(it.latitude, it.longitude) }
         if (routeLine.size >= 2) {
+            // Calculate scale factor based on current zoom level
+            val scaleFactor = calculateScaleFactor(currentZoomLevel)
+
             // Offset polyline to the right and generate U-turn arcs
-            val offsetResult = offsetPolylineRight(routeLine)
+            val offsetResult = offsetPolylineRight(routeLine, scaleFactor)
+
+            // Base line width (thicker than before)
+            val baseLineWidth = 20f
+            val scaledLineWidth = baseLineWidth * scaleFactor
 
             // Draw offset segments (right side of road)
             offsetResult.offsetSegments.forEach { segment ->
@@ -370,7 +404,7 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
                         Polyline(view).apply {
                             setPoints(segment.map { OsmGeoPoint(it.latitude, it.longitude) })
                             outlinePaint.color = routeLineColor
-                            outlinePaint.strokeWidth = 10f
+                            outlinePaint.strokeWidth = scaledLineWidth
                             // Add arrow pattern to show direction
                             outlinePaint.style = Paint.Style.STROKE
                             outlinePaint.strokeCap = Paint.Cap.ROUND
@@ -379,7 +413,7 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
                     )
 
                     // Add arrow markers along the segment
-                    addArrowMarkers(view, segment)
+                    addArrowMarkers(view, segment, scaleFactor)
                 }
             }
 
@@ -390,7 +424,7 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
                         Polyline(view).apply {
                             setPoints(arc.map { OsmGeoPoint(it.latitude, it.longitude) })
                             outlinePaint.color = routeLineColor
-                            outlinePaint.strokeWidth = 10f
+                            outlinePaint.strokeWidth = scaledLineWidth
                             outlinePaint.style = Paint.Style.STROKE
                             outlinePaint.strokeCap = Paint.Cap.ROUND
                             outlinePaint.strokeJoin = Paint.Join.ROUND
@@ -400,13 +434,16 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
             }
         }
 
-        state.stops.forEachIndexed { index, stop ->
-            view.overlays.add(
-                Marker(view).apply {
-                    position = OsmGeoPoint(stop.latitude, stop.longitude)
-                    title = "${index + 1}. ${stop.addressLabel}"
-                }
-            )
+        // Only show stop markers when zoomed in enough (declutter when zoomed out for printing)
+        if (shouldShowStopMarkers(currentZoomLevel)) {
+            state.stops.forEachIndexed { index, stop ->
+                view.overlays.add(
+                    Marker(view).apply {
+                        position = OsmGeoPoint(stop.latitude, stop.longitude)
+                        title = "${index + 1}. ${stop.addressLabel}"
+                    }
+                )
+            }
         }
 
         state.currentLocation?.let { location ->
@@ -440,7 +477,7 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
  * Add arrow markers along a polyline segment to show direction of travel.
  * Places arrows at regular intervals along the segment.
  */
-private fun addArrowMarkers(mapView: org.osmdroid.views.MapView, segment: List<GeoPoint>) {
+private fun addArrowMarkers(mapView: org.osmdroid.views.MapView, segment: List<GeoPoint>, scaleFactor: Float) {
     if (segment.size < 2) return
 
     // Calculate total path length
@@ -452,12 +489,13 @@ private fun addArrowMarkers(mapView: org.osmdroid.views.MapView, segment: List<G
         totalDistance += dist
     }
 
-    // Place arrows every 50 meters
-    val arrowInterval = 50.0
-    val numArrows = (totalDistance / arrowInterval).toInt().coerceAtLeast(1)
+    // Place arrows at scaled intervals (wider spacing when zoomed out)
+    val baseArrowInterval = 50.0
+    val scaledArrowInterval = baseArrowInterval * scaleFactor
+    val numArrows = (totalDistance / scaledArrowInterval).toInt().coerceAtLeast(1)
 
     for (arrowIdx in 1..numArrows) {
-        val targetDistance = arrowIdx * arrowInterval
+        val targetDistance = arrowIdx * scaledArrowInterval
         var accumulated = 0.0
         var segmentIdx = 0
 
@@ -480,12 +518,12 @@ private fun addArrowMarkers(mapView: org.osmdroid.views.MapView, segment: List<G
         val arrowLat = p1.latitude + (p2.latitude - p1.latitude) * t
         val arrowLon = p1.longitude + (p2.longitude - p1.longitude) * t
 
-        // Create a small arrow marker
+        // Create a scaled arrow marker
         mapView.overlays.add(
             Marker(mapView).apply {
                 position = OsmGeoPoint(arrowLat, arrowLon)
                 // Use a simple arrow character or icon
-                icon = createArrowIcon()
+                icon = createArrowIcon(scaleFactor)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
 
                 // Calculate rotation based on bearing
@@ -513,23 +551,28 @@ private fun calculateBearing(from: GeoPoint, to: GeoPoint): Double {
 }
 
 /**
- * Create a simple arrow icon for direction markers.
+ * Create a simple arrow icon for direction markers with scaling.
  */
-private fun createArrowIcon(): android.graphics.drawable.Drawable {
+private fun createArrowIcon(scaleFactor: Float): android.graphics.drawable.Drawable {
+    val baseSize = 24f
+    val scaledSize = (baseSize * scaleFactor).toInt().coerceAtLeast(24).coerceAtMost(96)
+    val half = scaledSize / 2f
+    val notchY = scaledSize * 0.75f
+
     return android.graphics.drawable.ShapeDrawable().apply {
-        intrinsicWidth = 24
-        intrinsicHeight = 24
+        intrinsicWidth = scaledSize
+        intrinsicHeight = scaledSize
         paint.color = routeLineColor
         paint.style = Paint.Style.FILL
 
         // Create arrow shape
         val path = Path()
-        path.moveTo(12f, 0f)  // Top point
-        path.lineTo(0f, 24f)  // Bottom left
-        path.lineTo(12f, 18f) // Middle notch
-        path.lineTo(24f, 24f) // Bottom right
+        path.moveTo(half, 0f)  // Top point
+        path.lineTo(0f, scaledSize.toFloat())  // Bottom left
+        path.lineTo(half, notchY) // Middle notch
+        path.lineTo(scaledSize.toFloat(), scaledSize.toFloat()) // Bottom right
         path.close()
 
-        shape = object : android.graphics.drawable.shapes.PathShape(path, 24f, 24f) {}
+        shape = object : android.graphics.drawable.shapes.PathShape(path, scaledSize.toFloat(), scaledSize.toFloat()) {}
     }
 }
