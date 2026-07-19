@@ -37,6 +37,12 @@ private const val TAG = "RoutePlayerViewModel"
 /** How close stops must be to be considered a cluster (15 meters ≈ 50 feet). */
 private const val STOP_CLUSTER_RADIUS_METERS = 15.0
 
+/** Average driving speed for residential routes in meters per second (25 mph ≈ 11.2 m/s). */
+private const val AVERAGE_SPEED_MPS = 11.2
+
+/** Average time spent at each stop in seconds (30 seconds). */
+private const val SECONDS_PER_STOP = 30.0
+
 data class RoutePlayerUiState(
     val currentLocation: GeoPoint? = null,
     val mapBearingDegrees: Float = 0f,
@@ -65,7 +71,11 @@ data class RoutePlayerUiState(
     /** Address of the next package stop (could be many stops ahead), null if no more packages */
     val nextPackageAddress: String? = null,
     /** Number of stops until the next package (0 if at package stop, null if no more packages) */
-    val stopsUntilNextPackage: Int? = null
+    val stopsUntilNextPackage: Int? = null,
+    /** Estimated completion time based on remaining distance, average speed, and stop time */
+    val estimatedCompletionTime: String? = null,
+    /** Remaining distance in miles */
+    val remainingMiles: Double? = null
 )
 
 /**
@@ -314,6 +324,53 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
 
+        // Calculate estimated completion time
+        var estimatedCompletionTime: String? = null
+        var remainingMiles: Double? = null
+
+        if (currentLocation != null && nextIndex < stops.size) {
+            // Calculate total remaining distance
+            var totalDistanceMeters = 0.0
+
+            // Distance from current location to next stop
+            val nextStop = stops[nextIndex]
+            totalDistanceMeters += distanceMeters(
+                currentLocation,
+                GeoPoint(nextStop.latitude, nextStop.longitude)
+            )
+
+            // Distance between all remaining stops
+            for (i in nextIndex until stops.size - 1) {
+                val from = stops[i]
+                val to = stops[i + 1]
+                totalDistanceMeters += distanceMeters(
+                    GeoPoint(from.latitude, from.longitude),
+                    GeoPoint(to.latitude, to.longitude)
+                )
+            }
+
+            // Convert to miles
+            remainingMiles = totalDistanceMeters / 1609.34
+
+            // Calculate time: (distance / speed) + (stops * time per stop)
+            val remainingStops = stops.size - nextIndex
+            val drivingTimeSeconds = totalDistanceMeters / AVERAGE_SPEED_MPS
+            val stopTimeSeconds = remainingStops * SECONDS_PER_STOP
+            val totalTimeSeconds = drivingTimeSeconds + stopTimeSeconds
+
+            // Format completion time
+            val completionEpochMillis = System.currentTimeMillis() + (totalTimeSeconds * 1000).toLong()
+            val calendar = java.util.Calendar.getInstance().apply {
+                timeInMillis = completionEpochMillis
+            }
+            val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+            val minute = calendar.get(java.util.Calendar.MINUTE)
+            val amPm = if (hour < 12) "AM" else "PM"
+            val displayHour = if (hour == 0) 12 else if (hour > 12) hour - 12 else hour
+
+            estimatedCompletionTime = String.format("%d:%02d %s", displayHour, minute, amPm)
+        }
+
         RoutePlayerUiState(
             currentLocation = currentLocation,
             mapBearingDegrees = bearing,
@@ -328,7 +385,9 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             packageCountsByStop = packageCountsByStop,
             nextPackageAddressByStop = nextPackageAddressByStop,
             nextPackageAddress = nextPackageAddress,
-            stopsUntilNextPackage = stopsUntilNextPackage
+            stopsUntilNextPackage = stopsUntilNextPackage,
+            estimatedCompletionTime = estimatedCompletionTime,
+            remainingMiles = remainingMiles
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), RoutePlayerUiState())
 

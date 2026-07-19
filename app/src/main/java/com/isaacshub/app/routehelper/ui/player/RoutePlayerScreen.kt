@@ -280,6 +280,16 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                         )
                     }
 
+                    // Show estimated completion time and remaining distance
+                    if (state.estimatedCompletionTime != null && state.remainingMiles != null) {
+                        Text(
+                            "Est. done by ${state.estimatedCompletionTime} (${String.format("%.1f", state.remainingMiles)} mi remaining)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+
                     // Debug info for road route status
                     if (state.roadRouteDebugInfo.isNotEmpty()) {
                         Text(
