@@ -3,12 +3,18 @@ package com.isaacshub.app.routehelper.data
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+enum class RouteType {
+    REGULAR,    // Standard routes built with RouteBuilderScreen
+    AMAZON      // Temporary routes built by scanning addresses
+}
+
 @Entity(tableName = "route_helper_routes")
 data class RouteHelperRouteEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val zipCode: String,
-    val createdAtEpochMillis: Long
+    val createdAtEpochMillis: Long,
+    val routeType: String = RouteType.REGULAR.name
 )
 
 /** A candidate stop pulled from OpenStreetMap for a route's ZIP code - a real address until it's routed. */
@@ -90,3 +96,6 @@ data class RouteSectionEntity(
     val endStopId: Long,
     val createdAtEpochMillis: Long
 )
+
+/** Helper extension to check if a route is an Amazon route */
+fun RouteHelperRouteEntity.isAmazonRoute() = routeType == RouteType.AMAZON.name
