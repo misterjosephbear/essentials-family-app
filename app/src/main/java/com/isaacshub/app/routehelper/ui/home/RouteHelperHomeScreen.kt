@@ -12,7 +12,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.AlertDialog
@@ -22,6 +25,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,18 +58,29 @@ fun RouteHelperHomeScreen(
     onOpenRoute: (Long) -> Unit,
     onOpenTestMode: () -> Unit,
     onEditRoute: (Long) -> Unit,
-    onPlayRoute: (Long) -> Unit
+    onPlayRoute: (Long) -> Unit,
+    onOpenAmazonScanner: (Long) -> Unit
 ) {
     val viewModel: RouteHelperHomeViewModel = viewModel()
     val routes by viewModel.routes.collectAsState()
     val newRouteState by viewModel.newRouteState.collectAsState()
     var showNewRouteDialog by remember { mutableStateOf(false) }
+    var showAmazonRouteDialog by remember { mutableStateOf(false) }
+    var showFabMenu by remember { mutableStateOf(false) }
     var routeToDelete by remember { mutableStateOf<RouteHelperRouteEntity?>(null) }
 
     LaunchedEffect(newRouteState.createdRouteId) {
-        newRouteState.createdRouteId?.let {
+        newRouteState.createdRouteId?.let { routeId ->
             showNewRouteDialog = false
-            onOpenRoute(it)
+            showAmazonRouteDialog = false
+
+            // Navigate based on route type
+            val route = routes.find { it.id == routeId }
+            if (route?.routeType == com.isaacshub.app.routehelper.data.RouteType.AMAZON.name) {
+                onOpenAmazonScanner(routeId)
+            } else {
+                onOpenRoute(routeId)
+            }
             viewModel.consumeCreatedRoute()
         }
     }
@@ -82,11 +97,57 @@ fun RouteHelperHomeScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showNewRouteDialog = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "New route")
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Expanded menu items
+                if (showFabMenu) {
+                    SmallFloatingActionButton(
+                        onClick = {
+                            showFabMenu = false
+                            showNewRouteDialog = true
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text("Regular Route")
+                            Icon(Icons.Filled.Map, contentDescription = "Regular Route")
+                        }
+                    }
+                    SmallFloatingActionButton(
+                        onClick = {
+                            showFabMenu = false
+                            showAmazonRouteDialog = true
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text("Amazon Route")
+                            Icon(Icons.Filled.LocalShipping, contentDescription = "Amazon Route")
+                        }
+                    }
+                }
+
+                // Main FAB
+                FloatingActionButton(
+                    onClick = { showFabMenu = !showFabMenu }
+                ) {
+                    Icon(
+                        if (showFabMenu) Icons.Filled.Close else Icons.Filled.Add,
+                        contentDescription = if (showFabMenu) "Close menu" else "New route"
+                    )
+                }
             }
         }
     ) { padding ->
+
         if (routes.isEmpty()) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(padding),
@@ -119,6 +180,15 @@ fun RouteHelperHomeScreen(
             error = newRouteState.error,
             onCreate = viewModel::createRoute,
             onDismiss = { if (!newRouteState.creating) showNewRouteDialog = false }
+        )
+    }
+
+    if (showAmazonRouteDialog) {
+        AmazonRouteDialog(
+            creating = newRouteState.creating,
+            error = newRouteState.error,
+            onCreate = viewModel::createAmazonRoute,
+            onDismiss = { if (!newRouteState.creating) showAmazonRouteDialog = false }
         )
     }
 
@@ -225,6 +295,53 @@ private fun NewRouteDialog(
         confirmButton = {
             TextButton(onClick = { onCreate(name, zip) }, enabled = !creating) {
                 Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !creating) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun AmazonRouteDialog(
+    creating: Boolean,
+    error: String?,
+    onCreate: (zip: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var zip by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New Amazon Route") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Scan addresses from a list to create an Amazon delivery route. Name will be auto-generated.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                OutlinedTextField(
+                    value = zip,
+                    onValueChange = { zip = it },
+                    label = { Text("ZIP code") },
+                    enabled = !creating,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (creating) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Text("Downloading addresses for this ZIP...")
+                    }
+                }
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onCreate(zip) }, enabled = !creating) {
+                Text("Continue to Scanner")
             }
         },
         dismissButton = {

@@ -37,7 +37,7 @@ class TigerAddressFetcher(private val context: Context) {
         geocoder.geocodeZip(zip)?.center
     }
 
-    suspend fun fetchAddressesForZip(zip: String): AddressFetchResult = withContext(Dispatchers.IO) {
+    suspend fun fetchAddressesForZip(zip: String, skipBuildingFilter: Boolean = false): AddressFetchResult = withContext(Dispatchers.IO) {
         val location = geocoder.geocodeZip(zip)
             ?: return@withContext AddressFetchResult.Failure("Couldn't find that ZIP code")
         val fips = fipsLookup.lookup(location.stateAbbreviation, location.county)
@@ -69,13 +69,20 @@ class TigerAddressFetcher(private val context: Context) {
             }
             .toList()
 
-        val buildingCentroids = buildingFootprintFetcher.fetchNearbyBuildingCentroids(location.center)
-        if (buildingCentroids.isEmpty()) {
-            Log.w(TAG, "No building footprints available for ZIP $zip - skipping phantom-address filter")
+        // For Amazon routes, skip building proximity filter to get all possible addresses
+        val finalAddresses = if (skipBuildingFilter) {
+            val flattenedAddresses = addressGroups.flatten()
+            Log.i(TAG, "Skipping building filter for ZIP $zip - returning all ${flattenedAddresses.size} interpolated addresses")
+            flattenedAddresses
+        } else {
+            val buildingCentroids = buildingFootprintFetcher.fetchNearbyBuildingCentroids(location.center)
+            if (buildingCentroids.isEmpty()) {
+                Log.w(TAG, "No building footprints available for ZIP $zip - skipping phantom-address filter")
+            }
+            filterAddressGroupsNearBuildings(addressGroups, buildingCentroids)
         }
-        val filtered = filterAddressGroupsNearBuildings(addressGroups, buildingCentroids)
 
-        AddressFetchResult.Success(filtered.map { FetchedAddress(it.label, it.location) })
+        AddressFetchResult.Success(finalAddresses.map { FetchedAddress(it.label, it.location) })
     }
 
     private fun loadCountyShapefile(stateFp: String, countyFp: String): Pair<ByteArray, ByteArray> {

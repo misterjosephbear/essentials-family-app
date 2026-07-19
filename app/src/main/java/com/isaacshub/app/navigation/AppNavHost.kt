@@ -223,7 +223,8 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                     onOpenRoute = { routeId -> navController.navigate(Routes.routeBuilder(routeId)) },
                     onOpenTestMode = { navController.navigate(Routes.ROUTE_HELPER_TEST) },
                     onEditRoute = { routeId -> navController.navigate(Routes.routeHelperEdit(routeId)) },
-                    onPlayRoute = { routeId -> navController.navigate(Routes.routePlayer(routeId)) }
+                    onPlayRoute = { routeId -> navController.navigate(Routes.routePlayer(routeId)) },
+                    onOpenAmazonScanner = { routeId -> navController.navigate(Routes.amazonScanner(routeId)) }
                 )
             }
             composable(Routes.ROUTE_HELPER_TEST) {
@@ -245,6 +246,19 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                 val routeId = backStackEntry.arguments?.getString(Routes.ROUTE_PLAYER_ARG)?.toLongOrNull()
                 if (routeId != null) {
                     RoutePlayerScreen(routeId = routeId, onDone = { navController.popBackStack() })
+                }
+            }
+            composable(Routes.AMAZON_SCANNER_PATTERN) { backStackEntry ->
+                val routeId = backStackEntry.arguments?.getString(Routes.AMAZON_SCANNER_ARG)?.toLongOrNull()
+                if (routeId != null) {
+                    com.isaacshub.app.routehelper.ui.scanner.AmazonRouteScannerScreen(
+                        routeId = routeId,
+                        onComplete = {
+                            navController.navigate(Routes.routeHelperEdit(routeId)) {
+                                popUpTo(Routes.ROUTE_HELPER_HOME)
+                            }
+                        }
+                    )
                 }
             }
         }

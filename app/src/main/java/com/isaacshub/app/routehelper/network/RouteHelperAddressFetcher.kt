@@ -19,7 +19,7 @@ class RouteHelperAddressFetcher(context: Context) {
     /** Just the center point of a ZIP code, for zooming a map to it (e.g. testing mode) without a full address fetch. */
     suspend fun geocodeZip(zip: String): GeoPoint? = tigerFetcher.geocodeZip(zip)
 
-    suspend fun fetchAddressesForZip(zip: String): AddressFetchResult {
+    suspend fun fetchAddressesForZip(zip: String, skipBuildingFilter: Boolean = false): AddressFetchResult {
         val fromIndiana = indianaFetcher.fetchAddressesForZip(zip)
         if (fromIndiana is AddressFetchResult.Success && fromIndiana.addresses.isNotEmpty()) {
             return fromIndiana
@@ -27,6 +27,6 @@ class RouteHelperAddressFetcher(context: Context) {
         if (fromIndiana is AddressFetchResult.Failure) {
             Log.w(TAG, "Indiana address points unavailable for ZIP $zip: ${fromIndiana.reason}")
         }
-        return tigerFetcher.fetchAddressesForZip(zip)
+        return tigerFetcher.fetchAddressesForZip(zip, skipBuildingFilter)
     }
 }

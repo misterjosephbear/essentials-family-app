@@ -37,6 +37,9 @@ object Routes {
     const val ROUTE_PLAYER_BASE = "route_player"
     const val ROUTE_PLAYER_ARG = "routeId"
     const val ROUTE_PLAYER_PATTERN = "$ROUTE_PLAYER_BASE/{$ROUTE_PLAYER_ARG}"
+    const val AMAZON_SCANNER_BASE = "amazon_scanner"
+    const val AMAZON_SCANNER_ARG = "routeId"
+    const val AMAZON_SCANNER_PATTERN = "$AMAZON_SCANNER_BASE/{$AMAZON_SCANNER_ARG}"
 
     private const val NEW_TOKEN = "new"
 
@@ -46,6 +49,7 @@ object Routes {
     fun routeBuilder(routeId: Long): String = "$ROUTE_BUILDER_BASE/$routeId"
     fun routeHelperEdit(routeId: Long): String = "$ROUTE_HELPER_EDIT_BASE/$routeId"
     fun routePlayer(routeId: Long): String = "$ROUTE_PLAYER_BASE/$routeId"
+    fun amazonScanner(routeId: Long): String = "$AMAZON_SCANNER_BASE/$routeId"
 
     fun parseId(arg: String?): Long? = arg?.takeIf { it != NEW_TOKEN }?.toLongOrNull()
 }

@@ -10,6 +10,14 @@ sealed interface CreateRouteResult {
     data class Failure(val reason: String) : CreateRouteResult
 }
 
+/** Data class for scanned addresses used in Amazon route creation */
+data class ScannedAddressData(
+    val addressLabel: String,
+    val sequenceNumber: Int,  // 1-based display number
+    val matchedCandidateId: Long?,
+    val isValid: Boolean  // Whether matched to a candidate
+)
+
 class RouteHelperRepository(
     private val dao: RouteHelperDao,
     private val addressFetcher: RouteHelperAddressFetcher
@@ -50,6 +58,77 @@ class RouteHelperRepository(
                 dao.deleteRouteById(routeId)
                 CreateRouteResult.Failure(fetched.reason)
             }
+        }
+    }
+
+    /**
+     * Creates an Amazon route (temporary route built by scanning addresses).
+     * Similar to createRoute but with routeType set to AMAZON and skipBuildingFilter=true
+     * to get all possible addresses (not just those near buildings) for better matching.
+     */
+    suspend fun createAmazonRoute(zipCode: String): CreateRouteResult {
+        // Auto-generate name with current date
+        val dateFormatter = java.text.SimpleDateFormat("MM/dd", java.util.Locale.US)
+        val name = "Amazon - $zipCode - ${dateFormatter.format(java.util.Date())}"
+
+        val routeId = dao.insertRoute(
+            RouteHelperRouteEntity(
+                name = name,
+                zipCode = zipCode,
+                createdAtEpochMillis = System.currentTimeMillis(),
+                routeType = RouteType.AMAZON.name
+            )
+        )
+        // Skip building filter to get ALL interpolated addresses (more potential matches for scanning)
+        return when (val fetched = addressFetcher.fetchAddressesForZip(zipCode, skipBuildingFilter = true)) {
+            is AddressFetchResult.Success -> {
+                if (fetched.addresses.isNotEmpty()) {
+                    dao.insertCandidates(
+                        fetched.addresses.map { address ->
+                            CandidateAddressEntity(
+                                routeId = routeId,
+                                label = address.label,
+                                latitude = address.location.latitude,
+                                longitude = address.location.longitude
+                            )
+                        }
+                    )
+                }
+                CreateRouteResult.Success(routeId, fetched.addresses.size)
+            }
+            is AddressFetchResult.Failure -> {
+                dao.deleteRouteById(routeId)
+                CreateRouteResult.Failure(fetched.reason)
+            }
+        }
+    }
+
+    /**
+     * Creates route stops from a list of scanned addresses in exact scan order.
+     * Used by Amazon route scanner to build route after scanning is complete.
+     */
+    suspend fun createStopsFromScannedAddresses(
+        routeId: Long,
+        scannedAddresses: List<ScannedAddressData>
+    ) {
+        scannedAddresses.forEachIndexed { index, scanned ->
+            val candidate = scanned.matchedCandidateId?.let { dao.getCandidate(it) }
+
+            dao.insertStop(
+                RoutedStopEntity(
+                    routeId = routeId,
+                    sequenceOrder = index,  // Maintain exact scan order
+                    addressLabel = scanned.addressLabel,
+                    note = if (!scanned.isValid) "Unvalidated address" else null,
+                    latitude = candidate?.latitude ?: 0.0,
+                    longitude = candidate?.longitude ?: 0.0,
+                    candidateAddressId = scanned.matchedCandidateId,
+                    createdAtEpochMillis = System.currentTimeMillis()
+                )
+            )
+
+            // Mark candidate as routed
+            scanned.matchedCandidateId?.let { dao.setCandidateRouted(it, true) }
         }
     }
 

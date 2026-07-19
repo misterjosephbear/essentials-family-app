@@ -93,6 +93,9 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
     private val locationFlow = MutableStateFlow<LocationSample?>(null)
     private var locationStarted = false
 
+    /** Manual override for stop index (null = use GPS-based navigation) */
+    private val manualStopIndexOverride = MutableStateFlow<Int?>(null)
+
     /** Safe to call every time the screen recomposes - only actually starts tracking/observing once per route. */
     fun start(routeId: Long) {
         if (routeIdFlow.value != routeId) {
@@ -150,7 +153,7 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
     /** Which stop the driver is heading to, advancing whenever they come within arrival range of the current one. */
     private data class StopAdvanceState(val index: Int, val previousLocation: GeoPoint?)
 
-    private val nextStopIndexFlow: Flow<Int> = locationFlow.combine(stopsFlow) { sample, stops -> sample to stops }
+    private val gpsBasedStopIndexFlow: Flow<Int> = locationFlow.combine(stopsFlow) { sample, stops -> sample to stops }
         .scan(StopAdvanceState(0, null)) { state, (sample, stops) ->
             val location = sample?.point
             val speed = sample?.speedMetersPerSecond ?: 0f
@@ -163,6 +166,17 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
         .map { it.index }
+
+    /** Final stop index: uses manual override if set, otherwise GPS-based navigation */
+    private val nextStopIndexFlow: Flow<Int> = combine(
+        manualStopIndexOverride,
+        gpsBasedStopIndexFlow,
+        stopsFlow
+    ) { manualIndex, gpsIndex, stops ->
+        // Use manual override if set and valid, otherwise use GPS-based index
+        val finalIndex = manualIndex?.coerceIn(0, stops.size) ?: gpsIndex
+        finalIndex
+    }
 
     private val bearingFlow: Flow<Float> = locationFlow.scan(0f) { previousBearing, sample ->
         sample?.let { resolveMapBearing(it, previousBearing) } ?: previousBearing
@@ -465,5 +479,32 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
                 }
             }
         }
+    }
+
+    /** Manual control to skip forward to next stop */
+    fun skipToNextStop() {
+        val currentIndex = uiState.value.nextStopIndex ?: return
+        val totalStops = uiState.value.stops.size
+        if (currentIndex < totalStops) {
+            val newIndex = (currentIndex + 1).coerceAtMost(totalStops)
+            manualStopIndexOverride.value = newIndex
+            Log.d(TAG, "Manual skip: advanced from stop $currentIndex to $newIndex")
+        }
+    }
+
+    /** Manual control to rewind to previous stop */
+    fun rewindToPreviousStop() {
+        val currentIndex = uiState.value.nextStopIndex ?: 0
+        if (currentIndex > 0) {
+            val newIndex = currentIndex - 1
+            manualStopIndexOverride.value = newIndex
+            Log.d(TAG, "Manual rewind: went back from stop $currentIndex to $newIndex")
+        }
+    }
+
+    /** Clear manual override and return to GPS-based navigation */
+    fun clearManualOverride() {
+        manualStopIndexOverride.value = null
+        Log.d(TAG, "Manual override cleared - returning to GPS navigation")
     }
 }

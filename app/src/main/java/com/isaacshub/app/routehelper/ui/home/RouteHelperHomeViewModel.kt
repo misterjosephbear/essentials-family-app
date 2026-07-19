@@ -44,6 +44,22 @@ class RouteHelperHomeViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
+    fun createAmazonRoute(zipCode: String) {
+        if (zipCode.isBlank()) {
+            _newRouteState.value = NewRouteUiState(error = "Enter a ZIP code")
+            return
+        }
+        _newRouteState.value = NewRouteUiState(creating = true)
+        viewModelScope.launch {
+            when (val result = repository.createAmazonRoute(zipCode.trim())) {
+                is CreateRouteResult.Success ->
+                    _newRouteState.value = NewRouteUiState(createdRouteId = result.routeId)
+                is CreateRouteResult.Failure ->
+                    _newRouteState.value = NewRouteUiState(error = "Couldn't fetch addresses: ${result.reason}")
+            }
+        }
+    }
+
     fun consumeCreatedRoute() {
         _newRouteState.value = NewRouteUiState()
     }

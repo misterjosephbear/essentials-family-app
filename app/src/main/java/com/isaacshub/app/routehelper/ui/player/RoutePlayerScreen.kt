@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
 import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -301,27 +303,52 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                 }
             }
 
-            // Bottom-right FAB row: GPS toggle and mail scanner
-            Row(
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+            // Bottom-right FAB column: Skip/rewind controls, GPS toggle, and mail scanner
+            Column(
+                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.End
             ) {
-                // GPS lock/unlock toggle
-                FloatingActionButton(
-                    onClick = { isFreeCam = !isFreeCam }
+                // Skip/rewind row (for manual stop navigation)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        if (isFreeCam) Icons.Filled.GpsNotFixed else Icons.Filled.GpsFixed,
-                        contentDescription = if (isFreeCam) "Enable GPS tracking" else "Disable GPS tracking"
-                    )
+                    // Rewind button
+                    FloatingActionButton(
+                        onClick = { viewModel.rewindToPreviousStop() },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous stop")
+                    }
+
+                    // Skip button
+                    FloatingActionButton(
+                        onClick = { viewModel.skipToNextStop() },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Icon(Icons.Filled.SkipNext, contentDescription = "Next stop")
+                    }
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Mail scanner
-                FloatingActionButton(
-                    onClick = { isScanning = true }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Filled.CameraAlt, contentDescription = "Scan a mail piece to add a stop")
+                    // GPS lock/unlock toggle
+                    FloatingActionButton(
+                        onClick = { isFreeCam = !isFreeCam }
+                    ) {
+                        Icon(
+                            if (isFreeCam) Icons.Filled.GpsNotFixed else Icons.Filled.GpsFixed,
+                            contentDescription = if (isFreeCam) "Enable GPS tracking" else "Disable GPS tracking"
+                        )
+                    }
+
+                    // Mail scanner
+                    FloatingActionButton(
+                        onClick = { isScanning = true }
+                    ) {
+                        Icon(Icons.Filled.CameraAlt, contentDescription = "Scan a mail piece to add a stop")
+                    }
                 }
             }
         }
