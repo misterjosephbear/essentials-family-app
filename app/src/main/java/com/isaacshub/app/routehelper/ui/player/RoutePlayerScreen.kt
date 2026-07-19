@@ -260,25 +260,26 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                             nextStop.note?.let { note ->
                                 Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                             }
-
-                            // Always show next package location (even if many stops ahead)
-                            state.nextPackageAddress?.let { pkgAddr ->
-                                val stopsAway = state.stopsUntilNextPackage ?: 0
-                                val distanceText = when (stopsAway) {
-                                    0 -> "at this stop"
-                                    1 -> "in 1 stop"
-                                    else -> "in $stopsAway stops"
-                                }
-                                Text(
-                                    "Next package at: $pkgAddr ($distanceText)",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
-                            }
                         }
                         else -> Text("Route complete!", style = MaterialTheme.typography.titleMedium)
                     }
+
+                    // Always show next package location (even if many stops ahead) - OUTSIDE the when block
+                    state.nextPackageAddress?.let { pkgAddr ->
+                        val stopsAway = state.stopsUntilNextPackage ?: 0
+                        val distanceText = when (stopsAway) {
+                            0 -> "at this stop"
+                            1 -> "in 1 stop"
+                            else -> "in $stopsAway stops"
+                        }
+                        Text(
+                            "Next package at: $pkgAddr ($distanceText)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+
                     // Debug info for road route status
                     if (state.roadRouteDebugInfo.isNotEmpty()) {
                         Text(
@@ -333,14 +334,21 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
 
     if (isScanningPackages) {
         val scannedPackages by viewModel.observePackagesWithSequence().collectAsState(initial = emptyList())
+        val packageSections by viewModel.observePackageSections().collectAsState(initial = emptyMap())
         Dialog(onDismissRequest = { isScanningPackages = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             PackageScanScreen(
                 routeId = routeId,
                 scannedPackages = scannedPackages.map { pkg ->
-                    ScannedPackage(pkg.trackingNumber, pkg.addressLabel, pkg.sequenceNumber)
+                    ScannedPackage(
+                        trackingNumber = pkg.trackingNumber,
+                        addressLabel = pkg.addressLabel,
+                        sequenceNumber = pkg.sequenceNumber,
+                        sections = packageSections[pkg.id] ?: emptyList(),
+                        routedStopId = pkg.routedStopId
+                    )
                 },
                 onPackageScanned = { pkg ->
-                    viewModel.addPackage(pkg.trackingNumber, pkg.addressLabel)
+                    viewModel.addPackage(pkg.trackingNumber, pkg.addressLabel, pkg.routedStopId)
                 },
                 onPackageDeleted = { pkg ->
                     // Find the matching package entity and delete it

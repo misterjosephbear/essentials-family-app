@@ -354,13 +354,18 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         return repository.getUndeliveredPackageCountForStop(routeId, stopId)
     }
 
-    /** Add a scanned package */
-    fun addPackage(trackingNumber: String, addressLabel: String) {
+    /** Add a scanned package with matched stop ID */
+    fun addPackage(trackingNumber: String, addressLabel: String, routedStopId: Long?) {
         val routeId = routeIdFlow.value ?: return
         viewModelScope.launch {
-            repository.addPackage(routeId, trackingNumber, addressLabel)
-            // Match packages to stops
-            repository.matchPackagesToStops(routeId)
+            if (routedStopId != null) {
+                // Package already matched to a stop during scanning - save with stop ID
+                repository.addPackageWithStop(routeId, trackingNumber, addressLabel, routedStopId)
+            } else {
+                // Package not matched yet - save and then try to match
+                repository.addPackage(routeId, trackingNumber, addressLabel)
+                repository.matchPackagesToStops(routeId)
+            }
         }
     }
 
@@ -378,6 +383,28 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
     fun deletePackage(pkg: com.isaacshub.app.routehelper.data.PackageEntity) {
         viewModelScope.launch {
             repository.deletePackage(pkg)
+        }
+    }
+
+    /** Observe sections for all packages - returns map of package ID to list of section names */
+    fun observePackageSections() = routeIdFlow.flatMapLatest { routeId ->
+        if (routeId == null) {
+            flowOf(emptyMap())
+        } else {
+            flow {
+                repository.observePackagesWithSequence(routeId).collect { packages ->
+                    val sectionsMap = mutableMapOf<Long, List<String>>()
+                    packages.forEach { pkg ->
+                        if (pkg.routedStopId != null) {
+                            val sections = repository.getSectionsForStop(routeId, pkg.routedStopId)
+                            sectionsMap[pkg.id] = sections.map { it.name }
+                        } else {
+                            sectionsMap[pkg.id] = emptyList()
+                        }
+                    }
+                    emit(sectionsMap)
+                }
+            }
         }
     }
 }

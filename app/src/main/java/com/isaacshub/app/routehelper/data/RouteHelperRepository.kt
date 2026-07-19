@@ -178,6 +178,19 @@ class RouteHelperRepository(
         )
     }
 
+    /** Add a package that's already been matched to a stop during scanning */
+    suspend fun addPackageWithStop(routeId: Long, trackingNumber: String, addressLabel: String, routedStopId: Long): Long {
+        return dao.insertPackage(
+            PackageEntity(
+                routeId = routeId,
+                trackingNumber = trackingNumber,
+                addressLabel = addressLabel,
+                routedStopId = routedStopId,
+                scannedAtEpochMillis = System.currentTimeMillis()
+            )
+        )
+    }
+
     fun observePackages(routeId: Long): Flow<List<PackageEntity>> = dao.observePackages(routeId)
 
     fun observePackagesWithSequence(routeId: Long): Flow<List<PackageWithSequence>> = dao.observePackagesWithSequence(routeId)

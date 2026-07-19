@@ -59,7 +59,9 @@ import java.util.concurrent.Executors
 data class ScannedPackage(
     val trackingNumber: String,
     val addressLabel: String,
-    val sequenceNumber: Int? = null
+    val sequenceNumber: Int? = null,
+    val sections: List<String> = emptyList(),
+    val routedStopId: Long? = null
 )
 
 /**
@@ -125,7 +127,7 @@ fun PackageScanScreen(
                     routeId = routeId,
                     onPackageScanned = { pkg ->
                         onPackageScanned(pkg)
-                        isScanning = false
+                        // Keep camera open for bulk scanning
                     },
                     onCancel = { isScanning = false }
                 )
@@ -193,6 +195,15 @@ fun PackageScanScreen(
                                             style = MaterialTheme.typography.bodyLarge
                                         )
                                     }
+                                    // Show sections if available
+                                    if (pkg.sections.isNotEmpty()) {
+                                        Text(
+                                            "Sections: ${pkg.sections.joinToString(", ")}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(top = 4.dp)
+                                        )
+                                    }
                                     Text(
                                         "Tracking: ${pkg.trackingNumber}",
                                         style = MaterialTheme.typography.bodySmall,
@@ -244,19 +255,20 @@ private fun PackageCameraScanner(
     // When a package is scanned, look up its sections and re-enable scanning after cooldown
     LaunchedEffect(lastScannedPackage) {
         lastScannedPackage?.let { pkg ->
-            // Look up sections
-            val stops = repository.getStopsOnce(routeId)
-            val matchingStop = stops.find { stop ->
-                stop.addressLabel.contains(pkg.addressLabel, ignoreCase = true) ||
-                pkg.addressLabel.contains(stop.addressLabel, ignoreCase = true)
-            }
-
-            if (matchingStop != null) {
-                val sections = repository.getSectionsForStop(routeId, matchingStop.id)
-                sectionsForLastPackage = sections.map { it.name }
+            // Look up sections for the last scanned package
+            val sections = if (pkg.sequenceNumber != null) {
+                // Find the matching stop to get sections
+                val stops = repository.getStopsOnce(routeId)
+                val matchingStop = stops.find { it.sequenceOrder == pkg.sequenceNumber }
+                if (matchingStop != null) {
+                    repository.getSectionsForStop(routeId, matchingStop.id).map { it.name }
+                } else {
+                    emptyList()
+                }
             } else {
-                sectionsForLastPackage = emptyList()
+                emptyList()
             }
+            sectionsForLastPackage = sections
 
             // Re-enable scanning after 2 second cooldown
             kotlinx.coroutines.delay(2000)
@@ -482,16 +494,22 @@ private fun processPackageImage(
             .addOnSuccessListener { visionText ->
                 val text = visionText.text
                 val trackingNumber = extractUSPSTrackingNumber(text)
-                val address = extractAddress(text, routeStops)
+                val addressResult = extractAddressWithStop(text, routeStops)
 
                 // Debug logging
-                if (trackingNumber != null || address != null) {
-                    android.util.Log.d("PackageScanner", "Found tracking: $trackingNumber, address: $address")
+                if (trackingNumber != null || addressResult != null) {
+                    android.util.Log.d("PackageScanner", "Found tracking: $trackingNumber, address: ${addressResult?.first}, seq: ${addressResult?.second?.sequenceOrder}")
                     android.util.Log.d("PackageScanner", "Full OCR text:\n$text")
                 }
 
-                if (trackingNumber != null && address != null) {
-                    onPackageDetected(ScannedPackage(trackingNumber, address))
+                if (trackingNumber != null && addressResult != null) {
+                    val (address, matchedStop) = addressResult
+                    onPackageDetected(ScannedPackage(
+                        trackingNumber = trackingNumber,
+                        addressLabel = address,
+                        sequenceNumber = matchedStop.sequenceOrder,
+                        routedStopId = matchedStop.id
+                    ))
                 }
             }
             .addOnCompleteListener {
@@ -529,6 +547,7 @@ private fun extractUSPSTrackingNumber(text: String): String? {
 
 /**
  * Extract delivery address from OCR text with route validation.
+ * Returns both the extracted address string and the matched stop.
  * On USPS packages, the delivery address is typically larger and centered.
  * We look for the largest/most prominent address pattern, avoiding the return address.
  *
@@ -538,9 +557,9 @@ private fun extractUSPSTrackingNumber(text: String): String? {
  * 3. Prefer addresses in middle section of text (delivery label is centered)
  * 4. Prefer longer addresses (delivery address typically more complete)
  * 5. VALIDATE against actual route stops - reject if not on route
- * 6. Return the most likely delivery address that matches a route stop
+ * 6. Return the most likely delivery address that matches a route stop, with the stop itself
  */
-private fun extractAddress(text: String, routeStops: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>): String? {
+private fun extractAddressWithStop(text: String, routeStops: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>): Pair<String, com.isaacshub.app.routehelper.data.RoutedStopEntity>? {
     val lines = text.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
 
     // Address pattern: starts with a number, followed by street name
@@ -642,7 +661,7 @@ private fun extractAddress(text: String, routeStops: List<com.isaacshub.app.rout
 
     if (matchingStop != null) {
         android.util.Log.d("AddressExtraction", "✓ VALIDATED: Address found on route (matched: ${matchingStop.addressLabel})")
-        return extractedAddress
+        return Pair(extractedAddress, matchingStop)
     } else {
         android.util.Log.w("AddressExtraction", "✗ REJECTED: Address '$extractedAddress' NOT on route (${routeStops.size} stops checked)")
         return null  // Reject addresses not on the route
