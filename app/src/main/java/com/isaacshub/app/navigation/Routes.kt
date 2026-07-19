@@ -3,6 +3,8 @@ package com.isaacshub.app.navigation
 object Routes {
     const val LANDING = "landing"
 
+    const val SETTINGS_HOME = "settings_home"
+
     const val SLEEP_HOME = "sleep_home"
     const val SLEEP_HISTORY = "sleep_history"
     const val SLEEP_SETTINGS = "sleep_settings"

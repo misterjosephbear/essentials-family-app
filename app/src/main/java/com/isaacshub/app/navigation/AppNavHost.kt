@@ -33,6 +33,7 @@ import com.isaacshub.app.routehelper.ui.edit.RouteEditScreen
 import com.isaacshub.app.routehelper.ui.home.RouteHelperHomeScreen
 import com.isaacshub.app.routehelper.ui.player.RoutePlayerScreen
 import com.isaacshub.app.routehelper.ui.test.RouteHelperTestScreen
+import com.isaacshub.app.settings.ui.SettingsScreen as GeneralSettingsScreen
 import com.isaacshub.app.sleep.ui.edit.EditSessionScreen
 import com.isaacshub.app.sleep.ui.history.HistoryScreen
 import com.isaacshub.app.sleep.ui.home.HomeScreen
@@ -130,8 +131,13 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                     onOpenSleep = { navController.navigate(Routes.SLEEP_HOME) },
                     onOpenTimeTracking = { navController.navigate(Routes.TIME_HOME) },
                     onOpenVault = { navController.navigate(Routes.VAULT_HOME) },
-                    onOpenRouteHelper = { navController.navigate(Routes.ROUTE_HELPER_HOME) }
+                    onOpenRouteHelper = { navController.navigate(Routes.ROUTE_HELPER_HOME) },
+                    onOpenSettings = { navController.navigate(Routes.SETTINGS_HOME) }
                 )
+            }
+
+            composable(Routes.SETTINGS_HOME) {
+                GeneralSettingsScreen()
             }
 
             composable(Routes.SLEEP_HOME) {

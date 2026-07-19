@@ -7,11 +7,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -31,7 +34,8 @@ fun LandingScreen(
     onOpenSleep: () -> Unit,
     onOpenTimeTracking: () -> Unit,
     onOpenVault: () -> Unit,
-    onOpenRouteHelper: () -> Unit
+    onOpenRouteHelper: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     Scaffold(
         topBar = { TopAppBar(title = { Text("Isaac's Hub") }) }
@@ -40,7 +44,8 @@ fun LandingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             ToolCard(
@@ -66,6 +71,12 @@ fun LandingScreen(
                 title = "Route Helper",
                 subtitle = "Build a route live while driving it",
                 onClick = onOpenRouteHelper
+            )
+            ToolCard(
+                icon = Icons.Filled.Settings,
+                title = "Settings",
+                subtitle = "General app settings",
+                onClick = onOpenSettings
             )
         }
     }
