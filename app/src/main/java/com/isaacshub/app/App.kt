@@ -12,6 +12,7 @@ import com.isaacshub.app.timetracking.data.TimeTrackingRepository
 import com.isaacshub.app.vault.backup.AppDataBackupScheduler
 import com.isaacshub.app.vault.data.VaultPreferencesRepository
 import com.isaacshub.app.vault.work.PhotoBackupScheduler
+import com.isaacshub.app.routehelper.work.PackageCleanupScheduler
 
 class App : Application() {
 
@@ -51,5 +52,8 @@ class App : Application() {
 
         val routeHelperDatabase = RouteHelperDatabase.getInstance(this)
         routeHelperRepository = RouteHelperRepository(routeHelperDatabase.routeHelperDao(), RouteHelperAddressFetcher(this))
+
+        // Schedule daily package cleanup at 1am
+        PackageCleanupScheduler.schedule(this)
     }
 }

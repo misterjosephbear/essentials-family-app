@@ -46,6 +46,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -351,6 +357,15 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                     }
                 }
             }
+
+            // Missed package alert - flashing overlay
+            state.missedPackageAlert?.let { address ->
+                MissedPackageAlert(
+                    address = address,
+                    onDismiss = { viewModel.dismissMissedPackageAlert() },
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
         }
     }
 
@@ -408,6 +423,69 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
     }
 }
 
+/**
+ * Flashing alert overlay that appears when a package is missed at a stop.
+ * Flashes with a pulsing red background until the user confirms.
+ */
+@Composable
+private fun MissedPackageAlert(
+    address: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Infinite pulsing animation for the background
+    val infiniteTransition = rememberInfiniteTransition(label = "missedPackageFlash")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alphaAnimation"
+    )
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth(0.9f)
+            .padding(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = alpha)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                "⚠️ MISSED PACKAGE",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.error
+            )
+
+            Spacer(modifier = Modifier.padding(8.dp))
+
+            Text(
+                address,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+
+            Spacer(modifier = Modifier.padding(12.dp))
+
+            TextButton(
+                onClick = onDismiss,
+                colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text("CONFIRM", style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+}
+
 private val routeLineColor = Color(0xFFFF00FF).toArgb()  // Bright magenta to test visibility
 
 /**
@@ -436,14 +514,74 @@ private fun shouldShowStopMarkers(zoomLevel: Double): Boolean {
 @Composable
 private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var hasCenteredOnce by remember { mutableStateOf(false) }
     val mapView = remember { newOsmMapView(context) }
     var currentZoomLevel by remember { mutableStateOf(18.0) }
     var manualScaleOverride by remember { mutableStateOf<Float?>(null) }
     var autoScaleFactor by remember { mutableStateOf(1f) }
 
+    // Smoothed bearing animation
+    val smoothBearing = remember { Animatable(0f) }
+
+    // Smoothed location for marker
+    var smoothLatitude by remember { mutableStateOf<Double?>(null) }
+    var smoothLongitude by remember { mutableStateOf<Double?>(null) }
+
     DisposableEffect(Unit) {
         onDispose { mapView.onDetach() }
+    }
+
+    // Smoothly animate bearing changes
+    LaunchedEffect(state.mapBearingDegrees, isFreeCam) {
+        if (!isFreeCam) {
+            // Normalize angle difference to handle wrapping (e.g., 359° -> 1° should rotate 2°, not 358°)
+            val currentBearing = smoothBearing.value
+            val targetBearing = state.mapBearingDegrees
+            val diff = ((targetBearing - currentBearing + 180) % 360) - 180
+            val normalizedTarget = currentBearing + diff
+
+            smoothBearing.animateTo(
+                targetValue = normalizedTarget,
+                animationSpec = tween(durationMillis = 300)
+            )
+        } else {
+            // Reset to 0 in free-cam mode
+            smoothBearing.snapTo(0f)
+        }
+    }
+
+    // Smoothly interpolate location for the marker
+    LaunchedEffect(state.currentLocation) {
+        state.currentLocation?.let { location ->
+            val currentLat = smoothLatitude
+            val currentLon = smoothLongitude
+
+            if (currentLat == null || currentLon == null) {
+                // First location, snap immediately
+                smoothLatitude = location.latitude
+                smoothLongitude = location.longitude
+            } else {
+                // Animate to new location
+                val startTime = System.currentTimeMillis()
+                val duration = 300L // 300ms animation
+
+                while (System.currentTimeMillis() - startTime < duration) {
+                    val elapsed = System.currentTimeMillis() - startTime
+                    val progress = (elapsed.toFloat() / duration).coerceIn(0f, 1f)
+
+                    // Linear interpolation
+                    smoothLatitude = currentLat + (location.latitude - currentLat) * progress
+                    smoothLongitude = currentLon + (location.longitude - currentLon) * progress
+
+                    kotlinx.coroutines.delay(16) // ~60fps
+                }
+
+                // Ensure we end exactly at target
+                smoothLatitude = location.latitude
+                smoothLongitude = location.longitude
+            }
+        }
     }
 
     // Show scale control slider when zoomed out enough
@@ -462,7 +600,8 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
         if (!isFreeCam) {
             // Negated so the driver's live bearing visually points to the top of the screen (course-up),
             // rather than the map staying north-up like the builder's preview map.
-            view.setMapOrientation(-state.mapBearingDegrees, false)
+            // Use smoothed bearing for smooth rotation
+            view.setMapOrientation(-smoothBearing.value, false)
         } else {
             // In free-cam mode, keep map north-up
             view.setMapOrientation(0f, false)
@@ -505,8 +644,11 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
             }
         }
 
-        state.currentLocation?.let { location ->
-            val point = OsmGeoPoint(location.latitude, location.longitude)
+        // Use smoothed location for both camera and marker
+        val lat = smoothLatitude
+        val lon = smoothLongitude
+        if (lat != null && lon != null) {
+            val point = OsmGeoPoint(lat, lon)
 
             // Only auto-center and follow GPS when free-cam is disabled
             if (!isFreeCam) {

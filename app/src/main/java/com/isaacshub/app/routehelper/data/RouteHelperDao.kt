@@ -104,6 +104,9 @@ interface RouteHelperDao {
     @Delete
     suspend fun deletePackage(pkg: PackageEntity)
 
+    @Query("DELETE FROM packages WHERE scannedAtEpochMillis < :beforeTimestampMillis")
+    suspend fun deletePackagesScanBefore(beforeTimestampMillis: Long): Int
+
     // Section queries
     @Insert
     suspend fun insertSection(section: RouteSectionEntity): Long

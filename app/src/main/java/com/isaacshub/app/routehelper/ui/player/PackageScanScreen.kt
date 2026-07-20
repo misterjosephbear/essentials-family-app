@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -242,6 +244,7 @@ private fun PackageCameraScanner(
     var lastScannedPackage by remember { mutableStateOf<ScannedPackage?>(null) }
     var sectionsForLastPackage by remember { mutableStateOf<List<String>>(emptyList()) }
     var lastScannedTrackingNumber by remember { mutableStateOf<String?>(null) }
+    var wildcardScanRequested by remember { mutableStateOf(false) }
 
     // Access repository to get sections and route stops
     val context = LocalContext.current
@@ -301,6 +304,8 @@ private fun PackageCameraScanner(
             PackageCameraPreview(
                 useFrontCamera = useFrontCamera,
                 routeStops = routeStops,
+                wildcardScanRequested = wildcardScanRequested,
+                onWildcardScanProcessed = { wildcardScanRequested = false },
                 onPackageDetected = { pkg ->
                     // Only scan if we're not in cooldown and it's a new tracking number
                     if (canScan && pkg.trackingNumber != lastScannedTrackingNumber) {
@@ -312,35 +317,59 @@ private fun PackageCameraScanner(
                 }
             )
 
-            Card(
+            Column(
                 modifier = Modifier.align(Alignment.TopCenter).padding(16.dp).fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                colors = if (canScan) {
-                    CardDefaults.cardColors()
-                } else {
-                    CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-                }
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(
-                        if (canScan) "Ready to scan" else "Processing...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (canScan) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    Text(
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                    colors = if (canScan) {
+                        CardDefaults.cardColors()
+                    } else {
+                        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                    }
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            if (canScan) "Ready to scan" else "Processing...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (canScan) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            if (canScan) {
+                                "Point camera at package barcode/QR code and address"
+                            } else {
+                                "Wait 2 seconds between scans"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (canScan) {
+                                MaterialTheme.colorScheme.outline
+                            } else {
+                                MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                            },
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+
+                // Wildcard scan button for when barcode won't scan
+                Button(
+                    onClick = {
                         if (canScan) {
-                            "Point camera at package barcode/QR code and address"
-                        } else {
-                            "Wait 2 seconds between scans"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (canScan) {
-                            MaterialTheme.colorScheme.outline
-                        } else {
-                            MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
-                        },
-                        modifier = Modifier.padding(top = 4.dp)
+                            android.util.Log.d("PackageScanner", "Wildcard scan requested - scanning for address only")
+                            wildcardScanRequested = true
+                        }
+                    },
+                    enabled = canScan,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Filled.ErrorOutline,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp)
                     )
+                    Text("Can't Scan Barcode? Use Address Only")
                 }
             }
 
@@ -389,12 +418,16 @@ private fun PackageCameraScanner(
 private fun PackageCameraPreview(
     useFrontCamera: Boolean,
     routeStops: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>,
+    wildcardScanRequested: Boolean,
+    onWildcardScanProcessed: () -> Unit,
     onPackageDetected: (ScannedPackage) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val onPackageDetectedState = rememberUpdatedState(onPackageDetected)
     val routeStopsState = rememberUpdatedState(routeStops)
+    val wildcardScanRequestedState = rememberUpdatedState(wildcardScanRequested)
+    val onWildcardScanProcessedState = rememberUpdatedState(onWildcardScanProcessed)
 
     val recognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     val barcodeScanner = remember { BarcodeScanning.getClient() }
@@ -416,7 +449,15 @@ private fun PackageCameraPreview(
                         .build()
                         .also {
                             it.setAnalyzer(executor) { imageProxy ->
-                                processPackageImage(imageProxy, recognizer, barcodeScanner, routeStopsState.value, onPackageDetectedState.value)
+                                processPackageImage(
+                                    imageProxy,
+                                    recognizer,
+                                    barcodeScanner,
+                                    routeStopsState.value,
+                                    wildcardScanRequestedState.value,
+                                    onWildcardScanProcessedState.value,
+                                    onPackageDetectedState.value
+                                )
                             }
                         }
 
@@ -455,7 +496,15 @@ private fun PackageCameraPreview(
                     .build()
                     .also {
                         it.setAnalyzer(executor) { imageProxy ->
-                            processPackageImage(imageProxy, recognizer, barcodeScanner, routeStopsState.value, onPackageDetectedState.value)
+                            processPackageImage(
+                                imageProxy,
+                                recognizer,
+                                barcodeScanner,
+                                routeStopsState.value,
+                                wildcardScanRequestedState.value,
+                                onWildcardScanProcessedState.value,
+                                onPackageDetectedState.value
+                            )
                         }
                     }
 
@@ -484,18 +533,48 @@ private fun PackageCameraPreview(
 /**
  * Process an image frame to extract package tracking number from barcodes and address from OCR.
  * Priority: Scan barcodes/QR codes for tracking numbers, fall back to OCR if needed.
+ * If wildcardScanRequested is true, only extract address and use a timestamp-based wildcard tracking number.
  */
 private fun processPackageImage(
     imageProxy: ImageProxy,
     recognizer: TextRecognizer,
     barcodeScanner: com.google.mlkit.vision.barcode.BarcodeScanner,
     routeStops: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>,
+    wildcardScanRequested: Boolean,
+    onWildcardScanProcessed: () -> Unit,
     onPackageDetected: (ScannedPackage) -> Unit
 ) {
     @androidx.camera.core.ExperimentalGetImage
     val mediaImage = imageProxy.image
     if (mediaImage != null) {
         val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+
+        // If wildcard scan is requested, only extract address and assign a wildcard tracking number
+        if (wildcardScanRequested) {
+            recognizer.process(image)
+                .addOnSuccessListener { visionText ->
+                    val addressResult = extractAddressWithStop(visionText.text, routeStops)
+
+                    if (addressResult != null) {
+                        val (address, matchedStop) = addressResult
+                        val wildcardTracking = "WILDCARD-${System.currentTimeMillis()}"
+                        android.util.Log.d("PackageScanner", "✓ Wildcard package scan: tracking=$wildcardTracking, address=$address")
+                        onPackageDetected(ScannedPackage(
+                            trackingNumber = wildcardTracking,
+                            addressLabel = address,
+                            sequenceNumber = matchedStop.sequenceOrder,
+                            routedStopId = matchedStop.id
+                        ))
+                        onWildcardScanProcessed()
+                    } else {
+                        android.util.Log.w("PackageScanner", "✗ Wildcard scan: No valid address found on route")
+                    }
+                }
+                .addOnCompleteListener {
+                    imageProxy.close()
+                }
+            return
+        }
 
         // First, try to scan barcodes for tracking number
         barcodeScanner.process(image)

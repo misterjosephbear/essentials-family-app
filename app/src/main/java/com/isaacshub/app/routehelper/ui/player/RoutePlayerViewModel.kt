@@ -75,7 +75,9 @@ data class RoutePlayerUiState(
     /** Estimated completion time based on remaining distance, average speed, and stop time */
     val estimatedCompletionTime: String? = null,
     /** Remaining distance in miles */
-    val remainingMiles: Double? = null
+    val remainingMiles: Double? = null,
+    /** Missed package alert - stop address where package was missed, null if no alert */
+    val missedPackageAlert: String? = null
 )
 
 /**
@@ -95,6 +97,12 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
 
     /** Manual override for stop index (null = use GPS-based navigation) */
     private val manualStopIndexOverride = MutableStateFlow<Int?>(null)
+
+    /** Track when we arrived at each stop (stopId -> arrival timestamp in millis) */
+    private val stopArrivalTimes = mutableMapOf<Long, Long>()
+
+    /** Missed package alert state (address of stop where package was missed) */
+    private val missedPackageAlertFlow = MutableStateFlow<String?>(null)
 
     /** Safe to call every time the screen recomposes - only actually starts tracking/observing once per route. */
     fun start(routeId: Long) {
@@ -172,6 +180,18 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
                     distanceMeters(location, points[newIndex]) < STOP_ARRIVAL_RADIUS_METERS
                 } else {
                     false
+                }
+
+                // Track when we arrive at stops
+                if (withinArrivalRadius && !state.wasWithinArrivalRadius && newIndex < stops.size) {
+                    val stopId = stops[newIndex].id
+                    stopArrivalTimes[stopId] = System.currentTimeMillis()
+                    Log.d(TAG, "Arrived at stop $stopId at ${stopArrivalTimes[stopId]}")
+                }
+
+                // Check for missed packages when leaving a stop
+                if (state.wasWithinArrivalRadius && !withinArrivalRadius && state.index < stops.size) {
+                    checkForMissedPackage(stops[state.index])
                 }
 
                 StopAdvanceState(newIndex, location, withinArrivalRadius)
@@ -253,6 +273,44 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         }
 
     /**
+     * Check if a package was missed at the stop we just left.
+     * Triggers alert if:
+     * 1. Stop had undelivered packages
+     * 2. We were at the stop for less than 6 seconds OR we passed it without stopping
+     */
+    private fun checkForMissedPackage(stop: RoutedStopEntity) {
+        val routeId = routeIdFlow.value ?: return
+
+        viewModelScope.launch {
+            val packageCount = repository.getUndeliveredPackageCountForStop(routeId, stop.id)
+
+            if (packageCount > 0) {
+                val arrivalTime = stopArrivalTimes[stop.id]
+                val dwellTimeSeconds = if (arrivalTime != null) {
+                    (System.currentTimeMillis() - arrivalTime) / 1000.0
+                } else {
+                    0.0 // Passed without stopping
+                }
+
+                Log.d(TAG, "Left stop ${stop.id} with $packageCount packages, dwell time: ${dwellTimeSeconds}s")
+
+                // Alert if we were there less than 6 seconds or never arrived
+                if (dwellTimeSeconds < 6.0) {
+                    Log.w(TAG, "⚠️ MISSED PACKAGE at ${stop.addressLabel} (dwell: ${dwellTimeSeconds}s)")
+                    missedPackageAlertFlow.value = stop.addressLabel
+                }
+            }
+        }
+    }
+
+    /**
+     * Dismiss the missed package alert
+     */
+    fun dismissMissedPackageAlert() {
+        missedPackageAlertFlow.value = null
+    }
+
+    /**
      * Slots a stop scanned off a mail piece in right after wherever the driver last was - i.e. just
      * before the stop they're currently heading to (or at the end, if every stop's already been hit).
      */
@@ -276,7 +334,8 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         routeZipFlow,
         currentRoadNameFlow,
         packagesFlow,
-        gpsBasedStopIndexFlow
+        gpsBasedStopIndexFlow,
+        missedPackageAlertFlow
     ) { values: Array<Any?> ->
         val sample = values[0] as LocationSample?
         val stops = values[1] as List<RoutedStopEntity>
@@ -287,6 +346,7 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         val currentRoadName = values[6] as String?
         val packages = values[7] as List<PackageEntity>
         val gpsState = values[8] as StopAdvanceState
+        val missedPackageAlert = values[9] as String?
 
         // Use the wasWithinArrivalRadius flag from GPS state for stable "at stop" detection
         // This prevents flickering when GPS jitter pushes you in/out of the arrival radius
@@ -410,7 +470,8 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             nextPackageAddress = nextPackageAddress,
             stopsUntilNextPackage = stopsUntilNextPackage,
             estimatedCompletionTime = estimatedCompletionTime,
-            remainingMiles = remainingMiles
+            remainingMiles = remainingMiles,
+            missedPackageAlert = missedPackageAlert
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), RoutePlayerUiState())
 

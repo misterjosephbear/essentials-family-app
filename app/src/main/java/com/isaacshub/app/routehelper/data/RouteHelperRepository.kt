@@ -324,6 +324,10 @@ class RouteHelperRepository(
 
     suspend fun deletePackage(pkg: PackageEntity) = dao.deletePackage(pkg)
 
+    suspend fun deletePackagesScanBefore(beforeTimestampMillis: Long): Int {
+        return dao.deletePackagesScanBefore(beforeTimestampMillis)
+    }
+
     fun observePackagesForStop(routeId: Long, stopId: Long): Flow<List<PackageEntity>> {
         return dao.observePackagesForStop(routeId, stopId)
     }
