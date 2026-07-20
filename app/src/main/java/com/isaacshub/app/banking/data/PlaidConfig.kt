@@ -9,12 +9,12 @@ package com.isaacshub.app.banking.data
  * 3. Update the values below
  */
 object PlaidConfig {
-    // TODO: Replace with your actual Plaid credentials
+    // Plaid API credentials
     // Get them from: https://dashboard.plaid.com/team/keys
-    const val CLIENT_ID = "YOUR_CLIENT_ID_HERE"
-    const val SECRET = "YOUR_SECRET_HERE"
+    const val CLIENT_ID = "6a5d77cb3e50fe000efeba03"
+    const val SECRET = "d14b8dcf36388baccdb535d2e379a0"
 
     // Environment: "sandbox", "development", or "production"
-    // Use "sandbox" for testing, "development" for Trial plan
-    const val ENVIRONMENT = "sandbox"
+    // Use "production" for your production secret
+    const val ENVIRONMENT = "production"
 }
