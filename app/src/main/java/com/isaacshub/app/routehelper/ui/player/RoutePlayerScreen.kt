@@ -525,11 +525,17 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
     val smoothBearing = remember { Animatable(0f) }
 
     // Smoothed location for marker with extrapolation
-    var smoothLatitude by remember { mutableStateOf<Double?>(null) }
-    var smoothLongitude by remember { mutableStateOf<Double?>(null) }
-    var lastGpsTimestamp by remember { mutableStateOf(0L) }
-    var velocityLatPerMs by remember { mutableStateOf(0.0) }
-    var velocityLonPerMs by remember { mutableStateOf(0.0) }
+    // Use remember with referential equality to avoid triggering recomposition on every update
+    val smoothPosition = remember {
+        object {
+            var latitude: Double? = null
+            var longitude: Double? = null
+            var lastGpsTimestamp: Long = 0L
+            var velocityLatPerMs: Double = 0.0
+            var velocityLonPerMs: Double = 0.0
+        }
+    }
+    var positionUpdateTrigger by remember { mutableStateOf(0) }
 
     DisposableEffect(Unit) {
         onDispose { mapView.onDetach() }
@@ -557,51 +563,57 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
     // Smoothly interpolate location with velocity-based extrapolation (like Google Maps)
     LaunchedEffect(state.currentLocation) {
         state.currentLocation?.let { location ->
-            val currentLat = smoothLatitude
-            val currentLon = smoothLongitude
             val currentTime = System.currentTimeMillis()
 
-            if (currentLat == null || currentLon == null) {
+            if (smoothPosition.latitude == null || smoothPosition.longitude == null) {
                 // First location, snap immediately
-                smoothLatitude = location.latitude
-                smoothLongitude = location.longitude
-                lastGpsTimestamp = currentTime
+                smoothPosition.latitude = location.latitude
+                smoothPosition.longitude = location.longitude
+                smoothPosition.lastGpsTimestamp = currentTime
+                positionUpdateTrigger++
             } else {
                 // Calculate velocity from GPS update
-                val timeDelta = (currentTime - lastGpsTimestamp).coerceAtLeast(1L)
-                val latDelta = location.latitude - currentLat
-                val lonDelta = location.longitude - currentLon
+                val timeDelta = (currentTime - smoothPosition.lastGpsTimestamp).coerceAtLeast(1L)
+                val latDelta = location.latitude - smoothPosition.latitude!!
+                val lonDelta = location.longitude - smoothPosition.longitude!!
 
                 // Calculate velocity (degrees per millisecond)
-                velocityLatPerMs = latDelta / timeDelta
-                velocityLonPerMs = lonDelta / timeDelta
+                smoothPosition.velocityLatPerMs = latDelta / timeDelta
+                smoothPosition.velocityLonPerMs = lonDelta / timeDelta
 
                 // Update to new GPS position
-                smoothLatitude = location.latitude
-                smoothLongitude = location.longitude
-                lastGpsTimestamp = currentTime
+                smoothPosition.latitude = location.latitude
+                smoothPosition.longitude = location.longitude
+                smoothPosition.lastGpsTimestamp = currentTime
+                positionUpdateTrigger++
             }
         }
     }
 
     // Continuous extrapolation: keep moving in current direction at current speed
+    // This runs independently and updates the map view directly without recomposition
     LaunchedEffect(Unit) {
         while (true) {
             kotlinx.coroutines.delay(16) // ~60fps
 
-            val lat = smoothLatitude
-            val lon = smoothLongitude
-
-            if (lat != null && lon != null && lastGpsTimestamp > 0) {
+            if (smoothPosition.latitude != null && smoothPosition.longitude != null && smoothPosition.lastGpsTimestamp > 0) {
                 val currentTime = System.currentTimeMillis()
-                val timeSinceLastGps = currentTime - lastGpsTimestamp
+                val timeSinceLastGps = currentTime - smoothPosition.lastGpsTimestamp
 
                 // Only extrapolate for up to 2 seconds after last GPS update
-                // This prevents wild extrapolation if GPS signal is lost
                 if (timeSinceLastGps < 2000) {
                     // Extrapolate position based on velocity
-                    smoothLatitude = lat + velocityLatPerMs * 16
-                    smoothLongitude = lon + velocityLonPerMs * 16
+                    smoothPosition.latitude = smoothPosition.latitude!! + smoothPosition.velocityLatPerMs * 16
+                    smoothPosition.longitude = smoothPosition.longitude!! + smoothPosition.velocityLonPerMs * 16
+
+                    // Update marker position directly on the map view without triggering recomposition
+                    val marker = mapView.overlays.filterIsInstance<Marker>().lastOrNull()
+                    if (marker != null && !isFreeCam) {
+                        val newPoint = OsmGeoPoint(smoothPosition.latitude!!, smoothPosition.longitude!!)
+                        marker.position = newPoint
+                        mapView.controller.animateTo(newPoint, mapView.zoomLevelDouble, 100L)
+                        mapView.invalidate()
+                    }
                 }
             }
         }
@@ -667,9 +679,9 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
             }
         }
 
-        // Use smoothed location for both camera and marker
-        val lat = smoothLatitude
-        val lon = smoothLongitude
+        // Use smoothed location for both camera and marker (only on GPS updates, not extrapolation frames)
+        val lat = smoothPosition.latitude
+        val lon = smoothPosition.longitude
         if (lat != null && lon != null) {
             val point = OsmGeoPoint(lat, lon)
 
@@ -679,12 +691,12 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
                     view.controller.setZoom(18.0)
                     view.controller.setCenter(point)
                     hasCenteredOnce = true
-                } else {
-                    view.controller.animateTo(point)
                 }
+                // Camera following is now handled in the extrapolation loop for smoothness
             }
 
             // Always show the "You" marker regardless of free-cam mode
+            // The marker position will be updated by the extrapolation loop
             view.overlays.add(
                 Marker(view).apply {
                     position = point
