@@ -50,6 +50,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
@@ -67,7 +69,7 @@ data class ScannedPackage(
 
 /**
  * Package scanner screen for scanning packages in the morning before route playback.
- * Extracts USPS tracking numbers and addresses from package labels.
+ * Extracts USPS tracking numbers from barcodes/QR codes and addresses from OCR.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -327,7 +329,7 @@ private fun PackageCameraScanner(
                     )
                     Text(
                         if (canScan) {
-                            "Point camera at package label"
+                            "Point camera at package barcode/QR code and address"
                         } else {
                             "Wait 2 seconds between scans"
                         },
@@ -395,6 +397,7 @@ private fun PackageCameraPreview(
     val routeStopsState = rememberUpdatedState(routeStops)
 
     val recognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+    val barcodeScanner = remember { BarcodeScanning.getClient() }
 
     AndroidView(
         modifier = Modifier.fillMaxSize(),
@@ -413,7 +416,7 @@ private fun PackageCameraPreview(
                         .build()
                         .also {
                             it.setAnalyzer(executor) { imageProxy ->
-                                processPackageImage(imageProxy, recognizer, routeStopsState.value, onPackageDetectedState.value)
+                                processPackageImage(imageProxy, recognizer, barcodeScanner, routeStopsState.value, onPackageDetectedState.value)
                             }
                         }
 
@@ -452,7 +455,7 @@ private fun PackageCameraPreview(
                     .build()
                     .also {
                         it.setAnalyzer(executor) { imageProxy ->
-                            processPackageImage(imageProxy, recognizer, routeStopsState.value, onPackageDetectedState.value)
+                            processPackageImage(imageProxy, recognizer, barcodeScanner, routeStopsState.value, onPackageDetectedState.value)
                         }
                     }
 
@@ -479,11 +482,13 @@ private fun PackageCameraPreview(
 }
 
 /**
- * Process an image frame to extract package tracking number and address.
+ * Process an image frame to extract package tracking number from barcodes and address from OCR.
+ * Priority: Scan barcodes/QR codes for tracking numbers, fall back to OCR if needed.
  */
 private fun processPackageImage(
     imageProxy: ImageProxy,
     recognizer: TextRecognizer,
+    barcodeScanner: com.google.mlkit.vision.barcode.BarcodeScanner,
     routeStops: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>,
     onPackageDetected: (ScannedPackage) -> Unit
 ) {
@@ -491,29 +496,55 @@ private fun processPackageImage(
     val mediaImage = imageProxy.image
     if (mediaImage != null) {
         val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-        recognizer.process(image)
-            .addOnSuccessListener { visionText ->
-                val text = visionText.text
-                val trackingNumber = extractUSPSTrackingNumber(text)
-                val addressResult = extractAddressWithStop(text, routeStops)
 
-                // Debug logging
-                if (trackingNumber != null || addressResult != null) {
-                    android.util.Log.d("PackageScanner", "Found tracking: $trackingNumber, address: ${addressResult?.first}, seq: ${addressResult?.second?.sequenceOrder}")
-                    android.util.Log.d("PackageScanner", "Full OCR text:\n$text")
-                }
+        // First, try to scan barcodes for tracking number
+        barcodeScanner.process(image)
+            .addOnSuccessListener { barcodes ->
+                val trackingNumber = extractTrackingFromBarcodes(barcodes)
 
-                if (trackingNumber != null && addressResult != null) {
-                    val (address, matchedStop) = addressResult
-                    onPackageDetected(ScannedPackage(
-                        trackingNumber = trackingNumber,
-                        addressLabel = address,
-                        sequenceNumber = matchedStop.sequenceOrder,
-                        routedStopId = matchedStop.id
-                    ))
+                if (trackingNumber != null) {
+                    // Found tracking via barcode, now get address via OCR
+                    recognizer.process(image)
+                        .addOnSuccessListener { visionText ->
+                            val addressResult = extractAddressWithStop(visionText.text, routeStops)
+
+                            if (addressResult != null) {
+                                val (address, matchedStop) = addressResult
+                                onPackageDetected(ScannedPackage(
+                                    trackingNumber = trackingNumber,
+                                    addressLabel = address,
+                                    sequenceNumber = matchedStop.sequenceOrder,
+                                    routedStopId = matchedStop.id
+                                ))
+                            }
+                        }
+                        .addOnCompleteListener {
+                            imageProxy.close()
+                        }
+                } else {
+                    // No barcode found, try OCR for both tracking and address
+                    recognizer.process(image)
+                        .addOnSuccessListener { visionText ->
+                            val text = visionText.text
+                            val ocrTracking = extractUSPSTrackingNumber(text)
+                            val addressResult = extractAddressWithStop(text, routeStops)
+
+                            if (ocrTracking != null && addressResult != null) {
+                                val (address, matchedStop) = addressResult
+                                onPackageDetected(ScannedPackage(
+                                    trackingNumber = ocrTracking,
+                                    addressLabel = address,
+                                    sequenceNumber = matchedStop.sequenceOrder,
+                                    routedStopId = matchedStop.id
+                                ))
+                            }
+                        }
+                        .addOnCompleteListener {
+                            imageProxy.close()
+                        }
                 }
             }
-            .addOnCompleteListener {
+            .addOnFailureListener {
                 imageProxy.close()
             }
     } else {
@@ -522,7 +553,61 @@ private fun processPackageImage(
 }
 
 /**
- * Extract USPS tracking number from OCR text.
+ * Extract tracking number from scanned barcodes.
+ * Prioritizes USPS tracking formats, but also accepts international formats.
+ * Filters out UPS and FedEx barcodes unless they're the only option.
+ */
+private fun extractTrackingFromBarcodes(barcodes: List<Barcode>): String? {
+    if (barcodes.isEmpty()) return null
+
+    // Separate barcodes by carrier type
+    val uspsBarcodes = mutableListOf<String>()
+    val internationalBarcodes = mutableListOf<String>()
+    val otherBarcodes = mutableListOf<String>()
+
+    for (barcode in barcodes) {
+        val rawValue = barcode.rawValue ?: continue
+        val cleanValue = rawValue.trim()
+
+        when {
+            // USPS tracking patterns
+            isUSPSTracking(cleanValue) -> uspsBarcodes.add(cleanValue)
+
+            // International tracking (starts with 2 letters)
+            cleanValue.matches(Regex("""^[A-Z]{2}\d{9,13}[A-Z]{2}$""")) -> internationalBarcodes.add(cleanValue)
+
+            // Skip UPS (1Z prefix) and FedEx (12-14 digits starting with specific patterns)
+            cleanValue.startsWith("1Z") -> continue  // Skip UPS
+            cleanValue.matches(Regex("""^\d{12}$""")) -> continue  // Skip FedEx 12-digit
+            cleanValue.matches(Regex("""^\d{15}$""")) -> continue  // Skip FedEx 15-digit
+
+            // Other barcodes that might be tracking numbers
+            cleanValue.length >= 10 && cleanValue.matches(Regex("""^[\dA-Z]+$""")) -> otherBarcodes.add(cleanValue)
+        }
+    }
+
+    // Priority: USPS > International > Other
+    return uspsBarcodes.firstOrNull()
+        ?: internationalBarcodes.firstOrNull()
+        ?: otherBarcodes.firstOrNull()
+}
+
+/**
+ * Check if a string matches USPS tracking format.
+ */
+private fun isUSPSTracking(value: String): Boolean {
+    val digitsOnly = value.replace(Regex("""[^\d]"""), "")
+
+    return when (digitsOnly.length) {
+        20, 22 -> true  // Standard USPS tracking (20 or 22 digits)
+        26 -> true      // USPS Certified Mail
+        30 -> true      // Some USPS priority mail
+        else -> false
+    }
+}
+
+/**
+ * Extract USPS tracking number from OCR text (fallback when barcode scanning fails).
  * USPS tracking numbers are typically 20-22 digits.
  */
 private fun extractUSPSTrackingNumber(text: String): String? {
