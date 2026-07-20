@@ -500,7 +500,13 @@ private fun processPackageImage(
         // First, try to scan barcodes for tracking number
         barcodeScanner.process(image)
             .addOnSuccessListener { barcodes ->
+                android.util.Log.d("PackageScanner", "Barcodes detected: ${barcodes.size}")
+                barcodes.forEach { barcode ->
+                    android.util.Log.d("PackageScanner", "  Barcode: ${barcode.rawValue} (format: ${barcode.format})")
+                }
+
                 val trackingNumber = extractTrackingFromBarcodes(barcodes)
+                android.util.Log.d("PackageScanner", "Extracted tracking from barcode: $trackingNumber")
 
                 if (trackingNumber != null) {
                     // Found tracking via barcode, now get address via OCR
@@ -510,12 +516,15 @@ private fun processPackageImage(
 
                             if (addressResult != null) {
                                 val (address, matchedStop) = addressResult
+                                android.util.Log.d("PackageScanner", "✓ Package detected via BARCODE + OCR: tracking=$trackingNumber, address=$address")
                                 onPackageDetected(ScannedPackage(
                                     trackingNumber = trackingNumber,
                                     addressLabel = address,
                                     sequenceNumber = matchedStop.sequenceOrder,
                                     routedStopId = matchedStop.id
                                 ))
+                            } else {
+                                android.util.Log.w("PackageScanner", "✗ Barcode found ($trackingNumber) but address NOT found on route")
                             }
                         }
                         .addOnCompleteListener {
@@ -531,12 +540,15 @@ private fun processPackageImage(
 
                             if (ocrTracking != null && addressResult != null) {
                                 val (address, matchedStop) = addressResult
+                                android.util.Log.d("PackageScanner", "✓ Package detected via OCR only: tracking=$ocrTracking, address=$address")
                                 onPackageDetected(ScannedPackage(
                                     trackingNumber = ocrTracking,
                                     addressLabel = address,
                                     sequenceNumber = matchedStop.sequenceOrder,
                                     routedStopId = matchedStop.id
                                 ))
+                            } else {
+                                android.util.Log.d("PackageScanner", "✗ OCR: tracking=$ocrTracking, address=${addressResult?.first}")
                             }
                         }
                         .addOnCompleteListener {
@@ -544,7 +556,8 @@ private fun processPackageImage(
                         }
                 }
             }
-            .addOnFailureListener {
+            .addOnFailureListener { e ->
+                android.util.Log.e("PackageScanner", "Barcode scanning failed", e)
                 imageProxy.close()
             }
     } else {
@@ -555,7 +568,7 @@ private fun processPackageImage(
 /**
  * Extract tracking number from scanned barcodes.
  * Prioritizes USPS tracking formats, but also accepts international formats.
- * Filters out UPS and FedEx barcodes unless they're the only option.
+ * Filters out UPS and FedEx barcodes when other tracking numbers are present.
  */
 private fun extractTrackingFromBarcodes(barcodes: List<Barcode>): String? {
     if (barcodes.isEmpty()) return null
@@ -563,33 +576,69 @@ private fun extractTrackingFromBarcodes(barcodes: List<Barcode>): String? {
     // Separate barcodes by carrier type
     val uspsBarcodes = mutableListOf<String>()
     val internationalBarcodes = mutableListOf<String>()
+    val upsBarcodes = mutableListOf<String>()
+    val fedexBarcodes = mutableListOf<String>()
     val otherBarcodes = mutableListOf<String>()
 
     for (barcode in barcodes) {
         val rawValue = barcode.rawValue ?: continue
         val cleanValue = rawValue.trim()
 
+        android.util.Log.d("BarcodeExtraction", "Checking barcode: $cleanValue")
+
         when {
             // USPS tracking patterns
-            isUSPSTracking(cleanValue) -> uspsBarcodes.add(cleanValue)
+            isUSPSTracking(cleanValue) -> {
+                android.util.Log.d("BarcodeExtraction", "  → USPS tracking")
+                uspsBarcodes.add(cleanValue)
+            }
 
-            // International tracking (starts with 2 letters)
-            cleanValue.matches(Regex("""^[A-Z]{2}\d{9,13}[A-Z]{2}$""")) -> internationalBarcodes.add(cleanValue)
+            // International tracking (starts with 2 letters, ends with 2 letters)
+            cleanValue.matches(Regex("""^[A-Z]{2}\d{9,13}[A-Z]{2}$""")) -> {
+                android.util.Log.d("BarcodeExtraction", "  → International tracking")
+                internationalBarcodes.add(cleanValue)
+            }
 
-            // Skip UPS (1Z prefix) and FedEx (12-14 digits starting with specific patterns)
-            cleanValue.startsWith("1Z") -> continue  // Skip UPS
-            cleanValue.matches(Regex("""^\d{12}$""")) -> continue  // Skip FedEx 12-digit
-            cleanValue.matches(Regex("""^\d{15}$""")) -> continue  // Skip FedEx 15-digit
+            // UPS (1Z prefix)
+            cleanValue.startsWith("1Z", ignoreCase = true) -> {
+                android.util.Log.d("BarcodeExtraction", "  → UPS (filtered)")
+                upsBarcodes.add(cleanValue)
+            }
+
+            // FedEx 12-digit
+            cleanValue.matches(Regex("""^\d{12}$""")) -> {
+                android.util.Log.d("BarcodeExtraction", "  → FedEx 12-digit (filtered)")
+                fedexBarcodes.add(cleanValue)
+            }
+
+            // FedEx 15-digit
+            cleanValue.matches(Regex("""^\d{15}$""")) -> {
+                android.util.Log.d("BarcodeExtraction", "  → FedEx 15-digit (filtered)")
+                fedexBarcodes.add(cleanValue)
+            }
 
             // Other barcodes that might be tracking numbers
-            cleanValue.length >= 10 && cleanValue.matches(Regex("""^[\dA-Z]+$""")) -> otherBarcodes.add(cleanValue)
+            cleanValue.length >= 10 && cleanValue.matches(Regex("""^[\dA-Z]+$""")) -> {
+                android.util.Log.d("BarcodeExtraction", "  → Other barcode (length ${cleanValue.length})")
+                otherBarcodes.add(cleanValue)
+            }
+
+            else -> {
+                android.util.Log.d("BarcodeExtraction", "  → Rejected (too short or invalid format)")
+            }
         }
     }
 
-    // Priority: USPS > International > Other
-    return uspsBarcodes.firstOrNull()
+    // Priority: USPS > International > Other > UPS/FedEx (as last resort)
+    val result = uspsBarcodes.firstOrNull()
         ?: internationalBarcodes.firstOrNull()
         ?: otherBarcodes.firstOrNull()
+        ?: upsBarcodes.firstOrNull()
+        ?: fedexBarcodes.firstOrNull()
+
+    android.util.Log.d("BarcodeExtraction", "Selected tracking: $result (USPS: ${uspsBarcodes.size}, Intl: ${internationalBarcodes.size}, Other: ${otherBarcodes.size})")
+
+    return result
 }
 
 /**
