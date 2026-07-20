@@ -305,13 +305,20 @@ private fun AddSectionDialog(
                 // Start stop dropdown with search
                 ExposedDropdownMenuBox(
                     expanded = startDropdownExpanded,
-                    onExpandedChange = { startDropdownExpanded = it }
+                    onExpandedChange = {
+                        // Only allow closing via this callback, not opening
+                        // Opening is controlled by typing in the text field
+                        if (!it) {
+                            startDropdownExpanded = false
+                            startSearchQuery = ""
+                        }
+                    }
                 ) {
                     OutlinedTextField(
                         value = if (startDropdownExpanded) startSearchQuery else (selectedStartStop?.addressLabel ?: ""),
                         onValueChange = {
                             startSearchQuery = it
-                            if (!startDropdownExpanded) startDropdownExpanded = true
+                            startDropdownExpanded = true  // Keep it open while typing
                         },
                         label = { Text("Start Address") },
                         placeholder = { Text("Search or select...") },
@@ -376,13 +383,20 @@ private fun AddSectionDialog(
                 // End stop dropdown with search
                 ExposedDropdownMenuBox(
                     expanded = endDropdownExpanded,
-                    onExpandedChange = { endDropdownExpanded = it }
+                    onExpandedChange = {
+                        // Only allow closing via this callback, not opening
+                        // Opening is controlled by typing in the text field
+                        if (!it) {
+                            endDropdownExpanded = false
+                            endSearchQuery = ""
+                        }
+                    }
                 ) {
                     OutlinedTextField(
                         value = if (endDropdownExpanded) endSearchQuery else (selectedEndStop?.addressLabel ?: ""),
                         onValueChange = {
                             endSearchQuery = it
-                            if (!endDropdownExpanded) endDropdownExpanded = true
+                            endDropdownExpanded = true  // Keep it open while typing
                         },
                         label = { Text("End Address") },
                         placeholder = { Text("Search or select...") },
