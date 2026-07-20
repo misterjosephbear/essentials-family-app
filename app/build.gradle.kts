@@ -106,6 +106,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.osmdroid.android)
     implementation(libs.reorderable)
+    implementation(libs.plaid.link.sdk)
 
     testImplementation(libs.junit)
     testImplementation(libs.androidx.work.testing)

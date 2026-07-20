@@ -28,7 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.isaacshub.app.banking.ui.home.BankingHomeScreen
-import com.isaacshub.app.banking.ui.setup.ConnectionSetupScreen
+import com.isaacshub.app.banking.ui.setup.PlaidConnectionSetupScreen
 import com.isaacshub.app.landing.ui.LandingScreen
 import com.isaacshub.app.routehelper.ui.builder.RouteBuilderScreen
 import com.isaacshub.app.routehelper.ui.edit.RouteEditScreen
@@ -150,7 +150,7 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
             }
 
             composable(Routes.BANKING_SETUP) {
-                ConnectionSetupScreen(
+                PlaidConnectionSetupScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onConnectionAdded = { navController.popBackStack() }
                 )

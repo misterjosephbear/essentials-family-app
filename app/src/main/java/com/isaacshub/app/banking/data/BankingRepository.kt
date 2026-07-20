@@ -9,7 +9,7 @@ import java.util.UUID
 
 class BankingRepository(
     private val dao: BankingDao,
-    private val simpleFinClient: SimpleFINClient
+    private val plaidClient: PlaidClient
 ) {
 
     // Connections
@@ -18,20 +18,38 @@ class BankingRepository(
             entities.map { it.toDomain() }
         }
 
-    suspend fun addSimpleFINConnection(setupToken: String): Result<String> {
-        return simpleFinClient.claimToken(setupToken).map { accessUrl ->
+    /**
+     * Add a Plaid connection using a public token from Plaid Link
+     */
+    suspend fun addPlaidConnection(publicToken: String): Result<String> {
+        return plaidClient.exchangePublicToken(publicToken).mapCatching { accessToken ->
             val connectionId = UUID.randomUUID().toString()
+
+            // Fetch institution name
+            val institutionName = plaidClient.getInstitutionName(accessToken).getOrElse { "Unknown Bank" }
+
             val connection = BankConnection(
                 id = connectionId,
-                provider = BankProvider.SIMPLEFIN,
-                accessToken = accessUrl,
-                institutionName = "SimpleFIN",
+                provider = BankProvider.PLAID,
+                accessToken = accessToken,
+                institutionName = institutionName,
                 createdAt = System.currentTimeMillis(),
                 lastSynced = null
             )
             dao.insertConnection(BankConnectionEntity.fromDomain(connection))
+
+            // Immediately sync accounts after adding connection
+            syncPlaidAccounts(BankConnectionEntity.fromDomain(connection))
+
             connectionId
         }
+    }
+
+    /**
+     * Create a link token for Plaid Link initialization
+     */
+    suspend fun createLinkToken(userId: String): Result<String> {
+        return plaidClient.createLinkToken(userId)
     }
 
     suspend fun deleteConnection(connectionId: String) {
@@ -55,15 +73,20 @@ class BankingRepository(
                 ?: throw Exception("Connection not found")
 
             when (connection.provider) {
-                BankProvider.SIMPLEFIN -> syncSimpleFINAccounts(connection)
+                BankProvider.PLAID -> syncPlaidAccounts(connection)
                 else -> throw Exception("Unsupported provider: ${connection.provider}")
             }
         }
     }
 
-    private suspend fun syncSimpleFINAccounts(connection: BankConnectionEntity) {
-        simpleFinClient.fetchAccounts(connection.accessToken).getOrThrow().let { accounts ->
-            val entities = accounts.map { account ->
+    private suspend fun syncPlaidAccounts(connection: BankConnectionEntity) {
+        plaidClient.fetchAccounts(connection.accessToken).getOrThrow().let { accounts ->
+            // Update institution name for all accounts
+            val accountsWithInstitution = accounts.map { account ->
+                account.copy(institutionName = connection.institutionName ?: "Unknown")
+            }
+
+            val entities = accountsWithInstitution.map { account ->
                 BankAccountEntity.fromDomain(account, connection.id)
             }
             dao.insertAccounts(entities)
@@ -74,8 +97,8 @@ class BankingRepository(
     suspend fun syncAllAccounts(): Result<Unit> {
         return runCatching {
             val connections = dao.getAllConnections()
-            // For Flow, we need to collect first value
-            // This is a simplified version - in production you'd handle this better
+            // Note: This is a Flow, so in production you'd want to collect and iterate
+            // For now, we'll handle syncing from the ViewModel layer per-connection
         }
     }
 }

@@ -39,7 +39,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isaacshub.app.App
 import com.isaacshub.app.banking.data.BankingDatabase
 import com.isaacshub.app.banking.data.BankingRepository
-import com.isaacshub.app.banking.data.SimpleFINClient
+import com.isaacshub.app.banking.data.PlaidClient
 import com.isaacshub.app.banking.domain.BankAccount
 import java.text.NumberFormat
 import java.util.Locale
@@ -51,7 +51,7 @@ fun BankingHomeScreen(
 ) {
     val context = LocalContext.current
     val database = remember { BankingDatabase.getInstance(context) }
-    val repository = remember { BankingRepository(database.bankingDao(), SimpleFINClient()) }
+    val repository = remember { BankingRepository(database.bankingDao(), PlaidClient()) }
     val viewModel: BankingHomeViewModel = viewModel(
         factory = BankingHomeViewModel.Factory(repository)
     )
