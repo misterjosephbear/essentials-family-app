@@ -55,9 +55,23 @@ fun advanceToNextStop(
     }
 
     // Check all remaining stops ahead - if driver is near any of them, jump to that stop
+    // BUT: Skip stops that are very close to the current stop (same cluster)
+    // to avoid jumping back to nearby boxes when leaving a cluster
+    val CLUSTER_RADIUS_METERS = 15.0
     for (i in (index + 1) until stops.size) {
-        if (distanceMeters(currentLocation, stops[i]) < STOP_ARRIVAL_RADIUS_METERS) {
-            return i  // Jump to this stop (stay there until moving away)
+        val distanceFromCurrentStop = if (index < stops.size) {
+            distanceMeters(stops[index], stops[i])
+        } else {
+            Double.MAX_VALUE
+        }
+
+        // Only jump to this stop if it's far from the current stop (not in same cluster)
+        // OR if we're actually within arrival radius of it
+        val isInSameCluster = distanceFromCurrentStop < CLUSTER_RADIUS_METERS
+        val isNearThisStop = distanceMeters(currentLocation, stops[i]) < STOP_ARRIVAL_RADIUS_METERS
+
+        if (isNearThisStop && !isInSameCluster) {
+            return i  // Jump to this stop (it's far enough away to be a different cluster)
         }
     }
 
