@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -22,7 +24,9 @@ data class UserPreferences(
     val hourlyRate: Double = DEFAULT_HOURLY_RATE,
     val overtimeMultiplier: Double = DEFAULT_OVERTIME_MULTIPLIER,
     val emaRate: Double = DEFAULT_EMA_RATE,
-    val wakeTimeMinutesByDay: Map<DayOfWeek, Int> = DayOfWeek.entries.associateWith { DEFAULT_WAKE_TIME_MINUTES }
+    val wakeTimeMinutesByDay: Map<DayOfWeek, Int> = DayOfWeek.entries.associateWith { DEFAULT_WAKE_TIME_MINUTES },
+    val hiddenLandingCards: Set<String> = emptySet(),
+    val landingCardOrder: List<String>? = null
 ) {
     companion object {
         const val DEFAULT_SLEEP_NEED_MINUTES = 480
@@ -51,6 +55,8 @@ class UserPreferencesRepository(private val context: Context) {
         val WAKE_TIME_MINUTES_BY_DAY: Map<DayOfWeek, Preferences.Key<Int>> = DayOfWeek.entries.associateWith { day ->
             intPreferencesKey("wake_time_${day.name.lowercase()}_minutes")
         }
+        val HIDDEN_LANDING_CARDS = stringSetPreferencesKey("hidden_landing_cards")
+        val LANDING_CARD_ORDER = stringPreferencesKey("landing_card_order")
     }
 
     /** Every preference as-is, key name to value - used for backups so newly added prefs are included automatically. */
@@ -70,7 +76,9 @@ class UserPreferencesRepository(private val context: Context) {
             emaRate = prefs[Keys.EMA_RATE] ?: UserPreferences.DEFAULT_EMA_RATE,
             wakeTimeMinutesByDay = DayOfWeek.entries.associateWith { day ->
                 prefs[Keys.WAKE_TIME_MINUTES_BY_DAY.getValue(day)] ?: UserPreferences.DEFAULT_WAKE_TIME_MINUTES
-            }
+            },
+            hiddenLandingCards = prefs[Keys.HIDDEN_LANDING_CARDS] ?: emptySet(),
+            landingCardOrder = prefs[Keys.LANDING_CARD_ORDER]?.split(",")?.filter { it.isNotBlank() }
         )
     }
 
@@ -99,5 +107,28 @@ class UserPreferencesRepository(private val context: Context) {
 
     suspend fun setWakeTime(day: DayOfWeek, minutesSinceMidnight: Int) {
         context.dataStore.edit { it[Keys.WAKE_TIME_MINUTES_BY_DAY.getValue(day)] = minutesSinceMidnight }
+    }
+
+    suspend fun setCardVisibility(cardId: String, hidden: Boolean) {
+        context.dataStore.edit { prefs ->
+            val currentHidden = prefs[Keys.HIDDEN_LANDING_CARDS] ?: emptySet()
+            prefs[Keys.HIDDEN_LANDING_CARDS] = if (hidden) {
+                currentHidden + cardId
+            } else {
+                currentHidden - cardId
+            }
+        }
+    }
+
+    suspend fun setLandingCardOrder(cardIds: List<String>) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.LANDING_CARD_ORDER] = cardIds.joinToString(",")
+        }
+    }
+
+    suspend fun resetLandingCardOrder() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(Keys.LANDING_CARD_ORDER)
+        }
     }
 }

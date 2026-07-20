@@ -105,6 +105,7 @@ dependencies {
     implementation(libs.mlkit.text.recognition)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.osmdroid.android)
+    implementation(libs.reorderable)
 
     testImplementation(libs.junit)
     testImplementation(libs.androidx.work.testing)
