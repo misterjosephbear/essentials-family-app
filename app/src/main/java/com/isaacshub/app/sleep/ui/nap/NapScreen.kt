@@ -41,7 +41,9 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-private val napDurations = listOf(10, 15, 20, 30, 45, 60, 90)
+private val napDurations = listOf(
+    10, 15, 20, 30, 45, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360, 390, 420, 450, 480, 510, 540, 570, 600, 630, 660, 690, 720
+)
 private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,12 +89,12 @@ fun NapScreen() {
                             FilterChip(
                                 selected = selectedMinutes == minutes,
                                 onClick = { selectedMinutes = minutes },
-                                label = { Text("${minutes}m") }
+                                label = { Text(formatDuration(minutes)) }
                             )
                         }
                     }
                     Button(onClick = ::beginNap, modifier = Modifier.fillMaxWidth()) {
-                        Text("Start $selectedMinutes minute nap")
+                        Text("Start ${formatDuration(selectedMinutes)} nap")
                     }
 
                     if (canScheduleExact == 0) {
@@ -140,6 +142,14 @@ fun NapScreen() {
                 }
             }
         }
+    }
+}
+
+private fun formatDuration(minutes: Int): String {
+    return when {
+        minutes < 60 -> "${minutes}m"
+        minutes % 60 == 0 -> "${minutes / 60}h"
+        else -> "${minutes / 60}h ${minutes % 60}m"
     }
 }
 
