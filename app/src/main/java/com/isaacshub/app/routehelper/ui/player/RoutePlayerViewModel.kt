@@ -151,30 +151,41 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
     private val currentRoadNameFlow: Flow<String?> = flowOf(null)
 
     /** Which stop the driver is heading to, advancing whenever they come within arrival range of the current one. */
-    private data class StopAdvanceState(val index: Int, val previousLocation: GeoPoint?)
+    private data class StopAdvanceState(
+        val index: Int,
+        val previousLocation: GeoPoint?,
+        val wasWithinArrivalRadius: Boolean = false
+    )
 
-    private val gpsBasedStopIndexFlow: Flow<Int> = locationFlow.combine(stopsFlow) { sample, stops -> sample to stops }
-        .scan(StopAdvanceState(0, null)) { state, (sample, stops) ->
+    private val gpsBasedStopIndexFlow: Flow<StopAdvanceState> = locationFlow.combine(stopsFlow) { sample, stops -> sample to stops }
+        .scan(StopAdvanceState(0, null, false)) { state, (sample, stops) ->
             val location = sample?.point
             val speed = sample?.speedMetersPerSecond ?: 0f
             val points = stops.map { GeoPoint(it.latitude, it.longitude) }
             if (location == null) {
-                StopAdvanceState(state.index.coerceAtMost(points.size), null)
+                StopAdvanceState(state.index.coerceAtMost(points.size), null, false)
             } else {
                 val newIndex = advanceToNextStop(location, state.previousLocation, points, state.index, speed)
-                StopAdvanceState(newIndex, location)
+
+                // Check if currently within arrival radius of the current stop
+                val withinArrivalRadius = if (newIndex < points.size) {
+                    distanceMeters(location, points[newIndex]) < STOP_ARRIVAL_RADIUS_METERS
+                } else {
+                    false
+                }
+
+                StopAdvanceState(newIndex, location, withinArrivalRadius)
             }
         }
-        .map { it.index }
 
     /** Final stop index: uses manual override if set, otherwise GPS-based navigation */
     private val nextStopIndexFlow: Flow<Int> = combine(
         manualStopIndexOverride,
         gpsBasedStopIndexFlow,
         stopsFlow
-    ) { manualIndex, gpsIndex, stops ->
+    ) { manualIndex, gpsState, stops ->
         // Use manual override if set and valid, otherwise use GPS-based index
-        val finalIndex = manualIndex?.coerceIn(0, stops.size) ?: gpsIndex
+        val finalIndex = manualIndex?.coerceIn(0, stops.size) ?: gpsState.index
         finalIndex
     }
 
@@ -264,7 +275,8 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         roadRouteFlow,
         routeZipFlow,
         currentRoadNameFlow,
-        packagesFlow
+        packagesFlow,
+        gpsBasedStopIndexFlow
     ) { values: Array<Any?> ->
         val sample = values[0] as LocationSample?
         val stops = values[1] as List<RoutedStopEntity>
@@ -274,16 +286,13 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         val routeZip = values[5] as String?
         val currentRoadName = values[6] as String?
         val packages = values[7] as List<PackageEntity>
+        val gpsState = values[8] as StopAdvanceState
 
-        // Calculate if driver is currently at a stop
+        // Use the wasWithinArrivalRadius flag from GPS state for stable "at stop" detection
+        // This prevents flickering when GPS jitter pushes you in/out of the arrival radius
+        val isAtStop = gpsState.wasWithinArrivalRadius
+
         val currentLocation = sample?.point
-        val isAtStop = if (currentLocation != null && nextIndex < stops.size) {
-            val nextStop = stops[nextIndex]
-            val nextStopPoint = GeoPoint(nextStop.latitude, nextStop.longitude)
-            distanceMeters(currentLocation, nextStopPoint) < STOP_ARRIVAL_RADIUS_METERS
-        } else {
-            false
-        }
 
         // Calculate cluster of nearby stops
         val clusterStops = if (currentLocation != null && nextIndex < stops.size) {
