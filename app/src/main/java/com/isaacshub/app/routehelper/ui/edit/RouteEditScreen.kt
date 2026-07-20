@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -340,7 +341,8 @@ private fun AddSectionDialog(
                         onDismissRequest = {
                             startDropdownExpanded = false
                             startSearchQuery = ""
-                        }
+                        },
+                        modifier = Modifier.heightIn(max = 200.dp)
                     ) {
                         if (filteredStops.isEmpty()) {
                             DropdownMenuItem(
@@ -349,7 +351,7 @@ private fun AddSectionDialog(
                                 enabled = false
                             )
                         } else {
-                            filteredStops.forEachIndexed { _, stop ->
+                            filteredStops.take(5).forEachIndexed { _, stop ->
                                 val stopIndex = stops.indexOf(stop) + 1
                                 DropdownMenuItem(
                                     text = { Text("$stopIndex. ${stop.addressLabel}") },
@@ -358,6 +360,13 @@ private fun AddSectionDialog(
                                         startDropdownExpanded = false
                                         startSearchQuery = ""
                                     }
+                                )
+                            }
+                            if (filteredStops.size > 5) {
+                                DropdownMenuItem(
+                                    text = { Text("...and ${filteredStops.size - 5} more. Keep typing to narrow down.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline) },
+                                    onClick = {},
+                                    enabled = false
                                 )
                             }
                         }
@@ -403,7 +412,8 @@ private fun AddSectionDialog(
                         onDismissRequest = {
                             endDropdownExpanded = false
                             endSearchQuery = ""
-                        }
+                        },
+                        modifier = Modifier.heightIn(max = 200.dp)
                     ) {
                         if (filteredEndStops.isEmpty()) {
                             DropdownMenuItem(
@@ -412,7 +422,7 @@ private fun AddSectionDialog(
                                 enabled = false
                             )
                         } else {
-                            filteredEndStops.forEachIndexed { _, stop ->
+                            filteredEndStops.take(5).forEachIndexed { _, stop ->
                                 val stopIndex = stops.indexOf(stop) + 1
                                 DropdownMenuItem(
                                     text = { Text("$stopIndex. ${stop.addressLabel}") },
@@ -421,6 +431,13 @@ private fun AddSectionDialog(
                                         endDropdownExpanded = false
                                         endSearchQuery = ""
                                     }
+                                )
+                            }
+                            if (filteredEndStops.size > 5) {
+                                DropdownMenuItem(
+                                    text = { Text("...and ${filteredEndStops.size - 5} more. Keep typing to narrow down.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline) },
+                                    onClick = {},
+                                    enabled = false
                                 )
                             }
                         }
