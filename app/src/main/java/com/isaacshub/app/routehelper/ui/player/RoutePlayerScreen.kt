@@ -524,9 +524,12 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
     // Smoothed bearing animation
     val smoothBearing = remember { Animatable(0f) }
 
-    // Smoothed location for marker
+    // Smoothed location for marker with extrapolation
     var smoothLatitude by remember { mutableStateOf<Double?>(null) }
     var smoothLongitude by remember { mutableStateOf<Double?>(null) }
+    var lastGpsTimestamp by remember { mutableStateOf(0L) }
+    var velocityLatPerMs by remember { mutableStateOf(0.0) }
+    var velocityLonPerMs by remember { mutableStateOf(0.0) }
 
     DisposableEffect(Unit) {
         onDispose { mapView.onDetach() }
@@ -551,35 +554,55 @@ private fun PlayerMap(state: RoutePlayerUiState, isFreeCam: Boolean, modifier: M
         }
     }
 
-    // Smoothly interpolate location for the marker
+    // Smoothly interpolate location with velocity-based extrapolation (like Google Maps)
     LaunchedEffect(state.currentLocation) {
         state.currentLocation?.let { location ->
             val currentLat = smoothLatitude
             val currentLon = smoothLongitude
+            val currentTime = System.currentTimeMillis()
 
             if (currentLat == null || currentLon == null) {
                 // First location, snap immediately
                 smoothLatitude = location.latitude
                 smoothLongitude = location.longitude
+                lastGpsTimestamp = currentTime
             } else {
-                // Animate to new location
-                val startTime = System.currentTimeMillis()
-                val duration = 300L // 300ms animation
+                // Calculate velocity from GPS update
+                val timeDelta = (currentTime - lastGpsTimestamp).coerceAtLeast(1L)
+                val latDelta = location.latitude - currentLat
+                val lonDelta = location.longitude - currentLon
 
-                while (System.currentTimeMillis() - startTime < duration) {
-                    val elapsed = System.currentTimeMillis() - startTime
-                    val progress = (elapsed.toFloat() / duration).coerceIn(0f, 1f)
+                // Calculate velocity (degrees per millisecond)
+                velocityLatPerMs = latDelta / timeDelta
+                velocityLonPerMs = lonDelta / timeDelta
 
-                    // Linear interpolation
-                    smoothLatitude = currentLat + (location.latitude - currentLat) * progress
-                    smoothLongitude = currentLon + (location.longitude - currentLon) * progress
-
-                    kotlinx.coroutines.delay(16) // ~60fps
-                }
-
-                // Ensure we end exactly at target
+                // Update to new GPS position
                 smoothLatitude = location.latitude
                 smoothLongitude = location.longitude
+                lastGpsTimestamp = currentTime
+            }
+        }
+    }
+
+    // Continuous extrapolation: keep moving in current direction at current speed
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(16) // ~60fps
+
+            val lat = smoothLatitude
+            val lon = smoothLongitude
+
+            if (lat != null && lon != null && lastGpsTimestamp > 0) {
+                val currentTime = System.currentTimeMillis()
+                val timeSinceLastGps = currentTime - lastGpsTimestamp
+
+                // Only extrapolate for up to 2 seconds after last GPS update
+                // This prevents wild extrapolation if GPS signal is lost
+                if (timeSinceLastGps < 2000) {
+                    // Extrapolate position based on velocity
+                    smoothLatitude = lat + velocityLatPerMs * 16
+                    smoothLongitude = lon + velocityLonPerMs * 16
+                }
             }
         }
     }
