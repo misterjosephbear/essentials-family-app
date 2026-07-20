@@ -27,6 +27,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.isaacshub.app.banking.ui.home.BankingHomeScreen
+import com.isaacshub.app.banking.ui.setup.ConnectionSetupScreen
 import com.isaacshub.app.landing.ui.LandingScreen
 import com.isaacshub.app.routehelper.ui.builder.RouteBuilderScreen
 import com.isaacshub.app.routehelper.ui.edit.RouteEditScreen
@@ -132,12 +134,26 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                     onOpenTimeTracking = { navController.navigate(Routes.TIME_HOME) },
                     onOpenVault = { navController.navigate(Routes.VAULT_HOME) },
                     onOpenRouteHelper = { navController.navigate(Routes.ROUTE_HELPER_HOME) },
+                    onOpenBanking = { navController.navigate(Routes.BANKING_HOME) },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS_HOME) }
                 )
             }
 
             composable(Routes.SETTINGS_HOME) {
                 GeneralSettingsScreen()
+            }
+
+            composable(Routes.BANKING_HOME) {
+                BankingHomeScreen(
+                    onAddConnection = { navController.navigate(Routes.BANKING_SETUP) }
+                )
+            }
+
+            composable(Routes.BANKING_SETUP) {
+                ConnectionSetupScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onConnectionAdded = { navController.popBackStack() }
+                )
             }
 
             composable(Routes.SLEEP_HOME) {

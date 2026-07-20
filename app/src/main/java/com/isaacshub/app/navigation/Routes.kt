@@ -5,6 +5,9 @@ object Routes {
 
     const val SETTINGS_HOME = "settings_home"
 
+    const val BANKING_HOME = "banking_home"
+    const val BANKING_SETUP = "banking_setup"
+
     const val SLEEP_HOME = "sleep_home"
     const val SLEEP_HISTORY = "sleep_history"
     const val SLEEP_SETTINGS = "sleep_settings"

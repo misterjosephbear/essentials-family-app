@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Map
@@ -35,6 +36,7 @@ fun LandingScreen(
     onOpenTimeTracking: () -> Unit,
     onOpenVault: () -> Unit,
     onOpenRouteHelper: () -> Unit,
+    onOpenBanking: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     Scaffold(
@@ -71,6 +73,12 @@ fun LandingScreen(
                 title = "Route Helper",
                 subtitle = "Build a route live while driving it",
                 onClick = onOpenRouteHelper
+            )
+            ToolCard(
+                icon = Icons.Filled.AccountBalance,
+                title = "Banking",
+                subtitle = "View all account balances in one place",
+                onClick = onOpenBanking
             )
             ToolCard(
                 icon = Icons.Filled.Settings,
