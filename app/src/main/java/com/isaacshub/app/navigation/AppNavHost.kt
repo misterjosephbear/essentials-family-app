@@ -1,22 +1,28 @@
 package com.isaacshub.app.navigation
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -49,6 +55,7 @@ import com.isaacshub.app.timetracking.ui.settings.TimeTrackerSettingsScreen
 import com.isaacshub.app.timetracking.ui.week.TimeTrackingHomeScreen
 import com.isaacshub.app.update.UpdateBanner
 import com.isaacshub.app.essentials.ui.admin.EssentialsAdminHome
+import com.isaacshub.app.essentials.ui.admin.CreateChoreScreen
 import com.isaacshub.app.update.UpdateViewModel
 import com.isaacshub.app.vault.ui.home.VaultHomeScreen
 import com.isaacshub.app.vault.ui.pairing.PairingScreen
@@ -296,13 +303,45 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
             }
 
             composable(Routes.ESSENTIALS_CREATE_CHORE) {
-                // Placeholder for create chore screen
-                // TODO: Implement CreateChoreScreen
+                CreateChoreScreen(
+                    choreId = null,
+                    onBack = { navController.popBackStack() },
+                    onSave = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.ESSENTIALS_EDIT_CHORE_PATTERN) { backStackEntry ->
+                val choreId = backStackEntry.arguments?.getString(Routes.ESSENTIALS_EDIT_CHORE_ARG)
+                    ?.let { Routes.parseId(it) }
+                CreateChoreScreen(
+                    choreId = choreId,
+                    onBack = { navController.popBackStack() },
+                    onSave = { navController.popBackStack() }
+                )
             }
 
             composable(Routes.ESSENTIALS_MANAGE_FAMILY) {
-                // Placeholder for manage family screen
                 // TODO: Implement ManageFamilyScreen
+                @OptIn(ExperimentalMaterial3Api::class)
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("Manage Family") },
+                            navigationIcon = {
+                                IconButton(onClick = { navController.popBackStack() }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                }
+                            }
+                        )
+                    }
+                ) { padding ->
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(padding),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Family management coming soon")
+                    }
+                }
             }
         }
     }
