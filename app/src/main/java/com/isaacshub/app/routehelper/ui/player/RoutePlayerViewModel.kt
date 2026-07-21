@@ -115,22 +115,9 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             viewModelScope.launch {
                 liveLocationFlow(getApplication()).collect { sample ->
                     rawLocationFlow.value = sample
-                    // Smooth location updates - gentle interpolation to reduce GPS jitter
-                    val current = locationFlow.value
-                    if (current != null && sample != null) {
-                        // Use 50/50 blend for smoother but still responsive movement
-                        val smoothed = LocationSample(
-                            point = GeoPoint(
-                                latitude = current.point.latitude * 0.5 + sample.point.latitude * 0.5,
-                                longitude = current.point.longitude * 0.5 + sample.point.longitude * 0.5
-                            ),
-                            speedMetersPerSecond = sample.speedMetersPerSecond,
-                            bearingDegrees = sample.bearingDegrees
-                        )
-                        locationFlow.value = smoothed
-                    } else {
-                        locationFlow.value = sample
-                    }
+                    // Pass through GPS updates directly without smoothing
+                    // Smoothing will be handled in the UI layer
+                    locationFlow.value = sample
                 }
             }
         }
