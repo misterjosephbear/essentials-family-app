@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
@@ -69,7 +70,8 @@ fun LandingScreen(
     onOpenVault: () -> Unit,
     onOpenRouteHelper: () -> Unit,
     onOpenBanking: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onOpenEssentials: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as App
@@ -114,6 +116,13 @@ fun LandingScreen(
                 title = "Banking",
                 subtitle = "View all account balances in one place",
                 onClick = onOpenBanking
+            ),
+            LandingCard(
+                id = "essentials",
+                icon = Icons.Filled.TaskAlt,
+                title = "Essentials",
+                subtitle = "Manage family chores and device restrictions",
+                onClick = onOpenEssentials
             ),
             LandingCard(
                 id = "settings",

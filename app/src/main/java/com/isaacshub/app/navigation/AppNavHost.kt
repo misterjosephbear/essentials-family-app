@@ -48,6 +48,7 @@ import com.isaacshub.app.timetracking.ui.schedule.WeekScheduleScreen
 import com.isaacshub.app.timetracking.ui.settings.TimeTrackerSettingsScreen
 import com.isaacshub.app.timetracking.ui.week.TimeTrackingHomeScreen
 import com.isaacshub.app.update.UpdateBanner
+import com.isaacshub.app.essentials.ui.admin.EssentialsAdminHome
 import com.isaacshub.app.update.UpdateViewModel
 import com.isaacshub.app.vault.ui.home.VaultHomeScreen
 import com.isaacshub.app.vault.ui.pairing.PairingScreen
@@ -135,7 +136,8 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                     onOpenVault = { navController.navigate(Routes.VAULT_HOME) },
                     onOpenRouteHelper = { navController.navigate(Routes.ROUTE_HELPER_HOME) },
                     onOpenBanking = { navController.navigate(Routes.BANKING_HOME) },
-                    onOpenSettings = { navController.navigate(Routes.SETTINGS_HOME) }
+                    onOpenSettings = { navController.navigate(Routes.SETTINGS_HOME) },
+                    onOpenEssentials = { navController.navigate(Routes.ESSENTIALS_HOME) }
                 )
             }
 
@@ -282,6 +284,25 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                         }
                     )
                 }
+            }
+
+            // Essentials routes
+            composable(Routes.ESSENTIALS_HOME) {
+                EssentialsAdminHome(
+                    onBack = { navController.popBackStack() },
+                    onCreateChore = { navController.navigate(Routes.ESSENTIALS_CREATE_CHORE) },
+                    onManageFamily = { navController.navigate(Routes.ESSENTIALS_MANAGE_FAMILY) }
+                )
+            }
+
+            composable(Routes.ESSENTIALS_CREATE_CHORE) {
+                // Placeholder for create chore screen
+                // TODO: Implement CreateChoreScreen
+            }
+
+            composable(Routes.ESSENTIALS_MANAGE_FAMILY) {
+                // Placeholder for manage family screen
+                // TODO: Implement ManageFamilyScreen
             }
         }
     }

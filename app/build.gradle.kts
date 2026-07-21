@@ -76,6 +76,7 @@ ksp {
 
 dependencies {
     implementation(project(":sleepcore"))
+    implementation(project(":essentialscore"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

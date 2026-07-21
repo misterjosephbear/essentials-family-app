@@ -46,6 +46,13 @@ object Routes {
     const val AMAZON_SCANNER_ARG = "routeId"
     const val AMAZON_SCANNER_PATTERN = "$AMAZON_SCANNER_BASE/{$AMAZON_SCANNER_ARG}"
 
+    const val ESSENTIALS_HOME = "essentials_home"
+    const val ESSENTIALS_CREATE_CHORE = "essentials_create_chore"
+    const val ESSENTIALS_EDIT_CHORE_BASE = "essentials_edit_chore"
+    const val ESSENTIALS_EDIT_CHORE_ARG = "choreId"
+    const val ESSENTIALS_EDIT_CHORE_PATTERN = "$ESSENTIALS_EDIT_CHORE_BASE/{$ESSENTIALS_EDIT_CHORE_ARG}"
+    const val ESSENTIALS_MANAGE_FAMILY = "essentials_manage_family"
+
     private const val NEW_TOKEN = "new"
 
     fun editSession(sessionId: Long?): String = "$EDIT_SESSION_BASE/${sessionId ?: NEW_TOKEN}"
@@ -55,6 +62,7 @@ object Routes {
     fun routeHelperEdit(routeId: Long): String = "$ROUTE_HELPER_EDIT_BASE/$routeId"
     fun routePlayer(routeId: Long): String = "$ROUTE_PLAYER_BASE/$routeId"
     fun amazonScanner(routeId: Long): String = "$AMAZON_SCANNER_BASE/$routeId"
+    fun essentialsEditChore(choreId: Long?): String = "$ESSENTIALS_EDIT_CHORE_BASE/${choreId ?: NEW_TOKEN}"
 
     fun parseId(arg: String?): Long? = arg?.takeIf { it != NEW_TOKEN }?.toLongOrNull()
 }
