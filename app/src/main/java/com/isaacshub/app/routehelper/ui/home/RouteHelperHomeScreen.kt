@@ -269,20 +269,26 @@ private fun NewRouteDialog(
         title = { Text("New route") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Route name") },
-                    enabled = !creating,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = zip,
-                    onValueChange = { zip = it },
-                    label = { Text("ZIP code") },
-                    enabled = !creating,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                androidx.compose.runtime.key("name_field") {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Route name") },
+                        enabled = !creating,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+                androidx.compose.runtime.key("zip_field") {
+                    OutlinedTextField(
+                        value = zip,
+                        onValueChange = { zip = it },
+                        label = { Text("ZIP code") },
+                        enabled = !creating,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
                 if (creating) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -323,13 +329,16 @@ private fun AmazonRouteDialog(
                     "Scan addresses from a list to create an Amazon delivery route. Name will be auto-generated.",
                     style = MaterialTheme.typography.bodyMedium
                 )
-                OutlinedTextField(
-                    value = zip,
-                    onValueChange = { zip = it },
-                    label = { Text("ZIP code") },
-                    enabled = !creating,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                androidx.compose.runtime.key("amazon_zip_field") {
+                    OutlinedTextField(
+                        value = zip,
+                        onValueChange = { zip = it },
+                        label = { Text("ZIP code") },
+                        enabled = !creating,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
                 if (creating) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
