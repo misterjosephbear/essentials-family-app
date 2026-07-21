@@ -111,6 +111,9 @@ interface RouteHelperDao {
     @Query("DELETE FROM packages WHERE scannedAtEpochMillis < :beforeTimestampMillis")
     suspend fun deletePackagesScanBefore(beforeTimestampMillis: Long): Int
 
+    @Query("UPDATE packages SET plotAfterStopId = :afterStopId, plotBeforeStopId = :beforeStopId WHERE routeId = :routeId AND trackingNumber = :trackingNumber")
+    suspend fun setPackagePlotStops(routeId: Long, trackingNumber: String, afterStopId: Long, beforeStopId: Long)
+
     // Section queries
     @Insert
     suspend fun insertSection(section: RouteSectionEntity): Long

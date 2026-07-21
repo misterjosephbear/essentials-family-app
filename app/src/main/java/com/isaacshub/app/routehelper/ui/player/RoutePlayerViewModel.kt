@@ -593,4 +593,12 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         val routeId = routeIdFlow.value ?: return null
         return repository.getRoute(routeId)
     }
+
+    /** Set the plot stops for an unknown package (which two stops it's between) */
+    fun setPackagePlotStops(trackingNumber: String, afterStopId: Long, beforeStopId: Long) {
+        val routeId = routeIdFlow.value ?: return
+        viewModelScope.launch {
+            repository.setPackagePlotStops(routeId, trackingNumber, afterStopId, beforeStopId)
+        }
+    }
 }

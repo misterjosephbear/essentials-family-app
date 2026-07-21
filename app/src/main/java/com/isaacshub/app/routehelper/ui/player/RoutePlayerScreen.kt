@@ -112,6 +112,7 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
     var isScanningPackages by remember { mutableStateOf(false) }
     var isLoadingTruck by remember { mutableStateOf(false) }
     var isFreeCam by remember { mutableStateOf(false) }
+    var packageToPlot by remember { mutableStateOf<ScannedPackage?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -438,6 +439,10 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                         isUnknownStreetMatch = pkg.isUnknownStreetMatch,
                         streetName = pkg.streetName
                     )
+                    // If unknown package, show the plot dialog immediately
+                    if (pkg.isUnknownStreetMatch) {
+                        packageToPlot = pkg
+                    }
                 },
                 onPackageDeleted = { pkg ->
                     // Find the matching package entity and delete it
@@ -461,9 +466,7 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                     }
                 },
                 onPlotUnknownPackage = { pkg ->
-                    // Show dialog to select between stops
-                    // This will be handled by showing a dialog state
-                    android.util.Log.d("RoutePlayer", "Plot unknown package: ${pkg.addressLabel}")
+                    packageToPlot = pkg
                 },
                 onDone = { isScanningPackages = false }
             )
@@ -482,6 +485,20 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                 onDone = { isLoadingTruck = false }
             )
         }
+    }
+
+    // Plot Unknown Package Dialog
+    packageToPlot?.let { pkg ->
+        PlotUnknownPackageDialog(
+            pkg = pkg,
+            routeStops = state.stops,
+            onDismiss = { packageToPlot = null },
+            onConfirm = { afterStopId, beforeStopId ->
+                // TODO: Save the plot stop IDs to the package
+                viewModel.setPackagePlotStops(pkg.trackingNumber, afterStopId, beforeStopId)
+                packageToPlot = null
+            }
+        )
     }
 }
 

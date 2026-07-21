@@ -355,6 +355,11 @@ class RouteHelperRepository(
         return dao.getUndeliveredPackageCountForStop(routeId, stopId)
     }
 
+    /** Set the plot stops for an unknown package */
+    suspend fun setPackagePlotStops(routeId: Long, trackingNumber: String, afterStopId: Long, beforeStopId: Long) {
+        dao.setPackagePlotStops(routeId, trackingNumber, afterStopId, beforeStopId)
+    }
+
     // Section management
     suspend fun addSection(routeId: Long, name: String, startStopId: Long, endStopId: Long): Long {
         return dao.insertSection(
