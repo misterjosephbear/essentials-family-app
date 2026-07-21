@@ -1,7 +1,11 @@
 package com.isaacshub.app.routehelper.ui.player
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,6 +27,7 @@ import androidx.compose.material.icons.filled.GpsNotFixed
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -68,6 +73,7 @@ import com.isaacshub.app.debug.DebugLogger
 import com.isaacshub.app.routehelper.domain.GeoPoint
 import com.isaacshub.app.routehelper.domain.distanceMeters
 import com.isaacshub.app.routehelper.domain.offsetPolylineRight
+import com.isaacshub.app.routehelper.service.RoutePlayerService
 import com.isaacshub.app.routehelper.ui.common.newOsmMapView
 import kotlinx.coroutines.launch
 import android.graphics.DashPathEffect
@@ -108,6 +114,7 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
     }
 
     val state by viewModel.uiState.collectAsState()
+    val scannedPackages by viewModel.observePackagesWithSequence().collectAsState(initial = emptyList())
     var isScanning by remember { mutableStateOf(false) }
     var isScanningPackages by remember { mutableStateOf(false) }
     var isLoadingTruck by remember { mutableStateOf(false) }
@@ -132,6 +139,86 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
         }
     }
 
+    // Request overlay permission if needed
+    var hasOverlayPermission by remember {
+        mutableStateOf(
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)
+        )
+    }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
+            // Request overlay permission
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:${context.packageName}")
+            )
+            context.startActivity(intent)
+        }
+    }
+
+    // Track if user explicitly stopped the route
+    var userStoppedRoute by remember { mutableStateOf(false) }
+
+    // Start the foreground service
+    DisposableEffect(routeId, hasLocationPermission, hasOverlayPermission) {
+        if (hasLocationPermission && hasOverlayPermission) {
+            val serviceIntent = Intent(context, RoutePlayerService::class.java).apply {
+                action = RoutePlayerService.ACTION_START
+                putExtra(RoutePlayerService.EXTRA_ROUTE_ID, routeId)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.startService(serviceIntent)
+            }
+        }
+
+        onDispose {
+            // Only stop the service if user explicitly stopped the route
+            // Don't stop when just navigating away (e.g., to change music)
+            if (userStoppedRoute) {
+                val stopIntent = Intent(context, RoutePlayerService::class.java).apply {
+                    action = RoutePlayerService.ACTION_STOP
+                }
+                context.startService(stopIntent)
+            }
+        }
+    }
+
+    // Update the overlay with current state
+    LaunchedEffect(state.nextStopIndex, state.stops) {
+        state.nextStopIndex?.let { index ->
+            if (index < state.stops.size) {
+                val currentStop = state.stops[index]
+                RoutePlayerService.currentStopText.value = "Next stop: ${currentStop.addressLabel}"
+
+                val nextIndex = index + 1
+                if (nextIndex < state.stops.size) {
+                    val nextStop = state.stops[nextIndex]
+                    RoutePlayerService.nextStopText.value = "Then: ${nextStop.addressLabel}"
+                } else {
+                    RoutePlayerService.nextStopText.value = "Last stop"
+                }
+            }
+        }
+    }
+
+    // Update package info in overlay
+    LaunchedEffect(scannedPackages, state.nextStopIndex) {
+        state.nextStopIndex?.let { index ->
+            if (index < state.stops.size) {
+                val stopId = state.stops[index].id
+                val packagesAtStop = scannedPackages.filter { it.routedStopId == stopId && !it.isDelivered }
+                if (packagesAtStop.isNotEmpty()) {
+                    RoutePlayerService.packageInfo.value = "${packagesAtStop.size} package(s) at this stop"
+                } else {
+                    RoutePlayerService.packageInfo.value = null
+                }
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -142,6 +229,17 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                     }
                 },
                 actions = {
+                    // Stop route button
+                    IconButton(onClick = {
+                        userStoppedRoute = true
+                        onDone()
+                    }) {
+                        Icon(
+                            Icons.Filled.Stop,
+                            contentDescription = "Stop route"
+                        )
+                    }
+
                     // Package scanner / Load Truck button
                     IconButton(onClick = {
                         if (isAmazonRoute) {
