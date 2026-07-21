@@ -264,7 +264,9 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
      * Check if a package was missed at the stop we just left.
      * Triggers alert if:
      * 1. Stop had undelivered packages
-     * 2. We were at the stop for less than 6 seconds OR we passed it without stopping
+     * 2. We were at the stop for less than 6 seconds AND we've been there at least 3 seconds
+     *    (This prevents GPS jitter from triggering false alerts while still parked)
+     * 3. OR we passed the stop completely without ever stopping
      */
     private fun checkForMissedPackage(stop: RoutedStopEntity) {
         val routeId = routeIdFlow.value ?: return
@@ -282,8 +284,10 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
 
                 Log.d(TAG, "Left stop ${stop.id} with $packageCount packages, dwell time: ${dwellTimeSeconds}s")
 
-                // Alert if we were there less than 6 seconds or never arrived
-                if (dwellTimeSeconds < 6.0) {
+                // Only alert if:
+                // - We never arrived (dwellTime = 0), OR
+                // - We were there 3-6 seconds (long enough to not be GPS jitter, but too short for delivery)
+                if (dwellTimeSeconds == 0.0 || (dwellTimeSeconds >= 3.0 && dwellTimeSeconds < 6.0)) {
                     Log.w(TAG, "⚠️ MISSED PACKAGE at ${stop.addressLabel} (dwell: ${dwellTimeSeconds}s)")
                     missedPackageAlertFlow.value = stop.addressLabel
                 }
