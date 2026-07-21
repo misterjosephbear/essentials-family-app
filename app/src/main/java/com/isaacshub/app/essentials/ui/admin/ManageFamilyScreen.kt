@@ -124,11 +124,11 @@ fun ManageFamilyScreen(
                 showAddDialog = false
                 editingChild = null
             },
-            onSave = { username, displayName ->
+            onSave = { username, displayName, password ->
                 if (editingChild != null) {
-                    viewModel.updateChild(editingChild!!.id, username, displayName)
+                    viewModel.updateChild(editingChild!!.id, username, displayName, password)
                 } else {
-                    viewModel.createChild(username, displayName)
+                    viewModel.createChild(username, displayName, password ?: "changeme")
                 }
                 showAddDialog = false
                 editingChild = null
@@ -192,10 +192,11 @@ private fun ChildAccountCard(
 private fun ChildAccountDialog(
     child: ChildAccountEntity?,
     onDismiss: () -> Unit,
-    onSave: (username: String, displayName: String) -> Unit
+    onSave: (username: String, displayName: String, password: String?) -> Unit
 ) {
     var username by remember { mutableStateOf(child?.username ?: "") }
     var displayName by remember { mutableStateOf(child?.displayName ?: "") }
+    var password by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -221,12 +222,30 @@ private fun ChildAccountDialog(
                         Text("Used to log into the Essentials app")
                     }
                 )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text(if (child != null) "New Password (optional)" else "Password") },
+                    placeholder = { Text(if (child != null) "Leave blank to keep current" else "Enter password") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    supportingText = {
+                        Text(if (child != null) "Only fill to change password" else "Password for Essentials app login")
+                    }
+                )
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(username, displayName) },
-                enabled = username.isNotBlank() && displayName.isNotBlank()
+                onClick = {
+                    onSave(
+                        username,
+                        displayName,
+                        password.takeIf { it.isNotBlank() }
+                    )
+                },
+                enabled = username.isNotBlank() && displayName.isNotBlank() &&
+                         (child != null || password.isNotBlank())
             ) {
                 Text("Save")
             }

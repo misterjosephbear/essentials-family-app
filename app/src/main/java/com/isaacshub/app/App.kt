@@ -2,6 +2,7 @@ package com.isaacshub.app
 
 import android.app.Application
 import com.isaacshub.app.core.data.prefs.UserPreferencesRepository
+import com.isaacshub.app.essentials.data.EssentialsApiClient
 import com.isaacshub.app.essentials.data.EssentialsDatabase
 import com.isaacshub.app.essentials.data.EssentialsRepository
 import com.isaacshub.app.routehelper.data.RouteHelperDatabase
@@ -15,8 +16,15 @@ import com.isaacshub.app.vault.backup.AppDataBackupScheduler
 import com.isaacshub.app.vault.data.VaultPreferencesRepository
 import com.isaacshub.app.vault.work.PhotoBackupScheduler
 import com.isaacshub.app.routehelper.work.PackageCleanupScheduler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class App : Application() {
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     lateinit var preferencesRepository: UserPreferencesRepository
         private set
@@ -62,8 +70,29 @@ class App : Application() {
         essentialsRepository = EssentialsRepository(
             essentialsDatabase.choreDao(),
             essentialsDatabase.childAccountDao(),
-            essentialsDatabase.choreCompletionDao()
+            essentialsDatabase.choreCompletionDao(),
+            apiClient = null  // Will be set later when connection is available
         )
+
+        // Initialize API client when Vault connection is available
+        applicationScope.launch {
+            vaultPreferencesRepository.connection.collect { vaultConnection ->
+                val apiClient = vaultConnection?.let {
+                    EssentialsApiClient(
+                        baseUrl = it.baseUrl,
+                        apiKey = it.apiKey
+                    )
+                }
+
+                // Recreate repository with new API client
+                essentialsRepository = EssentialsRepository(
+                    essentialsDatabase.choreDao(),
+                    essentialsDatabase.childAccountDao(),
+                    essentialsDatabase.choreCompletionDao(),
+                    apiClient = apiClient
+                )
+            }
+        }
 
         // Schedule daily package cleanup at 1am
         PackageCleanupScheduler.schedule(this)

@@ -27,11 +27,11 @@ class ManageFamilyViewModel(
     val children: StateFlow<List<ChildAccountEntity>> = essentialsRepository.observeAllChildren()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun createChild(username: String, displayName: String) {
+    fun createChild(username: String, displayName: String, password: String) {
         viewModelScope.launch {
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-                essentialsRepository.createChildAccount(username, displayName)
+                essentialsRepository.createChildAccount(username, displayName, password)
                 _uiState.value = _uiState.value.copy(isLoading = false)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -42,11 +42,11 @@ class ManageFamilyViewModel(
         }
     }
 
-    fun updateChild(id: Long, username: String, displayName: String) {
+    fun updateChild(id: Long, username: String, displayName: String, password: String?) {
         viewModelScope.launch {
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-                essentialsRepository.updateChildAccount(id, username, displayName)
+                essentialsRepository.updateChildAccount(id, username, displayName, password)
                 _uiState.value = _uiState.value.copy(isLoading = false)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
