@@ -315,13 +315,17 @@ private fun AddSectionDialog(
                     }
                 ) {
                     OutlinedTextField(
-                        value = if (startDropdownExpanded) startSearchQuery else (selectedStartStop?.addressLabel ?: ""),
+                        value = startSearchQuery,
                         onValueChange = {
                             startSearchQuery = it
                             startDropdownExpanded = true  // Keep it open while typing
+                            // Clear selection when user types
+                            if (it.isNotEmpty()) {
+                                selectedStartStop = null
+                            }
                         },
                         label = { Text("Start Address") },
-                        placeholder = { Text("Search or select...") },
+                        placeholder = { Text(selectedStartStop?.addressLabel ?: "Search or select...") },
                         trailingIcon = {
                             if (startSearchQuery.isNotEmpty() && startDropdownExpanded) {
                                 IconButton(onClick = { startSearchQuery = "" }) {
@@ -349,7 +353,7 @@ private fun AddSectionDialog(
                             startDropdownExpanded = false
                             startSearchQuery = ""
                         },
-                        modifier = Modifier.heightIn(max = 200.dp)
+                        modifier = Modifier.heightIn(max = 280.dp) // Height for approximately 5 items
                     ) {
                         if (filteredStops.isEmpty()) {
                             DropdownMenuItem(
@@ -358,7 +362,9 @@ private fun AddSectionDialog(
                                 enabled = false
                             )
                         } else {
-                            filteredStops.take(5).forEachIndexed { _, stop ->
+                            // Show ALL filtered stops, but menu height is limited to ~5 items
+                            // The menu will automatically become scrollable if content exceeds height
+                            filteredStops.forEachIndexed { _, stop ->
                                 val stopIndex = stops.indexOf(stop) + 1
                                 DropdownMenuItem(
                                     text = { Text("$stopIndex. ${stop.addressLabel}") },
@@ -367,13 +373,6 @@ private fun AddSectionDialog(
                                         startDropdownExpanded = false
                                         startSearchQuery = ""
                                     }
-                                )
-                            }
-                            if (filteredStops.size > 5) {
-                                DropdownMenuItem(
-                                    text = { Text("...and ${filteredStops.size - 5} more. Keep typing to narrow down.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline) },
-                                    onClick = {},
-                                    enabled = false
                                 )
                             }
                         }
@@ -393,13 +392,17 @@ private fun AddSectionDialog(
                     }
                 ) {
                     OutlinedTextField(
-                        value = if (endDropdownExpanded) endSearchQuery else (selectedEndStop?.addressLabel ?: ""),
+                        value = endSearchQuery,
                         onValueChange = {
                             endSearchQuery = it
                             endDropdownExpanded = true  // Keep it open while typing
+                            // Clear selection when user types
+                            if (it.isNotEmpty()) {
+                                selectedEndStop = null
+                            }
                         },
                         label = { Text("End Address") },
-                        placeholder = { Text("Search or select...") },
+                        placeholder = { Text(selectedEndStop?.addressLabel ?: "Search or select...") },
                         trailingIcon = {
                             if (endSearchQuery.isNotEmpty() && endDropdownExpanded) {
                                 IconButton(onClick = { endSearchQuery = "" }) {
@@ -427,7 +430,7 @@ private fun AddSectionDialog(
                             endDropdownExpanded = false
                             endSearchQuery = ""
                         },
-                        modifier = Modifier.heightIn(max = 200.dp)
+                        modifier = Modifier.heightIn(max = 280.dp) // Height for approximately 5 items
                     ) {
                         if (filteredEndStops.isEmpty()) {
                             DropdownMenuItem(
@@ -436,7 +439,9 @@ private fun AddSectionDialog(
                                 enabled = false
                             )
                         } else {
-                            filteredEndStops.take(5).forEachIndexed { _, stop ->
+                            // Show ALL filtered stops, but menu height is limited to ~5 items
+                            // The menu will automatically become scrollable if content exceeds height
+                            filteredEndStops.forEachIndexed { _, stop ->
                                 val stopIndex = stops.indexOf(stop) + 1
                                 DropdownMenuItem(
                                     text = { Text("$stopIndex. ${stop.addressLabel}") },
@@ -445,13 +450,6 @@ private fun AddSectionDialog(
                                         endDropdownExpanded = false
                                         endSearchQuery = ""
                                     }
-                                )
-                            }
-                            if (filteredEndStops.size > 5) {
-                                DropdownMenuItem(
-                                    text = { Text("...and ${filteredEndStops.size - 5} more. Keep typing to narrow down.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline) },
-                                    onClick = {},
-                                    enabled = false
                                 )
                             }
                         }

@@ -1,8 +1,13 @@
 package com.isaacshub.app.routehelper.ui.scanner
 
 import android.app.Application
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.isaacshub.app.App
 import com.isaacshub.app.routehelper.data.CandidateAddressEntity
 import com.isaacshub.app.routehelper.data.ScannedAddressData
@@ -203,5 +208,75 @@ class AmazonRouteScannerViewModel(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Test OCR with an image loaded from gallery (developer mode).
+     * This allows testing the extraction parsers without needing live camera access.
+     */
+    fun testOcrWithImage(context: Context, imageUri: Uri) {
+        viewModelScope.launch {
+            try {
+                val image = InputImage.fromFilePath(context, imageUri)
+                val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+
+                recognizer.process(image)
+                    .addOnSuccessListener { visionText ->
+                        val fullText = visionText.text
+                        android.util.Log.d("AmazonScanner", "=== OCR TEST MODE ===")
+                        android.util.Log.d("AmazonScanner", "Full extracted text:\n$fullText")
+
+                        val expectedNextSequence = _uiState.value.scannedAddresses.size + 1
+
+                        // Test direction sheet parser
+                        val directionSheetResult = extractFromDirectionSheet(fullText, expectedNextSequence)
+                        if (directionSheetResult != null) {
+                            android.util.Log.d("AmazonScanner", "✓ Direction sheet parser succeeded:")
+                            android.util.Log.d("AmazonScanner", "  Route ID: ${directionSheetResult.routeId}")
+                            android.util.Log.d("AmazonScanner", "  Sequence: ${directionSheetResult.sequenceNumber}")
+                            android.util.Log.d("AmazonScanner", "  Address: ${directionSheetResult.address}")
+                            android.util.Log.d("AmazonScanner", "  Quantity: ${directionSheetResult.quantity}")
+
+                            onAddressScanned(
+                                directionSheetResult.address,
+                                directionSheetResult.sequenceNumber,
+                                directionSheetResult.quantity,
+                                directionSheetResult.routeId
+                            )
+                        } else {
+                            // Try regular parser
+                            val regularResult = extractAddress(fullText, expectedNextSequence)
+                            if (regularResult != null) {
+                                android.util.Log.d("AmazonScanner", "✓ Regular parser succeeded:")
+                                android.util.Log.d("AmazonScanner", "  Sequence: ${regularResult.sequenceNumber}")
+                                android.util.Log.d("AmazonScanner", "  Address: ${regularResult.address}")
+
+                                onAddressScanned(
+                                    regularResult.address,
+                                    regularResult.sequenceNumber,
+                                    regularResult.quantity,
+                                    regularResult.routeId
+                                )
+                            } else {
+                                android.util.Log.e("AmazonScanner", "✗ Both parsers failed to extract address")
+                                _uiState.update {
+                                    it.copy(error = "OCR test failed: Could not extract address from image")
+                                }
+                            }
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        android.util.Log.e("AmazonScanner", "OCR test failed", e)
+                        _uiState.update {
+                            it.copy(error = "OCR test failed: ${e.message}")
+                        }
+                    }
+            } catch (e: Exception) {
+                android.util.Log.e("AmazonScanner", "Failed to load image", e)
+                _uiState.update {
+                    it.copy(error = "Failed to load image: ${e.message}")
+                }
+            }
+        }
     }
 }
