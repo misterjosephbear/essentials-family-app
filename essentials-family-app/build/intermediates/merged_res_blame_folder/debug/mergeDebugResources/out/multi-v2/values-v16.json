@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.isaacshub.essentials.essentials-family-app-mergeDebugResources-66:/values-v16/values-v16.xml",
+            "map": [
+                {
+                    "source": "/home/bear/.gradle/caches/9.4.1/transforms/7e26514f57bac1d4e8424eae8c65a19e/transformed/appcompat-1.1.0/res/values-v16/values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "5",
+                        "endColumns": "12",
+                        "endOffsets": "223"
+                    }
+                }
+            ]
+        }
+    ]
+}

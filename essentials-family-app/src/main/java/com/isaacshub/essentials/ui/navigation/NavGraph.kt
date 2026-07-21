@@ -29,7 +29,16 @@ fun EssentialsNavGraph(
         }
 
         composable(Routes.Home.route) {
-            HomeScreen()
+            HomeScreen(
+                onChoreClick = { choreId ->
+                    navController.navigate(Routes.ChoreDetail.createRoute(choreId))
+                },
+                onLogout = {
+                    navController.navigate(Routes.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable(

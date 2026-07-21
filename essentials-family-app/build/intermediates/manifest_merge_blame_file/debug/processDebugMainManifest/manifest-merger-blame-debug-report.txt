@@ -1,0 +1,229 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.isaacshub.essentials"
+4    android:versionCode="1"
+5    android:versionName="1.0.0" >
+6
+7    <uses-sdk
+7-->INJECTED
+8        android:minSdkVersion="26"
+8-->INJECTED
+9        android:targetSdkVersion="35" />
+9-->INJECTED
+10
+11    <!-- Required permissions -->
+12    <uses-permission android:name="android.permission.INTERNET" />
+12-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:6:5-67
+12-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:6:22-64
+13    <uses-permission android:name="android.permission.CAMERA" />
+13-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:7:5-65
+13-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:7:22-62
+14    <uses-permission android:name="android.permission.VIBRATE" />
+14-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:8:5-66
+14-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:8:22-63
+15    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+15-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:9:5-77
+15-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:9:22-74
+16    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+16-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:10:5-89
+16-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:10:22-86
+17    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+17-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:11:5-78
+17-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:11:22-75
+18    <uses-permission
+18-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:12:5-13:94
+19        android:name="android.permission.PACKAGE_USAGE_STATS"
+19-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:12:22-75
+20        android:protectionLevel="signature|privileged" />
+20-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:13:9-55
+21    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+21-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:14:5-95
+21-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:14:22-92
+22    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+22-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:15:5-81
+22-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:15:22-78
+23    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+23-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:16:5-77
+23-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:16:22-74
+24
+25    <!-- Device Admin permission -->
+26    <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN" />
+26-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:19:5-20:47
+26-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:19:22-73
+27
+28    <!-- Camera features -->
+29    <uses-feature
+29-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:23:5-85
+30        android:name="android.hardware.camera"
+30-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:23:19-57
+31        android:required="false" />
+31-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:23:58-82
+32    <uses-feature
+32-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:24:5-95
+33        android:name="android.hardware.camera.autofocus"
+33-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:24:19-67
+34        android:required="false" />
+34-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:24:68-92
+35
+36    <permission
+36-->[androidx.core:core:1.15.0] /home/bear/.gradle/caches/9.4.1/transforms/0f9fb4cbb7eaf6812a5a970beee61642/transformed/core-1.15.0/AndroidManifest.xml:22:5-24:47
+37        android:name="com.isaacshub.essentials.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+37-->[androidx.core:core:1.15.0] /home/bear/.gradle/caches/9.4.1/transforms/0f9fb4cbb7eaf6812a5a970beee61642/transformed/core-1.15.0/AndroidManifest.xml:23:9-81
+38        android:protectionLevel="signature" />
+38-->[androidx.core:core:1.15.0] /home/bear/.gradle/caches/9.4.1/transforms/0f9fb4cbb7eaf6812a5a970beee61642/transformed/core-1.15.0/AndroidManifest.xml:24:9-44
+39
+40    <uses-permission android:name="com.isaacshub.essentials.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+40-->[androidx.core:core:1.15.0] /home/bear/.gradle/caches/9.4.1/transforms/0f9fb4cbb7eaf6812a5a970beee61642/transformed/core-1.15.0/AndroidManifest.xml:26:5-97
+40-->[androidx.core:core:1.15.0] /home/bear/.gradle/caches/9.4.1/transforms/0f9fb4cbb7eaf6812a5a970beee61642/transformed/core-1.15.0/AndroidManifest.xml:26:22-94
+41
+42    <application
+42-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:26:5-45:19
+43        android:name="com.isaacshub.essentials.EssentialsApp"
+43-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:27:9-38
+44        android:allowBackup="true"
+44-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:28:9-35
+45        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+45-->[androidx.core:core:1.15.0] /home/bear/.gradle/caches/9.4.1/transforms/0f9fb4cbb7eaf6812a5a970beee61642/transformed/core-1.15.0/AndroidManifest.xml:28:18-86
+46        android:debuggable="true"
+47        android:extractNativeLibs="false"
+47-->INJECTED
+48        android:icon="@mipmap/ic_launcher"
+48-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:29:9-43
+49        android:label="@string/app_name"
+49-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:30:9-41
+50        android:roundIcon="@mipmap/ic_launcher_round"
+50-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:31:9-54
+51        android:supportsRtl="true"
+51-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:32:9-35
+52        android:theme="@style/Theme.Essentials" >
+52-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:33:9-48
+53        <activity
+53-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:35:9-43:20
+54            android:name="com.isaacshub.essentials.MainActivity"
+54-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:36:13-41
+55            android:exported="true"
+55-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:37:13-36
+56            android:theme="@style/Theme.Essentials" >
+56-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:38:13-52
+57            <intent-filter>
+57-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:39:13-42:29
+58                <action android:name="android.intent.action.MAIN" />
+58-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:40:17-69
+58-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:40:25-66
+59
+60                <category android:name="android.intent.category.LAUNCHER" />
+60-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:41:17-77
+60-->/home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:41:27-74
+61            </intent-filter>
+62        </activity>
+63
+64        <!--
+65        Service for holding metadata. Cannot be instantiated.
+66        Metadata will be merged from other manifests.
+67        -->
+68        <service
+68-->[androidx.camera:camera-core:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/b730615e89b69245bf4032a12422fe78/transformed/camera-core-1.4.1/AndroidManifest.xml:29:9-33:78
+69            android:name="androidx.camera.core.impl.MetadataHolderService"
+69-->[androidx.camera:camera-core:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/b730615e89b69245bf4032a12422fe78/transformed/camera-core-1.4.1/AndroidManifest.xml:30:13-75
+70            android:enabled="false"
+70-->[androidx.camera:camera-core:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/b730615e89b69245bf4032a12422fe78/transformed/camera-core-1.4.1/AndroidManifest.xml:31:13-36
+71            android:exported="false" >
+71-->[androidx.camera:camera-core:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/b730615e89b69245bf4032a12422fe78/transformed/camera-core-1.4.1/AndroidManifest.xml:32:13-37
+72            <meta-data
+72-->[androidx.camera:camera-camera2:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/2257ecca11ed5bcf4b4d88843b576110/transformed/camera-camera2-1.4.1/AndroidManifest.xml:30:13-32:89
+73                android:name="androidx.camera.core.impl.MetadataHolderService.DEFAULT_CONFIG_PROVIDER"
+73-->[androidx.camera:camera-camera2:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/2257ecca11ed5bcf4b4d88843b576110/transformed/camera-camera2-1.4.1/AndroidManifest.xml:31:17-103
+74                android:value="androidx.camera.camera2.Camera2Config$DefaultProvider" />
+74-->[androidx.camera:camera-camera2:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/2257ecca11ed5bcf4b4d88843b576110/transformed/camera-camera2-1.4.1/AndroidManifest.xml:32:17-86
+75        </service>
+76
+77        <provider
+77-->[androidx.emoji2:emoji2:1.3.0] /home/bear/.gradle/caches/9.4.1/transforms/2b27a62b2b0e0747e31b1395e9ad1425/transformed/emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
+78            android:name="androidx.startup.InitializationProvider"
+78-->[androidx.emoji2:emoji2:1.3.0] /home/bear/.gradle/caches/9.4.1/transforms/2b27a62b2b0e0747e31b1395e9ad1425/transformed/emoji2-1.3.0/AndroidManifest.xml:25:13-67
+79            android:authorities="com.isaacshub.essentials.androidx-startup"
+79-->[androidx.emoji2:emoji2:1.3.0] /home/bear/.gradle/caches/9.4.1/transforms/2b27a62b2b0e0747e31b1395e9ad1425/transformed/emoji2-1.3.0/AndroidManifest.xml:26:13-68
+80            android:exported="false" >
+80-->[androidx.emoji2:emoji2:1.3.0] /home/bear/.gradle/caches/9.4.1/transforms/2b27a62b2b0e0747e31b1395e9ad1425/transformed/emoji2-1.3.0/AndroidManifest.xml:27:13-37
+81            <meta-data
+81-->[androidx.emoji2:emoji2:1.3.0] /home/bear/.gradle/caches/9.4.1/transforms/2b27a62b2b0e0747e31b1395e9ad1425/transformed/emoji2-1.3.0/AndroidManifest.xml:29:13-31:52
+82                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+82-->[androidx.emoji2:emoji2:1.3.0] /home/bear/.gradle/caches/9.4.1/transforms/2b27a62b2b0e0747e31b1395e9ad1425/transformed/emoji2-1.3.0/AndroidManifest.xml:30:17-75
+83                android:value="androidx.startup" />
+83-->[androidx.emoji2:emoji2:1.3.0] /home/bear/.gradle/caches/9.4.1/transforms/2b27a62b2b0e0747e31b1395e9ad1425/transformed/emoji2-1.3.0/AndroidManifest.xml:31:17-49
+84            <meta-data
+84-->[androidx.lifecycle:lifecycle-process:2.8.7] /home/bear/.gradle/caches/9.4.1/transforms/8263566cf6f93d69d100382d5147b10d/transformed/lifecycle-process-2.8.7/AndroidManifest.xml:29:13-31:52
+85                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+85-->[androidx.lifecycle:lifecycle-process:2.8.7] /home/bear/.gradle/caches/9.4.1/transforms/8263566cf6f93d69d100382d5147b10d/transformed/lifecycle-process-2.8.7/AndroidManifest.xml:30:17-78
+86                android:value="androidx.startup" />
+86-->[androidx.lifecycle:lifecycle-process:2.8.7] /home/bear/.gradle/caches/9.4.1/transforms/8263566cf6f93d69d100382d5147b10d/transformed/lifecycle-process-2.8.7/AndroidManifest.xml:31:17-49
+87            <meta-data
+87-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:29:13-31:52
+88                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+88-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:30:17-85
+89                android:value="androidx.startup" />
+89-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:31:17-49
+90        </provider>
+91
+92        <activity
+92-->[androidx.compose.ui:ui-test-manifest:1.7.6] /home/bear/.gradle/caches/9.4.1/transforms/93bffd5052ef5d2ef4e9ac4c46df2dc3/transformed/ui-test-manifest-1.7.6/AndroidManifest.xml:23:9-25:39
+93            android:name="androidx.activity.ComponentActivity"
+93-->[androidx.compose.ui:ui-test-manifest:1.7.6] /home/bear/.gradle/caches/9.4.1/transforms/93bffd5052ef5d2ef4e9ac4c46df2dc3/transformed/ui-test-manifest-1.7.6/AndroidManifest.xml:24:13-63
+94            android:exported="true" />
+94-->[androidx.compose.ui:ui-test-manifest:1.7.6] /home/bear/.gradle/caches/9.4.1/transforms/93bffd5052ef5d2ef4e9ac4c46df2dc3/transformed/ui-test-manifest-1.7.6/AndroidManifest.xml:25:13-36
+95        <activity
+95-->[androidx.compose.ui:ui-tooling-android:1.7.6] /home/bear/.gradle/caches/9.4.1/transforms/f3f69cbd72060182aedc1996d8ba185e/transformed/ui-tooling-release/AndroidManifest.xml:23:9-25:39
+96            android:name="androidx.compose.ui.tooling.PreviewActivity"
+96-->[androidx.compose.ui:ui-tooling-android:1.7.6] /home/bear/.gradle/caches/9.4.1/transforms/f3f69cbd72060182aedc1996d8ba185e/transformed/ui-tooling-release/AndroidManifest.xml:24:13-71
+97            android:exported="true" />
+97-->[androidx.compose.ui:ui-tooling-android:1.7.6] /home/bear/.gradle/caches/9.4.1/transforms/f3f69cbd72060182aedc1996d8ba185e/transformed/ui-tooling-release/AndroidManifest.xml:25:13-36
+98
+99        <service
+99-->[androidx.room:room-runtime-android:2.8.4] /home/bear/.gradle/caches/9.4.1/transforms/b7766104df5895bc9b923afb075ebcd4/transformed/room-runtime/AndroidManifest.xml:24:9-28:63
+100            android:name="androidx.room.MultiInstanceInvalidationService"
+100-->[androidx.room:room-runtime-android:2.8.4] /home/bear/.gradle/caches/9.4.1/transforms/b7766104df5895bc9b923afb075ebcd4/transformed/room-runtime/AndroidManifest.xml:25:13-74
+101            android:directBootAware="true"
+101-->[androidx.room:room-runtime-android:2.8.4] /home/bear/.gradle/caches/9.4.1/transforms/b7766104df5895bc9b923afb075ebcd4/transformed/room-runtime/AndroidManifest.xml:26:13-43
+102            android:exported="false" />
+102-->[androidx.room:room-runtime-android:2.8.4] /home/bear/.gradle/caches/9.4.1/transforms/b7766104df5895bc9b923afb075ebcd4/transformed/room-runtime/AndroidManifest.xml:27:13-37
+103
+104        <receiver
+104-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:34:9-52:20
+105            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+105-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:35:13-76
+106            android:directBootAware="false"
+106-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:36:13-44
+107            android:enabled="true"
+107-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:37:13-35
+108            android:exported="true"
+108-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:38:13-36
+109            android:permission="android.permission.DUMP" >
+109-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:39:13-57
+110            <intent-filter>
+110-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:40:13-42:29
+111                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+111-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:17-91
+111-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:25-88
+112            </intent-filter>
+113            <intent-filter>
+113-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:43:13-45:29
+114                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+114-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:17-85
+114-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:25-82
+115            </intent-filter>
+116            <intent-filter>
+116-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:46:13-48:29
+117                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+117-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:17-88
+117-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:25-85
+118            </intent-filter>
+119            <intent-filter>
+119-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:49:13-51:29
+120                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+120-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:17-95
+120-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:25-92
+121            </intent-filter>
+122        </receiver>
+123    </application>
+124
+125</manifest>
