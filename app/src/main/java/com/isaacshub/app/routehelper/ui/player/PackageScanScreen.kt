@@ -832,7 +832,7 @@ fun PlotUnknownPackageDialog(
                     )
                 } else {
                     LazyColumn(
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 250.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         streetVisits.forEachIndexed { visitIndex, visit ->
