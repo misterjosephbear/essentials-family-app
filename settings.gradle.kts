@@ -18,4 +18,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "isaacs-hub"
-include(":app", ":sleepcore", ":essentialscore")
+include(":app", ":sleepcore", ":essentialscore", ":essentials-family-app")
