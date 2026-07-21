@@ -15,7 +15,8 @@ data class ScannedAddressData(
     val addressLabel: String,
     val sequenceNumber: Int,  // 1-based display number
     val matchedCandidateId: Long?,
-    val isValid: Boolean  // Whether matched to a candidate
+    val isValid: Boolean,  // Whether matched to a candidate
+    val expectedPackageCount: Int? = null  // Package count from direction sheets
 )
 
 class RouteHelperRepository(
@@ -123,7 +124,8 @@ class RouteHelperRepository(
                     latitude = candidate?.latitude ?: 0.0,
                     longitude = candidate?.longitude ?: 0.0,
                     candidateAddressId = scanned.matchedCandidateId,
-                    createdAtEpochMillis = System.currentTimeMillis()
+                    createdAtEpochMillis = System.currentTimeMillis(),
+                    expectedPackageCount = scanned.expectedPackageCount
                 )
             )
 
@@ -244,6 +246,9 @@ class RouteHelperRepository(
 
     /** Deletes cached road route - used when stops change and route needs recalculation. */
     suspend fun deleteCachedRoadRoute(routeId: Long) = dao.deleteCachedRoadRoute(routeId)
+
+    /** Update the expected package quantity for a stop (Amazon routes). */
+    suspend fun updateStopQuantity(stopId: Long, quantity: Int) = dao.updateStopQuantity(stopId, quantity)
 
     // Package management methods
     suspend fun addPackage(routeId: Long, trackingNumber: String, addressLabel: String): Long {

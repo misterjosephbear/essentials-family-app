@@ -150,8 +150,8 @@ fun AmazonRouteScannerScreen(
                     AddressCameraScanner(
                         candidateAddresses = uiState.candidateAddresses,
                         currentAddressCount = uiState.scannedAddresses.size,
-                        onAddressScanned = { address, scannerSeq ->
-                            viewModel.onAddressScanned(address, scannerSeq)
+                        onAddressScanned = { address, scannerSeq, quantity, routeId ->
+                            viewModel.onAddressScanned(address, scannerSeq, quantity, routeId)
                         }
                     )
 
@@ -306,6 +306,15 @@ private fun AddressListItem(
                             }
                         )
                     }
+                    // Show expected package count if available
+                    if (address.expectedPackageCount != null) {
+                        Text(
+                            "Expected packages: ${address.expectedPackageCount}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
 
@@ -324,7 +333,7 @@ private fun AddressListItem(
 private fun AddressCameraScanner(
     candidateAddresses: List<com.isaacshub.app.routehelper.data.CandidateAddressEntity>,
     currentAddressCount: Int,  // Number of addresses already scanned
-    onAddressScanned: (String, Int?) -> Unit  // address, scannerSequenceNumber
+    onAddressScanned: (String, Int?, Int?, String?) -> Unit  // address, scannerSequenceNumber, quantity, routeId
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -374,7 +383,12 @@ private fun AddressCameraScanner(
                                     processAddressImage(imageProxy, recognizer, expectedNextSeq) { extracted ->
                                         if (extracted != null) {
                                             canScan = false
-                                            onAddressScanned(extracted.address, extracted.sequenceNumber)
+                                            onAddressScanned(
+                                                extracted.address,
+                                                extracted.sequenceNumber,
+                                                extracted.quantity,
+                                                extracted.routeId
+                                            )
 
                                             // Re-enable scanning after 2-second cooldown
                                             MainScope().launch {
@@ -436,7 +450,14 @@ private fun processAddressImage(
 
         recognizer.process(image)
             .addOnSuccessListener { visionText ->
-                val extractedAddress = extractAddress(visionText.text, expectedNextSequence)
+                // Try direction sheet parser first (more structured format)
+                var extractedAddress = extractFromDirectionSheet(visionText.text, expectedNextSequence)
+
+                // Fall back to regular address parser if direction sheet parse failed
+                if (extractedAddress == null) {
+                    extractedAddress = extractAddress(visionText.text, expectedNextSequence)
+                }
+
                 onAddressFound(extractedAddress)
             }
             .addOnFailureListener { e ->
@@ -457,8 +478,81 @@ private fun processAddressImage(
  */
 private data class ExtractedAddress(
     val address: String,
-    val sequenceNumber: Int?  // Sequence number from scanner (if present)
+    val sequenceNumber: Int?,  // Sequence number from scanner (if present)
+    val quantity: Int? = null,  // Package quantity (from direction sheets)
+    val routeId: String? = null  // Route ID like "L001" (from direction sheets)
 )
+
+/**
+ * Extract structured stop data from Amazon direction sheet format.
+ *
+ * Format from direction sheets:
+ * Route Stop Sequence Direction                    Distance Qty
+ * L001  1    1        ARRIVE AT 1005 SHOWERS DR   0.2 MI   2
+ *
+ * This parser extracts:
+ * - Route ID (e.g., "L001")
+ * - Stop number
+ * - Sequence number
+ * - Address (from "ARRIVE AT" lines, ignoring turn-by-turn directions)
+ * - Package quantity
+ */
+private fun extractFromDirectionSheet(text: String, expectedNextSequence: Int? = null): ExtractedAddress? {
+    val lines = text.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
+
+    // Look for route ID in header or first data line
+    var routeId: String? = null
+    val routeIdPattern = Regex("""([A-Z]\d{3})""")
+
+    for (line in lines) {
+        val lowerLine = line.lowercase()
+
+        // Try to extract route ID if we haven't found it yet
+        if (routeId == null) {
+            routeIdPattern.find(line)?.let { match ->
+                routeId = match.groupValues[1]
+                android.util.Log.d("AmazonScanner", "Found route ID: $routeId")
+            }
+        }
+
+        // Look for "ARRIVE AT" lines which contain the actual stop addresses
+        if (lowerLine.contains("arrive at")) {
+            // Pattern: "ARRIVE AT 1005 SHOWERS DR" or "ARRIVE AT 307 OAK MEADOWS DR, ON THE LEFT"
+            val arrivePattern = Regex("""arrive\s+at\s+(\d+\s+[A-Za-z][A-Za-z0-9 .'-]+?)(?:,|\s*$)""", RegexOption.IGNORE_CASE)
+            arrivePattern.find(line)?.let { match ->
+                val address = match.groupValues[1].trim()
+
+                if (isValidStreetAddress(address)) {
+                    // Try to extract quantity from the same line or nearby context
+                    // Quantity typically appears at the end as a single digit or in a box
+                    val qtyPattern = Regex("""(\d+)\s*$""")
+                    val quantity = qtyPattern.find(line)?.groupValues?.get(1)?.toIntOrNull()
+
+                    // Try to extract sequence number from the beginning of the full text block
+                    val seqPattern = Regex("""^(\d+)\s+(\d+)\s+""")
+                    val sequenceMatch = seqPattern.find(text)
+                    val sequenceNumber = sequenceMatch?.groupValues?.get(2)?.toIntOrNull()
+
+                    // Validate sequence if expected
+                    if (expectedNextSequence != null && sequenceNumber != null && sequenceNumber != expectedNextSequence) {
+                        android.util.Log.d("AmazonScanner", "Rejecting seq #$sequenceNumber - expected #$expectedNextSequence")
+                        return null
+                    }
+
+                    android.util.Log.d("AmazonScanner", "Extracted from direction sheet: seq=${sequenceNumber ?: "?"}, addr=$address, qty=${quantity ?: "?"}, route=$routeId")
+                    return ExtractedAddress(
+                        address = address,
+                        sequenceNumber = sequenceNumber,
+                        quantity = quantity,
+                        routeId = routeId
+                    )
+                }
+            }
+        }
+    }
+
+    return null
+}
 
 /**
  * Extract address from OCR text, optionally with sequence number.

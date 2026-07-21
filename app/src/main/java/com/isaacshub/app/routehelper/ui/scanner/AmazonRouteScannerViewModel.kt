@@ -19,7 +19,8 @@ data class ScannedAddress(
     val sequenceNumber: Int,  // 1-based display number (our auto-generated sequence)
     val scannerSequenceNumber: Int?,  // Sequence number from scanner screen (if detected)
     val matchedCandidateId: Long?,
-    val isValid: Boolean
+    val isValid: Boolean,
+    val expectedPackageCount: Int? = null  // Package count from direction sheets
 )
 
 data class AmazonScannerUiState(
@@ -69,7 +70,12 @@ class AmazonRouteScannerViewModel(
         }
     }
 
-    fun onAddressScanned(rawAddress: String, scannerSequenceNumber: Int?) {
+    fun onAddressScanned(
+        rawAddress: String,
+        scannerSequenceNumber: Int?,
+        expectedPackageCount: Int? = null,
+        routeId: String? = null
+    ) {
         val trimmedAddress = rawAddress.trim()
         if (trimmedAddress.isEmpty()) return
 
@@ -120,7 +126,8 @@ class AmazonRouteScannerViewModel(
             sequenceNumber = nextSequence,
             scannerSequenceNumber = scannerSequenceNumber,
             matchedCandidateId = matchedCandidate?.id,
-            isValid = isValid
+            isValid = isValid,
+            expectedPackageCount = expectedPackageCount
         )
 
         val validationMsg = buildString {
@@ -176,7 +183,8 @@ class AmazonRouteScannerViewModel(
                         addressLabel = addr.addressLabel,
                         sequenceNumber = addr.sequenceNumber,
                         matchedCandidateId = addr.matchedCandidateId,
-                        isValid = addr.isValid
+                        isValid = addr.isValid,
+                        expectedPackageCount = addr.expectedPackageCount
                     )
                 }
 

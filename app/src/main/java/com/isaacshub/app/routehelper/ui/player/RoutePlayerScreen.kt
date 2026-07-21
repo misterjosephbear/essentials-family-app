@@ -110,9 +110,17 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
     val state by viewModel.uiState.collectAsState()
     var isScanning by remember { mutableStateOf(false) }
     var isScanningPackages by remember { mutableStateOf(false) }
+    var isLoadingTruck by remember { mutableStateOf(false) }
     var isFreeCam by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Check if this is an Amazon route
+    var isAmazonRoute by remember { mutableStateOf(false) }
+    LaunchedEffect(routeId) {
+        val route = viewModel.getRouteEntity()
+        isAmazonRoute = route?.routeType == com.isaacshub.app.routehelper.data.RouteType.AMAZON.name
+    }
 
     // Keep screen awake during route playback
     DisposableEffect(Unit) {
@@ -133,9 +141,18 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                     }
                 },
                 actions = {
-                    // Package scanner button
-                    IconButton(onClick = { isScanningPackages = true }) {
-                        Icon(Icons.Filled.LocalShipping, contentDescription = "Scan packages")
+                    // Package scanner / Load Truck button
+                    IconButton(onClick = {
+                        if (isAmazonRoute) {
+                            isLoadingTruck = true
+                        } else {
+                            isScanningPackages = true
+                        }
+                    }) {
+                        Icon(
+                            Icons.Filled.LocalShipping,
+                            contentDescription = if (isAmazonRoute) "Load truck" else "Scan packages"
+                        )
                     }
 
                     // Debug button to send logs to server
@@ -385,10 +402,22 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
     }
 
     if (isScanningPackages) {
-        val scannedPackages by viewModel.observePackagesWithSequence().collectAsState(initial = emptyList())
-        val packageSections by viewModel.observePackageSections().collectAsState(initial = emptyMap())
         Dialog(onDismissRequest = { isScanningPackages = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-            PackageScanScreen(
+            if (isAmazonRoute) {
+                // Amazon routes: show Load Truck screen with adjustable quantities
+                AmazonLoadTruckScreen(
+                    stops = state.stops,
+                    onUpdateQuantity = { stopId, quantity ->
+                        viewModel.updateStopQuantity(stopId, quantity)
+                    },
+                    onDone = { isScanningPackages = false }
+                )
+            } else {
+                // Regular routes: show package scanner
+                val scannedPackages by viewModel.observePackagesWithSequence().collectAsState(initial = emptyList())
+                val packageSections by viewModel.observePackageSections().collectAsState(initial = emptyMap())
+
+                PackageScanScreen(
                 routeId = routeId,
                 scannedPackages = scannedPackages.map { pkg ->
                     ScannedPackage(
@@ -418,6 +447,20 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                     }
                 },
                 onDone = { isScanningPackages = false }
+            )
+            }
+        }
+    }
+
+    // Amazon Load Truck screen
+    if (isLoadingTruck) {
+        Dialog(onDismissRequest = { isLoadingTruck = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            AmazonLoadTruckScreen(
+                stops = state.stops,
+                onUpdateQuantity = { stopId, quantity ->
+                    viewModel.updateStopQuantity(stopId, quantity)
+                },
+                onDone = { isLoadingTruck = false }
             )
         }
     }

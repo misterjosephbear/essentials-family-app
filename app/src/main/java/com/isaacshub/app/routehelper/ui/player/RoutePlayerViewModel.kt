@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.isaacshub.app.App
 import com.isaacshub.app.routehelper.data.CachedRoadRouteEntity
 import com.isaacshub.app.routehelper.data.PackageEntity
+import com.isaacshub.app.routehelper.data.RouteHelperRouteEntity
 import com.isaacshub.app.routehelper.data.RoutedStopEntity
 import com.isaacshub.app.routehelper.domain.GeoPoint
 import com.isaacshub.app.routehelper.domain.LocationSample
@@ -529,6 +530,19 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    /** Update the expected package quantity for a stop (Amazon routes) */
+    fun updateStopQuantity(stopId: Long, quantity: Int) {
+        viewModelScope.launch {
+            repository.updateStopQuantity(stopId, quantity)
+        }
+    }
+
+    /** Get the route entity to check route type */
+    suspend fun getRouteEntity(): com.isaacshub.app.routehelper.data.RouteHelperRouteEntity? {
+        val routeId = routeIdFlow.value ?: return null
+        return repository.getRoute(routeId)
+    }
+
     /** Observe sections for all packages - returns map of package ID to list of section names */
     fun observePackageSections() = routeIdFlow.flatMapLatest { routeId ->
         if (routeId == null) {
@@ -576,5 +590,11 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
     fun clearManualOverride() {
         manualStopIndexOverride.value = null
         Log.d(TAG, "Manual override cleared - returning to GPS navigation")
+    }
+
+    /** Get the route entity to check route type */
+    suspend fun getRoute(): RouteHelperRouteEntity? {
+        val routeId = routeIdFlow.value ?: return null
+        return repository.getRoute(routeId)
     }
 }

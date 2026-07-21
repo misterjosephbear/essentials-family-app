@@ -42,7 +42,9 @@ data class RoutedStopEntity(
     val candidateAddressId: Long?,
     val createdAtEpochMillis: Long,
     /** Recipient's last name, when this stop was added by scanning a mail piece. Not otherwise used yet - reserved for a later feature. */
-    val recipientLastName: String? = null
+    val recipientLastName: String? = null,
+    /** Expected package count at this stop (from Amazon direction sheets). Null if unknown. */
+    val expectedPackageCount: Int? = null
 )
 
 /** Cached OSRM road-following route for offline use. One row per route, storing the polyline as JSON. */

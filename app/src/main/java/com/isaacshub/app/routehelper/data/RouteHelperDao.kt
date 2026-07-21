@@ -57,6 +57,9 @@ interface RouteHelperDao {
     @Update
     suspend fun updateStops(stops: List<RoutedStopEntity>)
 
+    @Query("UPDATE routed_stops SET expectedPackageCount = :quantity WHERE id = :stopId")
+    suspend fun updateStopQuantity(stopId: Long, quantity: Int)
+
     @Query("SELECT COALESCE(MAX(sequenceOrder), -1) FROM routed_stops WHERE routeId = :routeId")
     suspend fun maxSequenceOrder(routeId: Long): Int
 
