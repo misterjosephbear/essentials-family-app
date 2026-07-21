@@ -499,12 +499,21 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     /** Add a scanned package with matched stop ID */
-    fun addPackage(trackingNumber: String, addressLabel: String, routedStopId: Long?) {
+    fun addPackage(
+        trackingNumber: String,
+        addressLabel: String,
+        routedStopId: Long?,
+        isUnknownStreetMatch: Boolean = false,
+        streetName: String? = null
+    ) {
         val routeId = routeIdFlow.value ?: return
         viewModelScope.launch {
             if (routedStopId != null) {
                 // Package already matched to a stop during scanning - save with stop ID
                 repository.addPackageWithStop(routeId, trackingNumber, addressLabel, routedStopId)
+            } else if (isUnknownStreetMatch && streetName != null) {
+                // Unknown package on known street - save with street name
+                repository.addUnknownPackageOnStreet(routeId, trackingNumber, addressLabel, streetName)
             } else {
                 // Package not matched yet - save and then try to match
                 repository.addPackage(routeId, trackingNumber, addressLabel)

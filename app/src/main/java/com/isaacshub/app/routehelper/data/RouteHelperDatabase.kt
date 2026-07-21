@@ -69,9 +69,21 @@ private val MIGRATION_6_7 = object : Migration(6, 7) {
     }
 }
 
+private val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Add unknown package tracking fields
+        db.execSQL("ALTER TABLE `packages` ADD COLUMN `isUnknownStreetMatch` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `packages` ADD COLUMN `streetName` TEXT")
+        db.execSQL("ALTER TABLE `packages` ADD COLUMN `plotAfterStopId` INTEGER")
+        db.execSQL("ALTER TABLE `packages` ADD COLUMN `plotBeforeStopId` INTEGER")
+        db.execSQL("ALTER TABLE `packages` ADD COLUMN `plottedLatitude` REAL")
+        db.execSQL("ALTER TABLE `packages` ADD COLUMN `plottedLongitude` REAL")
+    }
+}
+
 @Database(
     entities = [RouteHelperRouteEntity::class, CandidateAddressEntity::class, RoutedStopEntity::class, CachedRoadRouteEntity::class, PackageEntity::class, RouteSectionEntity::class],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 abstract class RouteHelperDatabase : RoomDatabase() {
@@ -91,7 +103,7 @@ abstract class RouteHelperDatabase : RoomDatabase() {
                     // Same rule as every other database in this app: routes/stops are real user
                     // data - any future schema change needs an explicit Migration, never a
                     // destructive fallback.
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .build().also { instance = it }
             }
     }

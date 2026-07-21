@@ -69,7 +69,19 @@ data class PackageEntity(
     val routedStopId: Long? = null,
     /** Whether this package has been delivered (marked complete during route playback) */
     val isDelivered: Boolean = false,
-    val scannedAtEpochMillis: Long
+    val scannedAtEpochMillis: Long,
+    /** True if this package is for an unknown address on a known street (needs plotting) */
+    val isUnknownStreetMatch: Boolean = false,
+    /** Street name extracted from address (for unknown packages on known streets) */
+    val streetName: String? = null,
+    /** ID of the stop this package should be plotted after (for unknown packages) */
+    val plotAfterStopId: Long? = null,
+    /** ID of the stop this package should be plotted before (for unknown packages) */
+    val plotBeforeStopId: Long? = null,
+    /** Latitude where package was plotted (set during route playback) */
+    val plottedLatitude: Double? = null,
+    /** Longitude where package was plotted (set during route playback) */
+    val plottedLongitude: Double? = null
 )
 
 /** Package with stop sequence number for display */
@@ -82,7 +94,13 @@ data class PackageWithSequence(
     val isDelivered: Boolean,
     val scannedAtEpochMillis: Long,
     /** Sequence number of the stop (1-based), null if not matched to a stop */
-    val sequenceNumber: Int?
+    val sequenceNumber: Int?,
+    val isUnknownStreetMatch: Boolean,
+    val streetName: String?,
+    val plotAfterStopId: Long?,
+    val plotBeforeStopId: Long?,
+    val plottedLatitude: Double?,
+    val plottedLongitude: Double?
 )
 
 /** A named section of a route (e.g., "2B", "Around the lake"). Sections are defined by a range of stops. */

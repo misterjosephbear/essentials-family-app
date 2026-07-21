@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,14 +27,19 @@ import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -66,7 +72,11 @@ data class ScannedPackage(
     val addressLabel: String,
     val sequenceNumber: Int? = null,
     val sections: List<String> = emptyList(),
-    val routedStopId: Long? = null
+    val routedStopId: Long? = null,
+    /** True if this package is for an unknown address on a known street */
+    val isUnknownStreetMatch: Boolean = false,
+    /** Street name for unknown packages on known streets */
+    val streetName: String? = null
 )
 
 /**
@@ -80,6 +90,7 @@ fun PackageScanScreen(
     scannedPackages: List<ScannedPackage>,
     onPackageScanned: (ScannedPackage) -> Unit,
     onPackageDeleted: (ScannedPackage) -> Unit,
+    onPlotUnknownPackage: (ScannedPackage) -> Unit,
     onDone: () -> Unit
 ) {
     val context = LocalContext.current
@@ -168,60 +179,100 @@ fun PackageScanScreen(
                     items(scannedPackages) { pkg ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                            colors = if (pkg.isUnknownStreetMatch) {
+                                CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                            } else {
+                                CardDefaults.cardColors()
+                            }
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        // Show sequence number if available
-                                        pkg.sequenceNumber?.let { seq ->
-                                            Card(
-                                                colors = CardDefaults.cardColors(
-                                                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                                                )
-                                            ) {
-                                                Text(
-                                                    "#$seq",
-                                                    style = MaterialTheme.typography.labelLarge,
-                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                            Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            // Show sequence number if available
+                                            pkg.sequenceNumber?.let { seq ->
+                                                Card(
+                                                    colors = CardDefaults.cardColors(
+                                                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                                                    )
+                                                ) {
+                                                    Text(
+                                                        "#$seq",
+                                                        style = MaterialTheme.typography.labelLarge,
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                    )
+                                                }
+                                            }
+                                            // Show warning icon for unknown packages
+                                            if (pkg.isUnknownStreetMatch) {
+                                                Icon(
+                                                    Icons.Filled.Warning,
+                                                    contentDescription = "Unknown address",
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.padding(end = 4.dp)
                                                 )
                                             }
+                                            Text(
+                                                pkg.addressLabel,
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                        }
+                                        // Show street name for unknown packages
+                                        if (pkg.isUnknownStreetMatch && pkg.streetName != null) {
+                                            Text(
+                                                "Street: ${pkg.streetName} (needs plotting)",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.padding(top = 4.dp)
+                                            )
+                                        }
+                                        // Show sections if available
+                                        if (pkg.sections.isNotEmpty()) {
+                                            Text(
+                                                "Sections: ${pkg.sections.joinToString(", ")}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.padding(top = 4.dp)
+                                            )
                                         }
                                         Text(
-                                            pkg.addressLabel,
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    }
-                                    // Show sections if available
-                                    if (pkg.sections.isNotEmpty()) {
-                                        Text(
-                                            "Sections: ${pkg.sections.joinToString(", ")}",
+                                            "Tracking: ${pkg.trackingNumber}",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.primary,
+                                            color = MaterialTheme.colorScheme.outline,
                                             modifier = Modifier.padding(top = 4.dp)
                                         )
                                     }
-                                    Text(
-                                        "Tracking: ${pkg.trackingNumber}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.outline,
-                                        modifier = Modifier.padding(top = 4.dp)
-                                    )
+                                    IconButton(onClick = { onPackageDeleted(pkg) }) {
+                                        Icon(
+                                            Icons.Filled.Delete,
+                                            contentDescription = "Delete package",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
                                 }
-                                IconButton(onClick = { onPackageDeleted(pkg) }) {
-                                    Icon(
-                                        Icons.Filled.Delete,
-                                        contentDescription = "Delete package",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
+
+                                // Plot button for unknown packages
+                                if (pkg.isUnknownStreetMatch) {
+                                    Button(
+                                        onClick = { onPlotUnknownPackage(pkg) },
+                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.LocationOn,
+                                            contentDescription = null,
+                                            modifier = Modifier.padding(end = 8.dp)
+                                        )
+                                        Text("Plot Unknown Package")
+                                    }
                                 }
                             }
                         }
@@ -251,11 +302,13 @@ private fun PackageCameraScanner(
     val app = context.applicationContext as com.isaacshub.app.App
     val repository = app.routeHelperRepository
 
-    // Load route stops for address validation
+    // Load route stops and route info for address validation
     var routeStops by remember { mutableStateOf<List<com.isaacshub.app.routehelper.data.RoutedStopEntity>>(emptyList()) }
+    var routeZipCode by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(routeId) {
         routeStops = repository.getStopsOnce(routeId)
-        android.util.Log.d("PackageScanner", "Loaded ${routeStops.size} stops for route $routeId")
+        routeZipCode = repository.getRoute(routeId)?.zipCode
+        android.util.Log.d("PackageScanner", "Loaded ${routeStops.size} stops for route $routeId (ZIP: $routeZipCode)")
     }
 
     // When a package is scanned, look up its sections and re-enable scanning after cooldown
@@ -304,6 +357,7 @@ private fun PackageCameraScanner(
             PackageCameraPreview(
                 useFrontCamera = useFrontCamera,
                 routeStops = routeStops,
+                routeZipCode = routeZipCode,
                 wildcardScanRequested = wildcardScanRequested,
                 onWildcardScanProcessed = { wildcardScanRequested = false },
                 onPackageDetected = { pkg ->
@@ -418,6 +472,7 @@ private fun PackageCameraScanner(
 private fun PackageCameraPreview(
     useFrontCamera: Boolean,
     routeStops: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>,
+    routeZipCode: String?,
     wildcardScanRequested: Boolean,
     onWildcardScanProcessed: () -> Unit,
     onPackageDetected: (ScannedPackage) -> Unit
@@ -426,6 +481,7 @@ private fun PackageCameraPreview(
     val lifecycleOwner = LocalLifecycleOwner.current
     val onPackageDetectedState = rememberUpdatedState(onPackageDetected)
     val routeStopsState = rememberUpdatedState(routeStops)
+    val routeZipCodeState = rememberUpdatedState(routeZipCode)
     val wildcardScanRequestedState = rememberUpdatedState(wildcardScanRequested)
     val onWildcardScanProcessedState = rememberUpdatedState(onWildcardScanProcessed)
 
@@ -454,6 +510,7 @@ private fun PackageCameraPreview(
                                     recognizer,
                                     barcodeScanner,
                                     routeStopsState.value,
+                                    routeZipCodeState.value,
                                     wildcardScanRequestedState.value,
                                     onWildcardScanProcessedState.value,
                                     onPackageDetectedState.value
@@ -501,6 +558,7 @@ private fun PackageCameraPreview(
                                 recognizer,
                                 barcodeScanner,
                                 routeStopsState.value,
+                                routeZipCodeState.value,
                                 wildcardScanRequestedState.value,
                                 onWildcardScanProcessedState.value,
                                 onPackageDetectedState.value
@@ -540,6 +598,7 @@ private fun processPackageImage(
     recognizer: TextRecognizer,
     barcodeScanner: com.google.mlkit.vision.barcode.BarcodeScanner,
     routeStops: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>,
+    routeZipCode: String?,
     wildcardScanRequested: Boolean,
     onWildcardScanProcessed: () -> Unit,
     onPackageDetected: (ScannedPackage) -> Unit
@@ -603,7 +662,26 @@ private fun processPackageImage(
                                     routedStopId = matchedStop.id
                                 ))
                             } else {
-                                android.util.Log.w("PackageScanner", "✗ Barcode found ($trackingNumber) but address NOT found on route")
+                                // No exact match - check if it's on a known street
+                                val rawAddress = extractBestAddressCandidate(visionText.text)
+                                if (rawAddress != null && routeZipCode != null) {
+                                    val matchingStreet = checkUnknownStreetMatch(rawAddress, routeStops, routeZipCode)
+                                    if (matchingStreet != null) {
+                                        android.util.Log.d("PackageScanner", "✓ Unknown package on known street: tracking=$trackingNumber, address=$rawAddress, street=$matchingStreet")
+                                        onPackageDetected(ScannedPackage(
+                                            trackingNumber = trackingNumber,
+                                            addressLabel = rawAddress,
+                                            sequenceNumber = null,
+                                            routedStopId = null,
+                                            isUnknownStreetMatch = true,
+                                            streetName = matchingStreet
+                                        ))
+                                    } else {
+                                        android.util.Log.w("PackageScanner", "✗ Barcode found ($trackingNumber) but address NOT found on route or known street")
+                                    }
+                                } else {
+                                    android.util.Log.w("PackageScanner", "✗ Barcode found ($trackingNumber) but address NOT found on route")
+                                }
                             }
                         }
                         .addOnCompleteListener {
@@ -626,6 +704,27 @@ private fun processPackageImage(
                                     sequenceNumber = matchedStop.sequenceOrder,
                                     routedStopId = matchedStop.id
                                 ))
+                            } else if (ocrTracking != null && addressResult == null) {
+                                // Found tracking but no exact address match - check for unknown street match
+                                val rawAddress = extractBestAddressCandidate(text)
+                                if (rawAddress != null && routeZipCode != null) {
+                                    val matchingStreet = checkUnknownStreetMatch(rawAddress, routeStops, routeZipCode)
+                                    if (matchingStreet != null) {
+                                        android.util.Log.d("PackageScanner", "✓ Unknown package on known street (OCR): tracking=$ocrTracking, address=$rawAddress, street=$matchingStreet")
+                                        onPackageDetected(ScannedPackage(
+                                            trackingNumber = ocrTracking,
+                                            addressLabel = rawAddress,
+                                            sequenceNumber = null,
+                                            routedStopId = null,
+                                            isUnknownStreetMatch = true,
+                                            streetName = matchingStreet
+                                        ))
+                                    } else {
+                                        android.util.Log.d("PackageScanner", "✗ OCR: tracking=$ocrTracking, address NOT on route or known street")
+                                    }
+                                } else {
+                                    android.util.Log.d("PackageScanner", "✗ OCR: tracking=$ocrTracking, address=${addressResult?.first}")
+                                }
                             } else {
                                 android.util.Log.d("PackageScanner", "✗ OCR: tracking=$ocrTracking, address=${addressResult?.first}")
                             }
@@ -641,6 +740,263 @@ private fun processPackageImage(
             }
     } else {
         imageProxy.close()
+    }
+}
+
+/**
+ * Dialog for selecting which two stops an unknown package is between.
+ * Groups stops by consecutive visits to the same street.
+ */
+@Composable
+fun PlotUnknownPackageDialog(
+    pkg: ScannedPackage,
+    routeStops: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>,
+    onDismiss: () -> Unit,
+    onConfirm: (afterStopId: Long, beforeStopId: Long) -> Unit
+) {
+    var selectedAfterStop by remember { mutableStateOf<com.isaacshub.app.routehelper.data.RoutedStopEntity?>(null) }
+    var selectedBeforeStop by remember { mutableStateOf<com.isaacshub.app.routehelper.data.RoutedStopEntity?>(null) }
+
+    // Group stops by street visits
+    data class StreetVisit(
+        val stopsOnStreet: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>,
+        val previousRoadLastStop: com.isaacshub.app.routehelper.data.RoutedStopEntity?,
+        val nextRoadFirstStop: com.isaacshub.app.routehelper.data.RoutedStopEntity?
+    )
+
+    val streetVisits = remember(routeStops, pkg.streetName) {
+        if (pkg.streetName == null) return@remember emptyList()
+
+        val visits = mutableListOf<StreetVisit>()
+        var currentVisitStops = mutableListOf<com.isaacshub.app.routehelper.data.RoutedStopEntity>()
+        var previousRoadLastStop: com.isaacshub.app.routehelper.data.RoutedStopEntity? = null
+
+        routeStops.forEachIndexed { index, stop ->
+            val stopStreet = extractStreetName(stop.addressLabel)
+            val isOnTargetStreet = stopStreet?.equals(pkg.streetName, ignoreCase = true) == true ||
+                                    stopStreet?.contains(pkg.streetName, ignoreCase = true) == true ||
+                                    pkg.streetName.contains(stopStreet ?: "", ignoreCase = true)
+
+            if (isOnTargetStreet) {
+                currentVisitStops.add(stop)
+            } else {
+                // We left the target street
+                if (currentVisitStops.isNotEmpty()) {
+                    // Save this visit
+                    val nextRoadFirstStop = stop
+                    visits.add(StreetVisit(
+                        stopsOnStreet = currentVisitStops.toList(),
+                        previousRoadLastStop = previousRoadLastStop,
+                        nextRoadFirstStop = nextRoadFirstStop
+                    ))
+                    currentVisitStops.clear()
+                }
+                previousRoadLastStop = stop
+            }
+        }
+
+        // Handle last visit if we ended on the target street
+        if (currentVisitStops.isNotEmpty()) {
+            visits.add(StreetVisit(
+                stopsOnStreet = currentVisitStops.toList(),
+                previousRoadLastStop = previousRoadLastStop,
+                nextRoadFirstStop = null
+            ))
+        }
+
+        visits
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Plot Unknown Package") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "Select which two stops this package is between:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Text(
+                    pkg.addressLabel,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                if (streetVisits.isEmpty()) {
+                    Text(
+                        "No stops found on ${pkg.streetName}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        streetVisits.forEachIndexed { visitIndex, visit ->
+                            item {
+                                if (visitIndex > 0) {
+                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                }
+                                Text(
+                                    "Visit ${visitIndex + 1} to ${pkg.streetName}",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                            }
+
+                            // Previous road last stop
+                            visit.previousRoadLastStop?.let { stop ->
+                                item {
+                                    SelectableStopCard(
+                                        stop = stop,
+                                        label = "Last stop before entering ${pkg.streetName}",
+                                        isSelected = selectedAfterStop?.id == stop.id || selectedBeforeStop?.id == stop.id,
+                                        onClick = {
+                                            if (selectedAfterStop == null) {
+                                                selectedAfterStop = stop
+                                            } else if (selectedBeforeStop == null && selectedAfterStop?.id != stop.id) {
+                                                selectedBeforeStop = stop
+                                            } else {
+                                                // Reset selection
+                                                selectedAfterStop = null
+                                                selectedBeforeStop = null
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+
+                            // Stops on the street
+                            items(visit.stopsOnStreet.size) { index ->
+                                val stop = visit.stopsOnStreet[index]
+                                SelectableStopCard(
+                                    stop = stop,
+                                    label = null,
+                                    isSelected = selectedAfterStop?.id == stop.id || selectedBeforeStop?.id == stop.id,
+                                    onClick = {
+                                        if (selectedAfterStop == null) {
+                                            selectedAfterStop = stop
+                                        } else if (selectedBeforeStop == null && selectedAfterStop?.id != stop.id) {
+                                            selectedBeforeStop = stop
+                                        } else {
+                                            // Reset selection
+                                            selectedAfterStop = null
+                                            selectedBeforeStop = null
+                                        }
+                                    }
+                                )
+                            }
+
+                            // Next road first stop
+                            visit.nextRoadFirstStop?.let { stop ->
+                                item {
+                                    SelectableStopCard(
+                                        stop = stop,
+                                        label = "First stop after leaving ${pkg.streetName}",
+                                        isSelected = selectedAfterStop?.id == stop.id || selectedBeforeStop?.id == stop.id,
+                                        onClick = {
+                                            if (selectedAfterStop == null) {
+                                                selectedAfterStop = stop
+                                            } else if (selectedBeforeStop == null && selectedAfterStop?.id != stop.id) {
+                                                selectedBeforeStop = stop
+                                            } else {
+                                                // Reset selection
+                                                selectedAfterStop = null
+                                                selectedBeforeStop = null
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (selectedAfterStop != null && selectedBeforeStop != null) {
+                        // Ensure correct order (after < before in sequence)
+                        val (after, before) = if (selectedAfterStop!!.sequenceOrder < selectedBeforeStop!!.sequenceOrder) {
+                            selectedAfterStop!! to selectedBeforeStop!!
+                        } else {
+                            selectedBeforeStop!! to selectedAfterStop!!
+                        }
+                        onConfirm(after.id, before.id)
+                    }
+                },
+                enabled = selectedAfterStop != null && selectedBeforeStop != null
+            ) {
+                Text("Confirm")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun SelectableStopCard(
+    stop: com.isaacshub.app.routehelper.data.RoutedStopEntity,
+    label: String?,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = if (isSelected) {
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        } else {
+            CardDefaults.cardColors()
+        }
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        }
+                    )
+                ) {
+                    Text(
+                        "#${stop.sequenceOrder}",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        }
+                    )
+                }
+                Text(
+                    stop.addressLabel,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            if (label != null) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
     }
 }
 
@@ -880,4 +1236,79 @@ private fun extractAddressWithStop(text: String, routeStops: List<com.isaacshub.
         android.util.Log.w("AddressExtraction", "✗ REJECTED: Address '$extractedAddress' NOT on route (${routeStops.size} stops checked)")
         return null  // Reject addresses not on the route
     }
+}
+
+/**
+ * Extract the best address candidate from OCR text (without validating against route).
+ * Used for unknown package detection when we need the raw address.
+ */
+private fun extractBestAddressCandidate(text: String): String? {
+    val lines = text.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
+    val addressPattern = Regex("""^\d+\s+[A-Za-z].*""")
+
+    // Find all lines that look like addresses
+    val candidates = lines.filter { addressPattern.matches(it) }
+    if (candidates.isEmpty()) return null
+
+    // Return the longest one (usually the most complete)
+    return candidates.maxByOrNull { it.length }
+}
+
+/**
+ * Extract street name from an address string.
+ * Examples:
+ * - "123 Main St" -> "Main St"
+ * - "45 DALLAS DR" -> "DALLAS DR"
+ * - "100 North Pennsylvania Avenue" -> "North Pennsylvania Avenue"
+ */
+private fun extractStreetName(address: String): String? {
+    // Remove house number (digits at start)
+    val withoutNumber = address.replace(Regex("""^\d+\s+"""), "").trim()
+    if (withoutNumber.isEmpty()) return null
+
+    // Common abbreviations to normalize
+    val normalized = withoutNumber
+        .replace(Regex("""\bSt\.?\b""", RegexOption.IGNORE_CASE), "Street")
+        .replace(Regex("""\bAve\.?\b""", RegexOption.IGNORE_CASE), "Avenue")
+        .replace(Regex("""\bDr\.?\b""", RegexOption.IGNORE_CASE), "Drive")
+        .replace(Regex("""\bRd\.?\b""", RegexOption.IGNORE_CASE), "Road")
+        .replace(Regex("""\bBlvd\.?\b""", RegexOption.IGNORE_CASE), "Boulevard")
+        .replace(Regex("""\bLn\.?\b""", RegexOption.IGNORE_CASE), "Lane")
+        .replace(Regex("""\bCt\.?\b""", RegexOption.IGNORE_CASE), "Court")
+        .replace(Regex("""\bPl\.?\b""", RegexOption.IGNORE_CASE), "Place")
+        .replace(Regex("""\bPkwy\.?\b""", RegexOption.IGNORE_CASE), "Parkway")
+
+    return normalized.trim()
+}
+
+/**
+ * Check if an address that doesn't match a stop might be on a known street.
+ * Returns the street name if it matches a street on the route with the correct ZIP code.
+ */
+private fun checkUnknownStreetMatch(
+    address: String,
+    routeStops: List<com.isaacshub.app.routehelper.data.RoutedStopEntity>,
+    routeZipCode: String
+): String? {
+    val extractedStreet = extractStreetName(address) ?: return null
+
+    // Check if this street name appears in any route stop
+    val streetsOnRoute = routeStops.mapNotNull { stop ->
+        extractStreetName(stop.addressLabel)
+    }.toSet()
+
+    // Check for fuzzy match on street names
+    val matchingStreet = streetsOnRoute.find { routeStreet ->
+        routeStreet.equals(extractedStreet, ignoreCase = true) ||
+        routeStreet.contains(extractedStreet, ignoreCase = true) ||
+        extractedStreet.contains(routeStreet, ignoreCase = true)
+    }
+
+    if (matchingStreet != null) {
+        android.util.Log.d("UnknownPackage", "✓ Street match: '$extractedStreet' found on route as '$matchingStreet'")
+        return matchingStreet
+    }
+
+    android.util.Log.d("UnknownPackage", "✗ No street match: '$extractedStreet' not found on route")
+    return null
 }

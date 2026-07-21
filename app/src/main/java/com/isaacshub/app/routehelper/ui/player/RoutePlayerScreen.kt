@@ -425,11 +425,19 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                         addressLabel = pkg.addressLabel,
                         sequenceNumber = pkg.sequenceNumber,
                         sections = packageSections[pkg.id] ?: emptyList(),
-                        routedStopId = pkg.routedStopId
+                        routedStopId = pkg.routedStopId,
+                        isUnknownStreetMatch = pkg.isUnknownStreetMatch,
+                        streetName = pkg.streetName
                     )
                 },
                 onPackageScanned = { pkg ->
-                    viewModel.addPackage(pkg.trackingNumber, pkg.addressLabel, pkg.routedStopId)
+                    viewModel.addPackage(
+                        trackingNumber = pkg.trackingNumber,
+                        addressLabel = pkg.addressLabel,
+                        routedStopId = pkg.routedStopId,
+                        isUnknownStreetMatch = pkg.isUnknownStreetMatch,
+                        streetName = pkg.streetName
+                    )
                 },
                 onPackageDeleted = { pkg ->
                     // Find the matching package entity and delete it
@@ -442,9 +450,20 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                             addressLabel = matchedPkg.addressLabel,
                             routedStopId = matchedPkg.routedStopId,
                             isDelivered = matchedPkg.isDelivered,
-                            scannedAtEpochMillis = matchedPkg.scannedAtEpochMillis
+                            scannedAtEpochMillis = matchedPkg.scannedAtEpochMillis,
+                            isUnknownStreetMatch = matchedPkg.isUnknownStreetMatch,
+                            streetName = matchedPkg.streetName,
+                            plotAfterStopId = matchedPkg.plotAfterStopId,
+                            plotBeforeStopId = matchedPkg.plotBeforeStopId,
+                            plottedLatitude = matchedPkg.plottedLatitude,
+                            plottedLongitude = matchedPkg.plottedLongitude
                         ))
                     }
+                },
+                onPlotUnknownPackage = { pkg ->
+                    // Show dialog to select between stops
+                    // This will be handled by showing a dialog state
+                    android.util.Log.d("RoutePlayer", "Plot unknown package: ${pkg.addressLabel}")
                 },
                 onDone = { isScanningPackages = false }
             )

@@ -84,7 +84,8 @@ interface RouteHelperDao {
 
     @Query("""
         SELECT p.id, p.routeId, p.trackingNumber, p.addressLabel, p.routedStopId, p.isDelivered,
-               p.scannedAtEpochMillis, s.sequenceOrder as sequenceNumber
+               p.scannedAtEpochMillis, s.sequenceOrder as sequenceNumber, p.isUnknownStreetMatch,
+               p.streetName, p.plotAfterStopId, p.plotBeforeStopId, p.plottedLatitude, p.plottedLongitude
         FROM packages p
         LEFT JOIN routed_stops s ON p.routedStopId = s.id
         WHERE p.routeId = :routeId

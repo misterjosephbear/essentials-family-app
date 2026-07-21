@@ -275,6 +275,20 @@ class RouteHelperRepository(
         )
     }
 
+    /** Add an unknown package that's on a known street (needs plotting during route playback) */
+    suspend fun addUnknownPackageOnStreet(routeId: Long, trackingNumber: String, addressLabel: String, streetName: String): Long {
+        return dao.insertPackage(
+            PackageEntity(
+                routeId = routeId,
+                trackingNumber = trackingNumber,
+                addressLabel = addressLabel,
+                scannedAtEpochMillis = System.currentTimeMillis(),
+                isUnknownStreetMatch = true,
+                streetName = streetName
+            )
+        )
+    }
+
     fun observePackages(routeId: Long): Flow<List<PackageEntity>> = dao.observePackages(routeId)
 
     fun observePackagesWithSequence(routeId: Long): Flow<List<PackageWithSequence>> = dao.observePackagesWithSequence(routeId)
