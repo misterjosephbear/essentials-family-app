@@ -306,19 +306,14 @@ private fun AddSectionDialog(
                 ExposedDropdownMenuBox(
                     expanded = startDropdownExpanded,
                     onExpandedChange = {
-                        // Only allow closing via this callback, not opening
-                        // Opening is controlled by typing in the text field
-                        if (!it) {
-                            startDropdownExpanded = false
-                            startSearchQuery = ""
-                        }
+                        // Don't let the box control the expanded state - we control it manually
                     }
                 ) {
                     OutlinedTextField(
                         value = startSearchQuery,
                         onValueChange = {
                             startSearchQuery = it
-                            startDropdownExpanded = true  // Keep it open while typing
+                            startDropdownExpanded = it.isNotEmpty()  // Open when typing, close when empty
                             // Clear selection when user types
                             if (it.isNotEmpty()) {
                                 selectedStartStop = null
@@ -327,12 +322,19 @@ private fun AddSectionDialog(
                         label = { Text("Start Address") },
                         placeholder = { Text(selectedStartStop?.addressLabel ?: "Search or select...") },
                         trailingIcon = {
-                            if (startSearchQuery.isNotEmpty() && startDropdownExpanded) {
-                                IconButton(onClick = { startSearchQuery = "" }) {
+                            if (startSearchQuery.isNotEmpty()) {
+                                IconButton(onClick = {
+                                    startSearchQuery = ""
+                                    startDropdownExpanded = false
+                                }) {
                                     Icon(Icons.Filled.Clear, "Clear search")
                                 }
                             } else {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = startDropdownExpanded)
+                                IconButton(onClick = {
+                                    startDropdownExpanded = !startDropdownExpanded
+                                }) {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = startDropdownExpanded)
+                                }
                             }
                         },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
@@ -350,8 +352,10 @@ private fun AddSectionDialog(
                     ExposedDropdownMenu(
                         expanded = startDropdownExpanded,
                         onDismissRequest = {
-                            startDropdownExpanded = false
-                            startSearchQuery = ""
+                            // Only close if not typing (searchQuery is empty)
+                            if (startSearchQuery.isEmpty()) {
+                                startDropdownExpanded = false
+                            }
                         },
                         modifier = Modifier.heightIn(max = 280.dp) // Height for approximately 5 items
                     ) {
@@ -383,19 +387,14 @@ private fun AddSectionDialog(
                 ExposedDropdownMenuBox(
                     expanded = endDropdownExpanded,
                     onExpandedChange = {
-                        // Only allow closing via this callback, not opening
-                        // Opening is controlled by typing in the text field
-                        if (!it) {
-                            endDropdownExpanded = false
-                            endSearchQuery = ""
-                        }
+                        // Don't let the box control the expanded state - we control it manually
                     }
                 ) {
                     OutlinedTextField(
                         value = endSearchQuery,
                         onValueChange = {
                             endSearchQuery = it
-                            endDropdownExpanded = true  // Keep it open while typing
+                            endDropdownExpanded = it.isNotEmpty()  // Open when typing, close when empty
                             // Clear selection when user types
                             if (it.isNotEmpty()) {
                                 selectedEndStop = null
@@ -404,12 +403,19 @@ private fun AddSectionDialog(
                         label = { Text("End Address") },
                         placeholder = { Text(selectedEndStop?.addressLabel ?: "Search or select...") },
                         trailingIcon = {
-                            if (endSearchQuery.isNotEmpty() && endDropdownExpanded) {
-                                IconButton(onClick = { endSearchQuery = "" }) {
+                            if (endSearchQuery.isNotEmpty()) {
+                                IconButton(onClick = {
+                                    endSearchQuery = ""
+                                    endDropdownExpanded = false
+                                }) {
                                     Icon(Icons.Filled.Clear, "Clear search")
                                 }
                             } else {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = endDropdownExpanded)
+                                IconButton(onClick = {
+                                    endDropdownExpanded = !endDropdownExpanded
+                                }) {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = endDropdownExpanded)
+                                }
                             }
                         },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
@@ -427,8 +433,10 @@ private fun AddSectionDialog(
                     ExposedDropdownMenu(
                         expanded = endDropdownExpanded,
                         onDismissRequest = {
-                            endDropdownExpanded = false
-                            endSearchQuery = ""
+                            // Only close if not typing (searchQuery is empty)
+                            if (endSearchQuery.isEmpty()) {
+                                endDropdownExpanded = false
+                            }
                         },
                         modifier = Modifier.heightIn(max = 280.dp) // Height for approximately 5 items
                     ) {
