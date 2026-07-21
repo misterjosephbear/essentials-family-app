@@ -186,36 +186,61 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
         }
     }
 
-    // Update the overlay with current state
-    LaunchedEffect(state.nextStopIndex, state.stops) {
-        state.nextStopIndex?.let { index ->
-            if (index < state.stops.size) {
-                val currentStop = state.stops[index]
-                RoutePlayerService.currentStopText.value = "Next stop: ${currentStop.addressLabel}"
+    // Update the overlay with current state (treating clusters as single stops)
+    LaunchedEffect(state.clusterStops, state.isAtStop, scannedPackages) {
+        if (state.clusterStops.isNotEmpty()) {
+            val isMultipleAddresses = state.clusterStops.size > 1
 
-                val nextIndex = index + 1
-                if (nextIndex < state.stops.size) {
-                    val nextStop = state.stops[nextIndex]
+            // Current stop text
+            val currentStopLabel = if (isMultipleAddresses) {
+                if (state.isAtStop) "Currently at: Mailbox Group" else "Next: Mailbox Group"
+            } else {
+                val stop = state.clusterStops.first()
+                if (state.isAtStop) "Currently at: ${stop.addressLabel}" else "Next: ${stop.addressLabel}"
+            }
+            RoutePlayerService.currentStopText.value = currentStopLabel
+
+            // Calculate total packages for the cluster (treating it as one stop)
+            val totalPackages = state.clusterStops.sumOf { stop ->
+                scannedPackages.count { pkg ->
+                    pkg.routedStopId == stop.id && !pkg.isDelivered
+                }
+            }
+
+            // Package info text
+            if (totalPackages > 0) {
+                if (isMultipleAddresses) {
+                    // Show which specific addresses have packages
+                    val addressesWithPackages = state.clusterStops.mapNotNull { stop ->
+                        val count = scannedPackages.count { pkg ->
+                            pkg.routedStopId == stop.id && !pkg.isDelivered
+                        }
+                        if (count > 0) "${stop.addressLabel} ($count)" else null
+                    }
+                    RoutePlayerService.packageInfo.value = "📦 $totalPackages: ${addressesWithPackages.joinToString(", ")}"
+                } else {
+                    RoutePlayerService.packageInfo.value = "📦 $totalPackages package(s)"
+                }
+            } else {
+                RoutePlayerService.packageInfo.value = null
+            }
+
+            // Next stop preview - find the next cluster/stop after this one
+            state.nextStopIndex?.let { currentIndex ->
+                val lastClusterIndex = currentIndex + state.clusterStops.size - 1
+                val nextClusterStartIndex = lastClusterIndex + 1
+
+                if (nextClusterStartIndex < state.stops.size) {
+                    val nextStop = state.stops[nextClusterStartIndex]
                     RoutePlayerService.nextStopText.value = "Then: ${nextStop.addressLabel}"
                 } else {
                     RoutePlayerService.nextStopText.value = "Last stop"
                 }
             }
-        }
-    }
-
-    // Update package info in overlay
-    LaunchedEffect(scannedPackages, state.nextStopIndex) {
-        state.nextStopIndex?.let { index ->
-            if (index < state.stops.size) {
-                val stopId = state.stops[index].id
-                val packagesAtStop = scannedPackages.filter { it.routedStopId == stopId && !it.isDelivered }
-                if (packagesAtStop.isNotEmpty()) {
-                    RoutePlayerService.packageInfo.value = "${packagesAtStop.size} package(s) at this stop"
-                } else {
-                    RoutePlayerService.packageInfo.value = null
-                }
-            }
+        } else {
+            RoutePlayerService.currentStopText.value = "Loading..."
+            RoutePlayerService.nextStopText.value = ""
+            RoutePlayerService.packageInfo.value = null
         }
     }
 
@@ -307,82 +332,83 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                             "This route has no stops yet.",
                             style = MaterialTheme.typography.titleMedium
                         )
-                        state.isAtStop && state.clusterStops.isNotEmpty() -> {
-                            // Currently stopped at a stop
-                            Text("Currently at:", style = MaterialTheme.typography.titleMedium)
-                            state.clusterStops.forEach { stop ->
-                                Row(
-                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        stop.addressLabel,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    val packageCount = state.packageCountsByStop[stop.id] ?: 0
-                                    if (packageCount > 0) {
-                                        Text(
-                                            " 📦×$packageCount",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                                stop.note?.let { note ->
-                                    Text(
-                                        note,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.outline,
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
-                                }
-                            }
-                        }
-                        state.clusterStops.size > 1 -> {
-                            // Multiple stops clustered together
-                            Text("Next stops:", style = MaterialTheme.typography.titleMedium)
-                            state.clusterStops.forEach { stop ->
-                                Row(
-                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        stop.addressLabel,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    val packageCount = state.packageCountsByStop[stop.id] ?: 0
-                                    if (packageCount > 0) {
-                                        Text(
-                                            " 📦×$packageCount",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                                stop.note?.let { note ->
-                                    Text(
-                                        note,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.outline,
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
-                                }
-                            }
-                        }
-                        state.clusterStops.size == 1 -> {
-                            // Single next stop
-                            val nextStop = state.clusterStops.first()
-                            val packageCount = state.packageCountsByStop[nextStop.id] ?: 0
-
-                            val stopText = if (packageCount > 0) {
-                                "${nextStop.addressLabel} 📦×$packageCount"
+                        state.clusterStops.isNotEmpty() -> {
+                            // Treat cluster as ONE stop (whether currently at it or approaching it)
+                            val isMultipleAddresses = state.clusterStops.size > 1
+                            val titleText = if (state.isAtStop) {
+                                if (isMultipleAddresses) "Currently at: Mailbox Group" else "Currently at:"
                             } else {
-                                nextStop.addressLabel
+                                if (isMultipleAddresses) "Next stop: Mailbox Group" else "Next stop:"
                             }
-                            Text("Next stop: $stopText", style = MaterialTheme.typography.titleMedium)
 
-                            nextStop.note?.let { note ->
-                                Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                            Text(titleText, style = MaterialTheme.typography.titleMedium)
+
+                            // If cluster has multiple addresses, show them as package details
+                            if (isMultipleAddresses) {
+                                // Calculate total packages for the entire group
+                                val totalPackages = state.clusterStops.sumOf { stop ->
+                                    state.packageCountsByStop[stop.id] ?: 0
+                                }
+
+                                if (totalPackages > 0) {
+                                    Text(
+                                        "📦 $totalPackages package(s) at this group:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                                    )
+
+                                    // Show which specific addresses have packages
+                                    state.clusterStops.forEach { stop ->
+                                        val packageCount = state.packageCountsByStop[stop.id] ?: 0
+                                        if (packageCount > 0) {
+                                            Text(
+                                                "  • ${stop.addressLabel} (${packageCount})",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                modifier = Modifier.padding(start = 16.dp, top = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Show any notes from addresses in the group
+                                val notes = state.clusterStops.mapNotNull { it.note }.distinct()
+                                if (notes.isNotEmpty()) {
+                                    Text(
+                                        notes.joinToString(" • "),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                                    )
+                                }
+                            } else {
+                                // Single address - show as before
+                                val stop = state.clusterStops.first()
+                                val packageCount = state.packageCountsByStop[stop.id] ?: 0
+
+                                Text(
+                                    stop.addressLabel,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                                )
+
+                                if (packageCount > 0) {
+                                    Text(
+                                        "📦 $packageCount package(s)",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+
+                                stop.note?.let { note ->
+                                    Text(
+                                        note,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
                             }
                         }
                         else -> Text("Route complete!", style = MaterialTheme.typography.titleMedium)
