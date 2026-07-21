@@ -2,6 +2,8 @@ package com.isaacshub.app
 
 import android.app.Application
 import com.isaacshub.app.core.data.prefs.UserPreferencesRepository
+import com.isaacshub.app.essentials.data.EssentialsDatabase
+import com.isaacshub.app.essentials.data.EssentialsRepository
 import com.isaacshub.app.routehelper.data.RouteHelperDatabase
 import com.isaacshub.app.routehelper.data.RouteHelperRepository
 import com.isaacshub.app.routehelper.network.RouteHelperAddressFetcher
@@ -31,6 +33,9 @@ class App : Application() {
     lateinit var routeHelperRepository: RouteHelperRepository
         private set
 
+    lateinit var essentialsRepository: EssentialsRepository
+        private set
+
     override fun onCreate() {
         super.onCreate()
         preferencesRepository = UserPreferencesRepository(this)
@@ -52,6 +57,13 @@ class App : Application() {
 
         val routeHelperDatabase = RouteHelperDatabase.getInstance(this)
         routeHelperRepository = RouteHelperRepository(routeHelperDatabase.routeHelperDao(), RouteHelperAddressFetcher(this))
+
+        val essentialsDatabase = EssentialsDatabase.getInstance(this)
+        essentialsRepository = EssentialsRepository(
+            essentialsDatabase.choreDao(),
+            essentialsDatabase.childAccountDao(),
+            essentialsDatabase.choreCompletionDao()
+        )
 
         // Schedule daily package cleanup at 1am
         PackageCleanupScheduler.schedule(this)

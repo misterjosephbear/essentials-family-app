@@ -56,6 +56,7 @@ import com.isaacshub.app.timetracking.ui.week.TimeTrackingHomeScreen
 import com.isaacshub.app.update.UpdateBanner
 import com.isaacshub.app.essentials.ui.admin.EssentialsAdminHome
 import com.isaacshub.app.essentials.ui.admin.CreateChoreScreen
+import com.isaacshub.app.essentials.ui.admin.ManageFamilyScreen
 import com.isaacshub.app.update.UpdateViewModel
 import com.isaacshub.app.vault.ui.home.VaultHomeScreen
 import com.isaacshub.app.vault.ui.pairing.PairingScreen
@@ -298,6 +299,7 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                 EssentialsAdminHome(
                     onBack = { navController.popBackStack() },
                     onCreateChore = { navController.navigate(Routes.ESSENTIALS_CREATE_CHORE) },
+                    onEditChore = { choreId -> navController.navigate(Routes.essentialsEditChore(choreId)) },
                     onManageFamily = { navController.navigate(Routes.ESSENTIALS_MANAGE_FAMILY) }
                 )
             }
@@ -321,27 +323,9 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
             }
 
             composable(Routes.ESSENTIALS_MANAGE_FAMILY) {
-                // TODO: Implement ManageFamilyScreen
-                @OptIn(ExperimentalMaterial3Api::class)
-                Scaffold(
-                    topBar = {
-                        TopAppBar(
-                            title = { Text("Manage Family") },
-                            navigationIcon = {
-                                IconButton(onClick = { navController.popBackStack() }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                                }
-                            }
-                        )
-                    }
-                ) { padding ->
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(padding),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Family management coming soon")
-                    }
-                }
+                ManageFamilyScreen(
+                    onBack = { navController.popBackStack() }
+                )
             }
         }
     }

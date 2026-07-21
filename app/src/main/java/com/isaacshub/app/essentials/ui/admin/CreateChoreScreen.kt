@@ -5,11 +5,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.isaacshub.app.App
 import java.time.DayOfWeek
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -19,14 +23,17 @@ fun CreateChoreScreen(
     onBack: () -> Unit,
     onSave: () -> Unit
 ) {
-    var choreName by remember { mutableStateOf("") }
-    var choreDescription by remember { mutableStateOf("") }
-    var photoRequirement by remember { mutableStateOf("") }
-    var requirePhoto by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val app = context.applicationContext as App
+    val viewModel: CreateChoreViewModel = viewModel(
+        factory = CreateChoreViewModel.Factory(app.essentialsRepository, choreId)
+    )
+    val state by viewModel.uiState.collectAsState()
+    val children by viewModel.children.collectAsState()
 
-    // Days of week selection
-    var selectedDays by remember {
-        mutableStateOf(setOf<DayOfWeek>())
+    // Navigate back when saved
+    LaunchedEffect(state.saved) {
+        if (state.saved) onSave()
     }
 
     val isEditing = choreId != null
@@ -43,13 +50,17 @@ fun CreateChoreScreen(
                 },
                 actions = {
                     TextButton(
-                        onClick = {
-                            // TODO: Save chore logic
-                            onSave()
-                        },
-                        enabled = choreName.isNotBlank() && selectedDays.isNotEmpty()
+                        onClick = viewModel::save,
+                        enabled = state.name.isNotBlank() && state.selectedDays.isNotEmpty() && !state.isLoading
                     ) {
-                        Text("Save")
+                        if (state.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Save")
+                        }
                     }
                 }
             )
@@ -63,23 +74,41 @@ fun CreateChoreScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Show error if present
+            state.error?.let { error ->
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+
             OutlinedTextField(
-                value = choreName,
-                onValueChange = { choreName = it },
+                value = state.name,
+                onValueChange = viewModel::setName,
                 label = { Text("Chore Name") },
                 placeholder = { Text("e.g., Make bed, Do dishes") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                enabled = !state.isLoading
             )
 
             OutlinedTextField(
-                value = choreDescription,
-                onValueChange = { choreDescription = it },
+                value = state.description,
+                onValueChange = viewModel::setDescription,
                 label = { Text("Description") },
                 placeholder = { Text("Detailed instructions for completing this chore") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
-                maxLines = 5
+                maxLines = 5,
+                enabled = !state.isLoading
             )
 
             HorizontalDivider()
@@ -96,20 +125,22 @@ fun CreateChoreScreen(
             ) {
                 Text("Require photo to complete")
                 Switch(
-                    checked = requirePhoto,
-                    onCheckedChange = { requirePhoto = it }
+                    checked = state.requirePhoto,
+                    onCheckedChange = viewModel::setRequirePhoto,
+                    enabled = !state.isLoading
                 )
             }
 
-            if (requirePhoto) {
+            if (state.requirePhoto) {
                 OutlinedTextField(
-                    value = photoRequirement,
-                    onValueChange = { photoRequirement = it },
+                    value = state.photoRequirement ?: "",
+                    onValueChange = viewModel::setPhotoRequirement,
                     label = { Text("What should be in the photo?") },
                     placeholder = { Text("e.g., A neat bedroom with bed made and floor clear") },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2,
                     maxLines = 4,
+                    enabled = !state.isLoading,
                     supportingText = {
                         Text("This description will be used by AI to verify the photo matches the requirement")
                     }
@@ -141,28 +172,23 @@ fun CreateChoreScreen(
                     DayOfWeek.SUNDAY to "Sunday"
                 ).forEach { (day, label) ->
                     FilterChip(
-                        selected = selectedDays.contains(day),
-                        onClick = {
-                            selectedDays = if (selectedDays.contains(day)) {
-                                selectedDays - day
-                            } else {
-                                selectedDays + day
-                            }
-                        },
+                        selected = state.selectedDays.contains(day),
+                        onClick = { viewModel.toggleDay(day) },
                         label = { Text(label) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !state.isLoading
                     )
                 }
             }
 
-            if (selectedDays.isNotEmpty()) {
+            if (state.selectedDays.isNotEmpty()) {
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer
                     )
                 ) {
                     Text(
-                        text = "This chore will be assigned on: ${selectedDays.sortedBy { it.ordinal }.joinToString(", ") { day -> day.name.lowercase().replaceFirstChar { char -> char.uppercase() } }}",
+                        text = "This chore will be assigned on: ${state.selectedDays.sortedBy { it.ordinal }.joinToString(", ") { day -> day.name.lowercase().replaceFirstChar { char -> char.uppercase() } }}",
                         modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -176,21 +202,52 @@ fun CreateChoreScreen(
                 style = MaterialTheme.typography.titleMedium
             )
 
-            // TODO: Add family member selection
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
+            // Family member selection
+            if (children.isEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "No family members yet.\nCreate accounts in Manage Family first.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No family members yet.\nCreate accounts in Manage Family first.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    children.forEach { child ->
+                        FilterChip(
+                            selected = state.assignedChildIds.contains(child.id),
+                            onClick = { viewModel.toggleChild(child.id) },
+                            label = { Text(child.displayName) },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !state.isLoading,
+                            leadingIcon = if (state.assignedChildIds.contains(child.id)) {
+                                { Icon(Icons.Filled.Person, contentDescription = null) }
+                            } else null
+                        )
+                    }
+                }
+
+                if (state.assignedChildIds.isNotEmpty()) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Text(
+                            text = "This chore will be assigned to: ${children.filter { state.assignedChildIds.contains(it.id) }.joinToString(", ") { it.displayName }}",
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
