@@ -1,3 +1,4 @@
+com.isaacshub.essentials:xml/device_admin_policies = 0x7f100000
 com.isaacshub.essentials:styleable/ViewStubCompat = 0x7f0f0037
 com.isaacshub.essentials:styleable/ViewBackgroundHelper = 0x7f0f0036
 com.isaacshub.essentials:styleable/View = 0x7f0f0035

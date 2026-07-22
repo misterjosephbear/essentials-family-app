@@ -42,6 +42,30 @@
             </intent-filter>
         </activity>
 
+        <!-- Device Admin Receiver -->
+        <receiver
+            android:name=".admin.EssentialsDeviceAdminReceiver"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin_policies" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- App Blocking Service -->
+        <service
+            android:name=".service.AppBlockingService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Chore monitoring to ensure device usage compliance" />
+        </service>
+
     </application>
 
 </manifest>

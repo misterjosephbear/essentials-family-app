@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
+import com.isaacshub.essentials.service.AppBlockingService
 import com.isaacshub.essentials.ui.navigation.EssentialsNavGraph
 import com.isaacshub.essentials.ui.navigation.Routes
 import com.isaacshub.essentials.ui.theme.EssentialsTheme
@@ -21,6 +22,11 @@ class MainActivity : ComponentActivity() {
         val app = application as EssentialsApp
         val isLoggedIn = app.authRepository.isLoggedIn()
         val startDestination = if (isLoggedIn) Routes.Home.route else Routes.Login.route
+
+        // Start app blocking service if logged in
+        if (isLoggedIn) {
+            AppBlockingService.start(this)
+        }
 
         setContent {
             EssentialsTheme {

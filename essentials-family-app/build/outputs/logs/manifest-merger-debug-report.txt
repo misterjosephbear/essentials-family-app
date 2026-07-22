@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:2:1-47:12
-INJECTED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:2:1-47:12
-INJECTED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:2:1-47:12
-INJECTED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:2:1-47:12
+ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:2:1-71:12
+INJECTED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:2:1-71:12
+INJECTED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:2:1-71:12
+INJECTED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:2:1-71:12
 MERGED from [androidx.camera:camera-video:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/3ef0315a6275130c9ac1cf26910ee85e/transformed/camera-video-1.4.1/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.camera:camera-core:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/b730615e89b69245bf4032a12422fe78/transformed/camera-core-1.4.1/AndroidManifest.xml:17:1-36:12
 MERGED from [androidx.camera:camera-view:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/dad7842a9dc68d0b2d5b02c0244d3b46/transformed/camera-view-1.4.1/AndroidManifest.xml:2:1-7:12
@@ -163,8 +163,8 @@ ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/Android
 	android:name
 		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:24:19-67
 application
-ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:26:5-45:19
-INJECTED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:26:5-45:19
+ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:26:5-69:19
+INJECTED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:26:5-69:19
 MERGED from [androidx.camera:camera-core:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/b730615e89b69245bf4032a12422fe78/transformed/camera-core-1.4.1/AndroidManifest.xml:23:5-34:19
 MERGED from [androidx.camera:camera-core:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/b730615e89b69245bf4032a12422fe78/transformed/camera-core-1.4.1/AndroidManifest.xml:23:5-34:19
 MERGED from [androidx.camera:camera-camera2:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/2257ecca11ed5bcf4b4d88843b576110/transformed/camera-camera2-1.4.1/AndroidManifest.xml:23:5-34:19
@@ -223,6 +223,42 @@ category#android.intent.category.LAUNCHER
 ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:41:17-77
 	android:name
 		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:41:27-74
+receiver#com.isaacshub.essentials.admin.EssentialsDeviceAdminReceiver
+ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:46:9-56:20
+	android:exported
+		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:49:13-36
+	android:permission
+		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:48:13-70
+	android:name
+		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:47:13-64
+meta-data#android.app.device_admin
+ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:50:13-52:65
+	android:resource
+		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:52:17-62
+	android:name
+		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:51:17-56
+intent-filter#action:name:android.app.action.DEVICE_ADMIN_ENABLED
+ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:53:13-55:29
+action#android.app.action.DEVICE_ADMIN_ENABLED
+ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:54:17-82
+	android:name
+		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:54:25-79
+service#com.isaacshub.essentials.service.AppBlockingService
+ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:59:9-67:19
+	android:enabled
+		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:61:13-35
+	android:exported
+		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:62:13-37
+	android:foregroundServiceType
+		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:63:13-55
+	android:name
+		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:60:13-55
+property#android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE
+ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:64:13-66:86
+	android:value
+		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:66:17-83
+	android:name
+		ADDED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml:65:17-76
 uses-sdk
 INJECTED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /home/bear/projects/isaacs-hub/essentials-family-app/src/main/AndroidManifest.xml
