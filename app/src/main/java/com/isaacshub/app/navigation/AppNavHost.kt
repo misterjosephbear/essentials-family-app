@@ -98,7 +98,7 @@ fun IsaacsHubApp() {
     val updateState by updateViewModel.uiState.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (updateState.availableRelease != null) {
+        if (updateState.availableRelease != null || updateState.lastCheckFailure != null) {
             UpdateBanner(
                 state = updateState,
                 onInstall = updateViewModel::installUpdate,

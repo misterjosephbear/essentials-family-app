@@ -3116,3 +3116,8 @@ repositories {
     url: "https://repo.maven.apache.org/maven2/"
   }
 }
+repositories {
+  maven_repo {
+    url: "https://jitpack.io"
+  }
+}
