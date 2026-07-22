@@ -158,6 +158,64 @@ public class CompletionDao_Impl(
     }
   }
 
+  public override fun observeByChoreAndDate(choreId: Long, dateString: String): Flow<LocalCompletionEntity?> {
+    val _sql: String = "SELECT * FROM local_completions WHERE choreId = ? AND completionDate = ?"
+    return createFlow(__db, false, arrayOf("local_completions")) { _connection ->
+      val _stmt: SQLiteStatement = _connection.prepare(_sql)
+      try {
+        var _argIndex: Int = 1
+        _stmt.bindLong(_argIndex, choreId)
+        _argIndex = 2
+        _stmt.bindText(_argIndex, dateString)
+        val _columnIndexOfId: Int = getColumnIndexOrThrow(_stmt, "id")
+        val _columnIndexOfChoreId: Int = getColumnIndexOrThrow(_stmt, "choreId")
+        val _columnIndexOfCompletionDate: Int = getColumnIndexOrThrow(_stmt, "completionDate")
+        val _columnIndexOfPhotoUri: Int = getColumnIndexOrThrow(_stmt, "photoUri")
+        val _columnIndexOfAiVerificationResult: Int = getColumnIndexOrThrow(_stmt, "aiVerificationResult")
+        val _columnIndexOfStatus: Int = getColumnIndexOrThrow(_stmt, "status")
+        val _columnIndexOfSyncedToServer: Int = getColumnIndexOrThrow(_stmt, "syncedToServer")
+        val _columnIndexOfCompletedAtEpochMillis: Int = getColumnIndexOrThrow(_stmt, "completedAtEpochMillis")
+        val _result: LocalCompletionEntity?
+        if (_stmt.step()) {
+          val _tmpId: Long
+          _tmpId = _stmt.getLong(_columnIndexOfId)
+          val _tmpChoreId: Long
+          _tmpChoreId = _stmt.getLong(_columnIndexOfChoreId)
+          val _tmpCompletionDate: String
+          _tmpCompletionDate = _stmt.getText(_columnIndexOfCompletionDate)
+          val _tmpPhotoUri: String?
+          if (_stmt.isNull(_columnIndexOfPhotoUri)) {
+            _tmpPhotoUri = null
+          } else {
+            _tmpPhotoUri = _stmt.getText(_columnIndexOfPhotoUri)
+          }
+          val _tmpAiVerificationResult: String?
+          if (_stmt.isNull(_columnIndexOfAiVerificationResult)) {
+            _tmpAiVerificationResult = null
+          } else {
+            _tmpAiVerificationResult = _stmt.getText(_columnIndexOfAiVerificationResult)
+          }
+          val _tmpStatus: CompletionStatus
+          val _tmp: String
+          _tmp = _stmt.getText(_columnIndexOfStatus)
+          _tmpStatus = __completionStatusConverter.toStatus(_tmp)
+          val _tmpSyncedToServer: Boolean
+          val _tmp_1: Int
+          _tmp_1 = _stmt.getLong(_columnIndexOfSyncedToServer).toInt()
+          _tmpSyncedToServer = _tmp_1 != 0
+          val _tmpCompletedAtEpochMillis: Long
+          _tmpCompletedAtEpochMillis = _stmt.getLong(_columnIndexOfCompletedAtEpochMillis)
+          _result = LocalCompletionEntity(_tmpId,_tmpChoreId,_tmpCompletionDate,_tmpPhotoUri,_tmpAiVerificationResult,_tmpStatus,_tmpSyncedToServer,_tmpCompletedAtEpochMillis)
+        } else {
+          _result = null
+        }
+        _result
+      } finally {
+        _stmt.close()
+      }
+    }
+  }
+
   public override suspend fun getByChoreAndDate(choreId: Long, dateString: String): LocalCompletionEntity? {
     val _sql: String = "SELECT * FROM local_completions WHERE choreId = ? AND completionDate = ?"
     return performSuspending(__db, true, false) { _connection ->

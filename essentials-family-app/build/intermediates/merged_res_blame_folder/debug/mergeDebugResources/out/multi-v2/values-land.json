@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.isaacshub.essentials.essentials-family-app-mergeDebugResources-66:/values-land/values-land.xml",
+            "outputFile": "com.isaacshub.essentials.essentials-family-app-mergeDebugResources-69:/values-land/values-land.xml",
             "map": [
                 {
-                    "source": "/home/bear/.gradle/caches/9.4.1/transforms/7e26514f57bac1d4e8424eae8c65a19e/transformed/appcompat-1.1.0/res/values-land/values-land.xml",
+                    "source": "/home/bear/.gradle/caches/9.4.1/transforms/87272a9586cc56356477616e8b697211/transformed/appcompat-1.7.0/res/values-land/values-land.xml",
                     "from": {
                         "startLines": "2,3,4",
                         "startColumns": "4,4,4",

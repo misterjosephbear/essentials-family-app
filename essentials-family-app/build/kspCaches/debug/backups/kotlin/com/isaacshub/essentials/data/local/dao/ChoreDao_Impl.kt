@@ -103,6 +103,50 @@ public class ChoreDao_Impl(
     }
   }
 
+  public override fun observeById(id: Long): Flow<LocalChoreEntity?> {
+    val _sql: String = "SELECT * FROM local_chores WHERE id = ?"
+    return createFlow(__db, false, arrayOf("local_chores")) { _connection ->
+      val _stmt: SQLiteStatement = _connection.prepare(_sql)
+      try {
+        var _argIndex: Int = 1
+        _stmt.bindLong(_argIndex, id)
+        val _columnIndexOfId: Int = getColumnIndexOrThrow(_stmt, "id")
+        val _columnIndexOfName: Int = getColumnIndexOrThrow(_stmt, "name")
+        val _columnIndexOfDescription: Int = getColumnIndexOrThrow(_stmt, "description")
+        val _columnIndexOfPhotoRequirement: Int = getColumnIndexOrThrow(_stmt, "photoRequirement")
+        val _columnIndexOfDaysOfWeek: Int = getColumnIndexOrThrow(_stmt, "daysOfWeek")
+        val _columnIndexOfSyncedAtEpochMillis: Int = getColumnIndexOrThrow(_stmt, "syncedAtEpochMillis")
+        val _result: LocalChoreEntity?
+        if (_stmt.step()) {
+          val _tmpId: Long
+          _tmpId = _stmt.getLong(_columnIndexOfId)
+          val _tmpName: String
+          _tmpName = _stmt.getText(_columnIndexOfName)
+          val _tmpDescription: String
+          _tmpDescription = _stmt.getText(_columnIndexOfDescription)
+          val _tmpPhotoRequirement: String?
+          if (_stmt.isNull(_columnIndexOfPhotoRequirement)) {
+            _tmpPhotoRequirement = null
+          } else {
+            _tmpPhotoRequirement = _stmt.getText(_columnIndexOfPhotoRequirement)
+          }
+          val _tmpDaysOfWeek: List<DayOfWeek>
+          val _tmp: String
+          _tmp = _stmt.getText(_columnIndexOfDaysOfWeek)
+          _tmpDaysOfWeek = __dayOfWeekListConverter.toDayOfWeekList(_tmp)
+          val _tmpSyncedAtEpochMillis: Long
+          _tmpSyncedAtEpochMillis = _stmt.getLong(_columnIndexOfSyncedAtEpochMillis)
+          _result = LocalChoreEntity(_tmpId,_tmpName,_tmpDescription,_tmpPhotoRequirement,_tmpDaysOfWeek,_tmpSyncedAtEpochMillis)
+        } else {
+          _result = null
+        }
+        _result
+      } finally {
+        _stmt.close()
+      }
+    }
+  }
+
   public override suspend fun getById(id: Long): LocalChoreEntity? {
     val _sql: String = "SELECT * FROM local_chores WHERE id = ?"
     return performSuspending(__db, true, false) { _connection ->

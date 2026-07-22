@@ -14,6 +14,9 @@ interface ChoreDao {
     fun observeAll(): Flow<List<LocalChoreEntity>>
 
     @Query("SELECT * FROM local_chores WHERE id = :id")
+    fun observeById(id: Long): Flow<LocalChoreEntity?>
+
+    @Query("SELECT * FROM local_chores WHERE id = :id")
     suspend fun getById(id: Long): LocalChoreEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

@@ -158,11 +158,11 @@
 86                android:value="androidx.startup" />
 86-->[androidx.lifecycle:lifecycle-process:2.8.7] /home/bear/.gradle/caches/9.4.1/transforms/8263566cf6f93d69d100382d5147b10d/transformed/lifecycle-process-2.8.7/AndroidManifest.xml:31:17-49
 87            <meta-data
-87-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:29:13-31:52
+87-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:29:13-31:52
 88                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
-88-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:30:17-85
+88-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:30:17-85
 89                android:value="androidx.startup" />
-89-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:31:17-49
+89-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:31:17-49
 90        </provider>
 91
 92        <activity
@@ -188,40 +188,40 @@
 102-->[androidx.room:room-runtime-android:2.8.4] /home/bear/.gradle/caches/9.4.1/transforms/b7766104df5895bc9b923afb075ebcd4/transformed/room-runtime/AndroidManifest.xml:27:13-37
 103
 104        <receiver
-104-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:34:9-52:20
+104-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:34:9-52:20
 105            android:name="androidx.profileinstaller.ProfileInstallReceiver"
-105-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:35:13-76
+105-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:35:13-76
 106            android:directBootAware="false"
-106-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:36:13-44
+106-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:36:13-44
 107            android:enabled="true"
-107-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:37:13-35
+107-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:37:13-35
 108            android:exported="true"
-108-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:38:13-36
+108-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:38:13-36
 109            android:permission="android.permission.DUMP" >
-109-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:39:13-57
+109-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:39:13-57
 110            <intent-filter>
-110-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:40:13-42:29
+110-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:40:13-42:29
 111                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
-111-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:17-91
-111-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:25-88
+111-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:41:17-91
+111-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:41:25-88
 112            </intent-filter>
 113            <intent-filter>
-113-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:43:13-45:29
+113-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:43:13-45:29
 114                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
-114-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:17-85
-114-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:25-82
+114-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:44:17-85
+114-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:44:25-82
 115            </intent-filter>
 116            <intent-filter>
-116-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:46:13-48:29
+116-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:46:13-48:29
 117                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
-117-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:17-88
-117-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:25-85
+117-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:47:17-88
+117-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:47:25-85
 118            </intent-filter>
 119            <intent-filter>
-119-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:49:13-51:29
+119-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:49:13-51:29
 120                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
-120-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:17-95
-120-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/bear/.gradle/caches/9.4.1/transforms/f0ec2e2a53d1cd16e528b530c941387f/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:25-92
+120-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:50:17-95
+120-->[androidx.profileinstaller:profileinstaller:1.4.1] /home/bear/.gradle/caches/9.4.1/transforms/56004c2d683038cd9c65070bac171028/transformed/profileinstaller-1.4.1/AndroidManifest.xml:50:25-92
 121            </intent-filter>
 122        </receiver>
 123    </application>

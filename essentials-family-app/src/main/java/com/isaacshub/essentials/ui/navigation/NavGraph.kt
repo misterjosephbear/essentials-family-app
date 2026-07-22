@@ -6,8 +6,10 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.isaacshub.essentials.ui.choredetail.ChoreDetailScreen
 import com.isaacshub.essentials.ui.home.HomeScreen
 import com.isaacshub.essentials.ui.login.LoginScreen
+import com.isaacshub.essentials.ui.photo.PhotoCaptureScreen
 
 @Composable
 fun EssentialsNavGraph(
@@ -48,7 +50,13 @@ fun EssentialsNavGraph(
             )
         ) { backStackEntry ->
             val choreId = backStackEntry.arguments?.getLong("choreId") ?: return@composable
-            // TODO: Implement ChoreDetailScreen in Step 5
+            ChoreDetailScreen(
+                choreId = choreId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCamera = { id ->
+                    navController.navigate(Routes.PhotoCapture.createRoute(id))
+                }
+            )
         }
 
         composable(
@@ -58,7 +66,10 @@ fun EssentialsNavGraph(
             )
         ) { backStackEntry ->
             val choreId = backStackEntry.arguments?.getLong("choreId") ?: return@composable
-            // TODO: Implement PhotoCaptureScreen in Step 5
+            PhotoCaptureScreen(
+                choreId = choreId,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 }

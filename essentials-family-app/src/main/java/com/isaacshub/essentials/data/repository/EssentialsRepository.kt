@@ -31,6 +31,8 @@ class EssentialsRepository(
 
     fun observeAllChores(): Flow<List<LocalChoreEntity>> = choreDao.observeAll()
 
+    fun observeChoreById(id: Long): Flow<LocalChoreEntity?> = choreDao.observeById(id)
+
     suspend fun getChoreById(id: Long): LocalChoreEntity? = choreDao.getById(id)
 
     /**
@@ -54,6 +56,9 @@ class EssentialsRepository(
 
     fun observeCompletionsByDate(date: LocalDate): Flow<List<LocalCompletionEntity>> =
         completionDao.observeByDate(date.toString())
+
+    fun observeCompletionByChoreAndDate(choreId: Long, date: LocalDate): Flow<LocalCompletionEntity?> =
+        completionDao.observeByChoreAndDate(choreId, date.toString())
 
     suspend fun getCompletionForChoreAndDate(choreId: Long, date: LocalDate): LocalCompletionEntity? =
         completionDao.getByChoreAndDate(choreId, date.toString())

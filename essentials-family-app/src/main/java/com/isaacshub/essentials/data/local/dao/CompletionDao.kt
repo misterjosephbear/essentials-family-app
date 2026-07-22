@@ -16,6 +16,9 @@ interface CompletionDao {
     fun observeByDate(dateString: String): Flow<List<LocalCompletionEntity>>
 
     @Query("SELECT * FROM local_completions WHERE choreId = :choreId AND completionDate = :dateString")
+    fun observeByChoreAndDate(choreId: Long, dateString: String): Flow<LocalCompletionEntity?>
+
+    @Query("SELECT * FROM local_completions WHERE choreId = :choreId AND completionDate = :dateString")
     suspend fun getByChoreAndDate(choreId: Long, dateString: String): LocalCompletionEntity?
 
     @Query("SELECT * FROM local_completions WHERE syncedToServer = 0")
