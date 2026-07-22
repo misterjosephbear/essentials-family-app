@@ -343,13 +343,14 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
 
                             Text(titleText, style = MaterialTheme.typography.titleMedium)
 
-                            // If cluster has multiple addresses, show them as package details
+                            // If cluster has multiple addresses, show them all
                             if (isMultipleAddresses) {
                                 // Calculate total packages for the entire group
                                 val totalPackages = state.clusterStops.sumOf { stop ->
                                     state.packageCountsByStop[stop.id] ?: 0
                                 }
 
+                                // Show package count header if there are any
                                 if (totalPackages > 0) {
                                     Text(
                                         "📦 $totalPackages package(s) at this group:",
@@ -357,18 +358,21 @@ fun RoutePlayerScreen(routeId: Long, onDone: () -> Unit) {
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(start = 8.dp, top = 4.dp)
                                     )
+                                }
 
-                                    // Show which specific addresses have packages
-                                    state.clusterStops.forEach { stop ->
-                                        val packageCount = state.packageCountsByStop[stop.id] ?: 0
-                                        if (packageCount > 0) {
-                                            Text(
-                                                "  • ${stop.addressLabel} (${packageCount})",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                modifier = Modifier.padding(start = 16.dp, top = 2.dp)
-                                            )
-                                        }
+                                // Always show all addresses in the group
+                                state.clusterStops.forEach { stop ->
+                                    val packageCount = state.packageCountsByStop[stop.id] ?: 0
+                                    val label = if (packageCount > 0) {
+                                        "  • ${stop.addressLabel} (${packageCount})"
+                                    } else {
+                                        "  • ${stop.addressLabel}"
                                     }
+                                    Text(
+                                        label,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(start = 16.dp, top = 2.dp)
+                                    )
                                 }
 
                                 // Show any notes from addresses in the group
