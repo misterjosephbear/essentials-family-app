@@ -1,6 +1,8 @@
 package com.isaacshub.essentials.data.repository
 
+import android.net.Uri
 import android.util.Log
+import com.isaacshub.essentials.data.api.EssentialsApiClient
 import com.isaacshub.essentials.data.local.dao.ChoreDao
 import com.isaacshub.essentials.data.local.dao.CompletionDao
 import com.isaacshub.essentials.data.local.entities.CompletionStatus
@@ -10,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -20,6 +23,12 @@ class EssentialsRepository(
     private val authRepository: AuthRepository
 ) {
     private val syncScope = CoroutineScope(Dispatchers.IO)
+
+    private fun getApiClient(): EssentialsApiClient? {
+        val serverUrl = authRepository.getServerUrl() ?: return null
+        val authToken = authRepository.getAuthToken() ?: return null
+        return EssentialsApiClient(serverUrl, authToken.token)
+    }
 
     companion object {
         private const val TAG = "EssentialsRepository"
@@ -40,14 +49,26 @@ class EssentialsRepository(
      * This is typically called after login or on pull-to-refresh.
      */
     suspend fun syncChoresFromServer(): Result<Unit> {
-        val serverUrl = authRepository.getServerUrl() ?: return Result.failure(Exception("No server URL"))
-        val authToken = authRepository.getAuthToken() ?: return Result.failure(Exception("Not logged in"))
+        val apiClient = getApiClient() ?: return Result.failure(Exception("Not logged in"))
 
-        return runCatching {
-            // TODO: Call server API to get chores assigned to this child
-            // For now, return success - will implement when API client is ready
-            Log.d(TAG, "Syncing chores from server for user ${authToken.userId}")
-        }
+        return apiClient.fetchChores()
+            .mapCatching { choreDtos ->
+                val chores = choreDtos.map { dto ->
+                    LocalChoreEntity(
+                        id = dto.id,
+                        name = dto.name,
+                        description = dto.description,
+                        photoRequirement = dto.photoRequirement,
+                        daysOfWeek = dto.daysOfWeek.map { DayOfWeek.valueOf(it) },
+                        syncedAtEpochMillis = Instant.now().toEpochMilli()
+                    )
+                }
+
+                choreDao.deleteAll()
+                choreDao.insertAll(chores)
+
+                Log.d(TAG, "Synced ${chores.size} chores from server")
+            }
     }
 
     // ============================================================================
@@ -86,40 +107,118 @@ class EssentialsRepository(
 
         val id = completionDao.insert(completion)
 
-        // Sync to server in background
-        syncCompletionToServer(id)
+        // If there's a photo, trigger AI verification in background
+        if (photoUri != null) {
+            triggerPhotoVerification(id, choreId, photoUri)
+        } else {
+            // No photo, just sync to server
+            syncCompletionToServer(id)
+        }
 
         return id
     }
 
     /**
-     * Submit a photo for a chore completion to the server for AI verification.
+     * Trigger photo verification in the background.
+     * This will submit the photo to the server for AI analysis.
      */
-    suspend fun submitPhotoForVerification(
+    private fun triggerPhotoVerification(
         completionId: Long,
-        photoBase64: String
-    ): Result<String> {
-        val serverUrl = authRepository.getServerUrl() ?: return Result.failure(Exception("No server URL"))
-        val authToken = authRepository.getAuthToken() ?: return Result.failure(Exception("Not logged in"))
+        choreId: Long,
+        photoUriString: String
+    ) {
+        syncScope.launch {
+            try {
+                val apiClient = getApiClient()
+                if (apiClient == null) {
+                    Log.w(TAG, "Cannot verify photo: not logged in")
+                    return@launch
+                }
 
-        return runCatching {
-            // TODO: Call server API to submit photo and get AI verification
-            // For now, return success - will implement when API integration is ready
-            Log.d(TAG, "Submitting photo for completion $completionId")
-            "Photo verification pending"
+                // Get chore to know photo requirement
+                val chore = choreDao.getById(choreId)
+                if (chore == null) {
+                    Log.w(TAG, "Cannot verify photo: chore not found")
+                    return@launch
+                }
+
+                val photoRequirement = chore.photoRequirement
+                if (photoRequirement == null) {
+                    Log.w(TAG, "Cannot verify photo: no photo requirement")
+                    return@launch
+                }
+
+                // Convert URI to File
+                val photoFile = File(Uri.parse(photoUriString).path ?: return@launch)
+                if (!photoFile.exists()) {
+                    Log.w(TAG, "Cannot verify photo: file not found at $photoUriString")
+                    return@launch
+                }
+
+                Log.d(TAG, "Submitting photo for AI verification: completion=$completionId")
+
+                // Call API to verify photo
+                apiClient.verifyPhoto(completionId, choreId, photoFile, photoRequirement)
+                    .onSuccess { result ->
+                        // Update completion with verification result
+                        val completion = completionDao.getByChoreAndDate(
+                            choreId,
+                            LocalDate.now().toString()
+                        )
+
+                        if (completion != null) {
+                            val updatedCompletion = completion.copy(
+                                status = if (result.verified) CompletionStatus.VERIFIED
+                                         else CompletionStatus.REJECTED,
+                                aiVerificationResult = result.feedback
+                            )
+                            completionDao.update(updatedCompletion)
+
+                            Log.d(TAG, "Photo verification complete: verified=${result.verified}")
+                        }
+
+                        // Mark as synced
+                        completionDao.markAsSynced(completionId)
+                    }
+                    .onFailure { error ->
+                        Log.e(TAG, "Photo verification failed", error)
+                    }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during photo verification", e)
+            }
         }
     }
 
     private fun syncCompletionToServer(completionId: Long) {
         syncScope.launch {
             try {
-                // TODO: Call server API to sync completion
-                Log.d(TAG, "Syncing completion $completionId to server")
+                val apiClient = getApiClient()
+                if (apiClient == null) {
+                    Log.w(TAG, "Cannot sync completion: not logged in")
+                    return@launch
+                }
 
-                // Mark as synced
-                completionDao.markAsSynced(completionId)
+                // Get completion data
+                val completion = completionDao.getUnsyncedCompletions().find { it.id == completionId }
+                if (completion == null) {
+                    Log.w(TAG, "Completion not found or already synced: $completionId")
+                    return@launch
+                }
+
+                // Sync to server
+                apiClient.syncCompletion(
+                    choreId = completion.choreId,
+                    completionDate = completion.completionDate,
+                    photoUri = completion.photoUri,
+                    completedAtEpochMillis = completion.completedAtEpochMillis
+                ).onSuccess {
+                    completionDao.markAsSynced(completionId)
+                    Log.d(TAG, "Completion synced successfully: $completionId")
+                }.onFailure { error ->
+                    Log.e(TAG, "Failed to sync completion to server", error)
+                }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to sync completion to server", e)
+                Log.e(TAG, "Error syncing completion", e)
             }
         }
     }
