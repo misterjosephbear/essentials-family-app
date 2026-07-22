@@ -624,4 +624,11 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             repository.setPackagePlotStops(routeId, trackingNumber, afterStopId, beforeStopId)
         }
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        // Clear Discord presence when exiting play mode
+        discordRpc.clearPresence()
+        Log.d(TAG, "RoutePlayerViewModel cleared - Discord presence cleared")
+    }
 }

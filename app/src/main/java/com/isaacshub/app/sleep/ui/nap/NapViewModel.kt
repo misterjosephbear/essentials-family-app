@@ -24,7 +24,9 @@ import java.time.ZoneId
 data class NapUiState(
     val phase: NapPhase = NapPhase.IDLE,
     val startEpochMillis: Long = 0L,
-    val alarmEpochMillis: Long = 0L
+    val alarmEpochMillis: Long = 0L,
+    val eveningSleepScheduled: Boolean = false,
+    val eveningSleepWakeTime: Instant? = null
 )
 
 /**
@@ -66,11 +68,19 @@ class NapViewModel(application: Application) : AndroidViewModel(application) {
 
     fun startNap(durationMinutes: Int) {
         NapAlarmController.startNap(getApplication(), durationMinutes)
+
+        // Update Discord presence for nap
+        val napStart = Instant.now()
+        val napEnd = napStart.plusSeconds((durationMinutes * 60).toLong())
+        discordRpc.setSleepingPresence(napStart, napEnd)
+
         refresh()
     }
 
     fun cancelNap() {
         NapAlarmController.cancelNap(getApplication())
+        // Clear Discord presence when nap is cancelled
+        discordRpc.clearPresence()
         refresh()
     }
 
@@ -101,10 +111,27 @@ class NapViewModel(application: Application) : AndroidViewModel(application) {
                 // Update Discord presence
                 discordRpc.setSleepingPresence(sleepStart, wakeTime)
 
-                refresh()
+                // Update UI state to show sleep is scheduled
+                _uiState.value = _uiState.value.copy(
+                    eveningSleepScheduled = true,
+                    eveningSleepWakeTime = wakeTime
+                )
             } catch (e: Exception) {
                 android.util.Log.e("NapViewModel", "Failed to start sleep", e)
             }
+        }
+    }
+
+    fun cancelEveningSleep() {
+        viewModelScope.launch {
+            // Clear Discord presence
+            discordRpc.clearPresence()
+
+            // Clear UI state
+            _uiState.value = _uiState.value.copy(
+                eveningSleepScheduled = false,
+                eveningSleepWakeTime = null
+            )
         }
     }
 }

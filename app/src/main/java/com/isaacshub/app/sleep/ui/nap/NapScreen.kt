@@ -97,11 +97,39 @@ fun NapScreen() {
                         Text("Start ${formatDuration(selectedMinutes)} nap")
                     }
 
-                    OutlinedButton(
-                        onClick = { viewModel.startSleep() },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Start Sleep for Evening")
+                    // Show either the "Start Sleep" button or confirmation card
+                    if (!state.eveningSleepScheduled) {
+                        OutlinedButton(
+                            onClick = { viewModel.startSleep() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Start Sleep for Evening")
+                        }
+                    } else {
+                        // Show confirmation card with cancel button
+                        Card(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    "✓ Sleep scheduled for evening",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                state.eveningSleepWakeTime?.let { wakeTime ->
+                                    Text(
+                                        "Wake time: ${wakeTime.atZone(ZoneId.systemDefault()).format(timeFormatter)}",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                OutlinedButton(
+                                    onClick = { viewModel.cancelEveningSleep() },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Cancel Evening Sleep")
+                                }
+                            }
+                        }
                     }
 
                     if (canScheduleExact == 0) {
