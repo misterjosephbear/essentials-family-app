@@ -11,9 +11,13 @@ import com.isaacshub.app.timetracking.data.TimeTrackingDatabase
 import com.isaacshub.app.vault.data.VaultApiClient
 import kotlinx.coroutines.flow.first
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private const val REMOTE_FOLDER = "AppBackup"
 private val DATABASE_FILE_NAMES = listOf("sleep.db", "time_tracking.db", "route_helper.db")
+private const val MAX_BACKUP_VERSIONS = 5 // Keep last 5 backups
 
 /**
  * Backs up every Room database and every app preference to the paired server, so nothing is lost
@@ -36,10 +40,21 @@ class AppDataBackupWorker(
         checkpointWal(TimeTrackingDatabase.getInstance(applicationContext))
         checkpointWal(RouteHelperDatabase.getInstance(applicationContext))
 
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+
         var allSucceeded = true
         for (dbName in DATABASE_FILE_NAMES) {
             val dbFile = applicationContext.getDatabasePath(dbName)
             if (!dbFile.exists()) continue
+
+            // Upload with timestamp to preserve history
+            val timestampedPath = "$REMOTE_FOLDER/${dbName}.${timestamp}"
+            if (!client.uploadFile(dbFile, timestampedPath, "application/octet-stream")) {
+                allSucceeded = false
+                continue
+            }
+
+            // Also update the "current" symlink/latest version
             if (!client.uploadFile(dbFile, "$REMOTE_FOLDER/$dbName", "application/octet-stream")) {
                 allSucceeded = false
             }
