@@ -31,13 +31,25 @@ android {
     }
 
     signingConfigs {
-        if (releaseKeystorePath != null) {
-            create("release") {
-                storeFile = file(releaseKeystorePath)
-                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
-                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
-            }
+        // Use release keystore for both debug and release builds so updates work
+        val keystorePath = releaseKeystorePath ?: "${System.getProperty("user.home")}/.android/isaacs-hub-release.keystore"
+        val keystorePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD") ?: "isaacshub123"
+        val keyAlias = System.getenv("RELEASE_KEY_ALIAS") ?: "isaacs-hub"
+        val keyPassword = System.getenv("RELEASE_KEY_PASSWORD") ?: "isaacshub123"
+
+        create("release") {
+            storeFile = file(keystorePath)
+            storePassword = keystorePassword
+            this.keyAlias = keyAlias
+            this.keyPassword = keyPassword
+        }
+
+        // Debug also uses release keystore for consistent signing
+        getByName("debug") {
+            storeFile = file(keystorePath)
+            storePassword = keystorePassword
+            this.keyAlias = keyAlias
+            this.keyPassword = keyPassword
         }
     }
 
@@ -45,7 +57,10 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfigs.findByName("release")?.let { signingConfig = it }
+            signingConfig = signingConfigs.getByName("release")
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
