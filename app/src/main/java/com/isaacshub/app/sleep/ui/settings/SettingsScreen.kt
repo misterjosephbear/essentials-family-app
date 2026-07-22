@@ -120,6 +120,25 @@ fun SettingsScreen() {
             )
         }
 
+        var debtAdjustmentValue by remember(prefs.sleepDebtAdjustmentMinutes) { mutableFloatStateOf(prefs.sleepDebtAdjustmentMinutes.toFloat()) }
+        Column {
+            val hours = debtAdjustmentValue.toInt() / 60
+            val mins = kotlin.math.abs(debtAdjustmentValue.toInt() % 60)
+            val sign = if (debtAdjustmentValue >= 0) "+" else "-"
+            Text("Sleep debt adjustment: $sign${kotlin.math.abs(hours)}h ${mins}m")
+            Text(
+                "Manually add or subtract from calculated sleep debt",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Slider(
+                value = debtAdjustmentValue,
+                onValueChange = { debtAdjustmentValue = it },
+                onValueChangeFinished = { viewModel.setSleepDebtAdjustment(debtAdjustmentValue.toInt()) },
+                valueRange = -480f..480f,
+                steps = 31
+            )
+        }
+
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Wake time by day", style = MaterialTheme.typography.titleMedium)
             Text(

@@ -86,6 +86,16 @@ fun TimeTrackerSettingsScreen() {
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+            item {
+                OutlinedTextField(
+                    value = state.carryoverAdjustment,
+                    onValueChange = viewModel::setCarryoverAdjustment,
+                    label = { Text("Carryover hours adjustment") },
+                    supportingText = { Text("Manually add (+) or subtract (-) from accumulated carryover hours") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
             state.error?.let { error ->
                 item { Text(error, color = MaterialTheme.colorScheme.error) }
             }

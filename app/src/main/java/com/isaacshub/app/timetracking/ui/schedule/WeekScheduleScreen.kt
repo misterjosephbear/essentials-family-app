@@ -65,7 +65,7 @@ fun WeekScheduleScreen(
     val context = LocalContext.current
     val app = context.applicationContext as App
     val viewModel: WeekScheduleViewModel = viewModel(
-        factory = WeekScheduleViewModel.Factory(app.timeTrackingRepository)
+        factory = WeekScheduleViewModel.Factory(app.timeTrackingRepository, app.preferencesRepository)
     )
     val state by viewModel.uiState.collectAsState()
     val summary = state.summary

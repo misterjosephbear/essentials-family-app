@@ -13,10 +13,13 @@ fun computeDebt(
     asOf: LocalDate = LocalDate.now()
 ): SleepDebtResult {
     val entries = sessions.map { it.toSleepEntry() }
-    return SleepDebtCalculator.calculate(
+    val result = SleepDebtCalculator.calculate(
         entries = entries,
         neededMinutesPerNight = prefs.sleepNeedMinutes,
         windowDays = prefs.debtWindowDays,
         asOf = asOf
     )
+    // Apply manual adjustment
+    val adjustedDebt = (result.totalDebtMinutes + prefs.sleepDebtAdjustmentMinutes).coerceAtLeast(0)
+    return result.copy(totalDebtMinutes = adjustedDebt)
 }

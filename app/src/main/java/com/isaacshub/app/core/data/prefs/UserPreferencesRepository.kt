@@ -26,7 +26,9 @@ data class UserPreferences(
     val emaRate: Double = DEFAULT_EMA_RATE,
     val wakeTimeMinutesByDay: Map<DayOfWeek, Int> = DayOfWeek.entries.associateWith { DEFAULT_WAKE_TIME_MINUTES },
     val hiddenLandingCards: Set<String> = emptySet(),
-    val landingCardOrder: List<String>? = null
+    val landingCardOrder: List<String>? = null,
+    val sleepDebtAdjustmentMinutes: Int = 0,
+    val carryoverHoursAdjustment: Double = 0.0
 ) {
     companion object {
         const val DEFAULT_SLEEP_NEED_MINUTES = 480
@@ -57,6 +59,8 @@ class UserPreferencesRepository(private val context: Context) {
         }
         val HIDDEN_LANDING_CARDS = stringSetPreferencesKey("hidden_landing_cards")
         val LANDING_CARD_ORDER = stringPreferencesKey("landing_card_order")
+        val SLEEP_DEBT_ADJUSTMENT_MINUTES = intPreferencesKey("sleep_debt_adjustment_minutes")
+        val CARRYOVER_HOURS_ADJUSTMENT = doublePreferencesKey("carryover_hours_adjustment")
     }
 
     /** Every preference as-is, key name to value - used for backups so newly added prefs are included automatically. */
@@ -78,7 +82,9 @@ class UserPreferencesRepository(private val context: Context) {
                 prefs[Keys.WAKE_TIME_MINUTES_BY_DAY.getValue(day)] ?: UserPreferences.DEFAULT_WAKE_TIME_MINUTES
             },
             hiddenLandingCards = prefs[Keys.HIDDEN_LANDING_CARDS] ?: emptySet(),
-            landingCardOrder = prefs[Keys.LANDING_CARD_ORDER]?.split(",")?.filter { it.isNotBlank() }
+            landingCardOrder = prefs[Keys.LANDING_CARD_ORDER]?.split(",")?.filter { it.isNotBlank() },
+            sleepDebtAdjustmentMinutes = prefs[Keys.SLEEP_DEBT_ADJUSTMENT_MINUTES] ?: 0,
+            carryoverHoursAdjustment = prefs[Keys.CARRYOVER_HOURS_ADJUSTMENT] ?: 0.0
         )
     }
 
@@ -130,5 +136,13 @@ class UserPreferencesRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs.remove(Keys.LANDING_CARD_ORDER)
         }
+    }
+
+    suspend fun setSleepDebtAdjustment(minutes: Int) {
+        context.dataStore.edit { it[Keys.SLEEP_DEBT_ADJUSTMENT_MINUTES] = minutes }
+    }
+
+    suspend fun setCarryoverHoursAdjustment(hours: Double) {
+        context.dataStore.edit { it[Keys.CARRYOVER_HOURS_ADJUSTMENT] = hours }
     }
 }

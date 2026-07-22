@@ -20,6 +20,7 @@ data class TimeTrackerSettingsUiState(
     val hourlyRate: String = "",
     val overtimeMultiplier: String = "",
     val emaRate: String = "",
+    val carryoverAdjustment: String = "",
     val error: String? = null,
     val justSaved: Boolean = false
 )
@@ -51,7 +52,8 @@ class TimeTrackerSettingsViewModel(
             _uiState.value = TimeTrackerSettingsUiState(
                 hourlyRate = formatNumber(prefs.hourlyRate),
                 overtimeMultiplier = formatNumber(prefs.overtimeMultiplier),
-                emaRate = formatNumber(prefs.emaRate)
+                emaRate = formatNumber(prefs.emaRate),
+                carryoverAdjustment = formatNumber(prefs.carryoverHoursAdjustment)
             )
         }
     }
@@ -68,18 +70,25 @@ class TimeTrackerSettingsViewModel(
         _uiState.value = _uiState.value.copy(emaRate = value, error = null, justSaved = false)
     }
 
+    fun setCarryoverAdjustment(value: String) {
+        _uiState.value = _uiState.value.copy(carryoverAdjustment = value, error = null, justSaved = false)
+    }
+
     fun save() {
         val state = _uiState.value
         val hourly = state.hourlyRate.toDoubleOrNull()
         val overtime = state.overtimeMultiplier.toDoubleOrNull()
         val ema = state.emaRate.toDoubleOrNull()
+        val carryover = state.carryoverAdjustment.toDoubleOrNull()
         when {
             hourly == null || hourly < 0 -> _uiState.value = state.copy(error = "Enter a valid hourly rate")
             overtime == null || overtime < 1 ->
                 _uiState.value = state.copy(error = "Enter a valid overtime multiplier (e.g. 1.5)")
             ema == null || ema < 0 -> _uiState.value = state.copy(error = "Enter a valid EMA rate")
+            carryover == null -> _uiState.value = state.copy(error = "Enter a valid carryover adjustment")
             else -> viewModelScope.launch {
                 preferencesRepository.setTimeTrackingRates(hourly, overtime, ema)
+                preferencesRepository.setCarryoverHoursAdjustment(carryover)
                 _uiState.value = _uiState.value.copy(justSaved = true)
             }
         }

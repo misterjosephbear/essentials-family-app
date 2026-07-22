@@ -36,7 +36,7 @@ class TimeTrackingHomeViewModel(
     ) { entries, routes, deductions, overrides, prefs ->
         TimeTrackingHomeUiState(
             loading = false,
-            summary = computeWeeklySummary(entries, routes, overrides = overrides),
+            summary = computeWeeklySummary(entries, routes, overrides = overrides, carryoverAdjustment = prefs.carryoverHoursAdjustment),
             payPeriod = computePayPeriodSummary(
                 entries = entries,
                 routes = routes,

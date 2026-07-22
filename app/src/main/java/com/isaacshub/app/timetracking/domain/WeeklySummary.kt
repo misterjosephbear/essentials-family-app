@@ -93,7 +93,8 @@ fun computeWeeklySummary(
     routes: List<RouteEntity> = emptyList(),
     today: LocalDate = LocalDate.now(),
     zone: ZoneId = ZoneId.systemDefault(),
-    overrides: List<RouteScheduleOverrideEntity> = emptyList()
+    overrides: List<RouteScheduleOverrideEntity> = emptyList(),
+    carryoverAdjustment: Double = 0.0
 ): WeeklySummary {
     val range = currentWeekRange(today)
     val weekEntries = entries
@@ -123,7 +124,7 @@ fun computeWeeklySummary(
         paidHours = paidHours,
         projectedHours = paidHours + unloggedScheduledHours,
         actualHours = actualHours,
-        carryoverHours = computeCarryoverHours(entries, today, zone),
+        carryoverHours = computeCarryoverHours(entries, today, zone) + carryoverAdjustment,
         entries = weekEntries
     )
 }

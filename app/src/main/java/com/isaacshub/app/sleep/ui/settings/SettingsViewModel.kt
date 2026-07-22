@@ -30,6 +30,10 @@ class SettingsViewModel(
         viewModelScope.launch { preferencesRepository.setWakeTime(day, minutesSinceMidnight) }
     }
 
+    fun setSleepDebtAdjustment(minutes: Int) {
+        viewModelScope.launch { preferencesRepository.setSleepDebtAdjustment(minutes) }
+    }
+
     class Factory(private val preferencesRepository: UserPreferencesRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =

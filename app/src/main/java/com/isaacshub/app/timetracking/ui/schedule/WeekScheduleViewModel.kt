@@ -3,6 +3,7 @@ package com.isaacshub.app.timetracking.ui.schedule
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.isaacshub.app.core.data.prefs.UserPreferencesRepository
 import com.isaacshub.app.timetracking.data.RouteEntity
 import com.isaacshub.app.timetracking.data.RouteScheduleOverrideEntity
 import com.isaacshub.app.timetracking.data.TimeTrackingRepository
@@ -30,7 +31,10 @@ data class WeekScheduleUiState(
  * An anchor date is derived by shifting today by that many weeks - since a week is exactly 7 days, this
  * lands on the same day-of-week and so resolves to the right Sat-Fri week for every downstream calculation.
  */
-class WeekScheduleViewModel(private val repository: TimeTrackingRepository) : ViewModel() {
+class WeekScheduleViewModel(
+    private val repository: TimeTrackingRepository,
+    preferencesRepository: UserPreferencesRepository
+) : ViewModel() {
 
     private val weekOffset = MutableStateFlow(0)
 
@@ -38,12 +42,13 @@ class WeekScheduleViewModel(private val repository: TimeTrackingRepository) : Vi
         repository.observeEntries(),
         repository.observeRoutes(),
         repository.observeScheduleOverrides(),
-        weekOffset
-    ) { entries, routes, overrides, offset ->
+        weekOffset,
+        preferencesRepository.userPreferences
+    ) { entries, routes, overrides, offset, prefs ->
         val anchor = LocalDate.now().plusWeeks(offset.toLong())
         WeekScheduleUiState(
             weekOffset = offset,
-            summary = computeWeeklySummary(entries, routes, today = anchor, overrides = overrides),
+            summary = computeWeeklySummary(entries, routes, today = anchor, overrides = overrides, carryoverAdjustment = prefs.carryoverHoursAdjustment),
             days = computeWeekSchedule(entries, routes, today = anchor, overrides = overrides),
             routes = routes
         )
@@ -73,9 +78,12 @@ class WeekScheduleViewModel(private val repository: TimeTrackingRepository) : Vi
         viewModelScope.launch { repository.deleteScheduleOverride(overrideId) }
     }
 
-    class Factory(private val repository: TimeTrackingRepository) : ViewModelProvider.Factory {
+    class Factory(
+        private val repository: TimeTrackingRepository,
+        private val preferencesRepository: UserPreferencesRepository
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            WeekScheduleViewModel(repository) as T
+            WeekScheduleViewModel(repository, preferencesRepository) as T
     }
 }
