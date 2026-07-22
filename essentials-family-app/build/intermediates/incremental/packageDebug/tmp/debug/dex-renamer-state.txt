@@ -1,4 +1,4 @@
-#Wed Jul 22 01:23:35 UTC 2026
+#Wed Jul 22 01:25:12 UTC 2026
 base.0=/home/bear/projects/isaacs-hub/essentials-family-app/build/intermediates/dex/debug/mergeExtDexDebug/classes.dex
 base.1=/home/bear/projects/isaacs-hub/essentials-family-app/build/intermediates/dex/debug/mergeLibDexDebug/2/classes.dex
 base.10=/home/bear/projects/isaacs-hub/essentials-family-app/build/intermediates/dex/debug/mergeProjectDexDebug/9/classes.dex
