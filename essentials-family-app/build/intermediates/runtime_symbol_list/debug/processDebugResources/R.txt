@@ -1925,3 +1925,4 @@ int styleable ViewStubCompat_android_id 0
 int styleable ViewStubCompat_android_layout 1
 int styleable ViewStubCompat_android_inflatedId 2
 int xml device_admin_policies 0x7f100000
+int xml provider_paths 0x7f100001
