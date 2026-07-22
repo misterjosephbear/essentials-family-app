@@ -1,0 +1,10 @@
+com.isaacshub.essentials.essentials-family-app-pngs-0 /home/bear/projects/isaacs-hub/essentials-family-app/build/generated/res/pngs/release
+com.isaacshub.essentials.essentials-family-app-resValues-1 /home/bear/projects/isaacs-hub/essentials-family-app/build/generated/res/resValues/release
+com.isaacshub.essentials.essentials-family-app-updated_navigation_xml-2 /home/bear/projects/isaacs-hub/essentials-family-app/build/generated/updated_navigation_xml/release
+com.isaacshub.essentials.essentials-family-app-packageReleaseResources-3 /home/bear/projects/isaacs-hub/essentials-family-app/build/intermediates/incremental/release/packageReleaseResources/merged.dir
+com.isaacshub.essentials.essentials-family-app-packageReleaseResources-4 /home/bear/projects/isaacs-hub/essentials-family-app/build/intermediates/incremental/release/packageReleaseResources/stripped.dir
+com.isaacshub.essentials.essentials-family-app-merged-not-compiled-resources-5 /home/bear/projects/isaacs-hub/essentials-family-app/build/intermediates/merged-not-compiled-resources/release
+com.isaacshub.essentials.essentials-family-app-release-6 /home/bear/projects/isaacs-hub/essentials-family-app/build/intermediates/merged_res/release/mergeReleaseResources
+com.isaacshub.essentials.essentials-family-app-main-7 /home/bear/projects/isaacs-hub/essentials-family-app/src/main/res
+com.isaacshub.essentials.essentials-family-app-release-8 /home/bear/projects/isaacs-hub/essentials-family-app/src/release/res
+gradleHome-0 /home/bear/.gradle

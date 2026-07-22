@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.isaacshub.essentials.essentials-family-app-mergeReleaseResources-65:/values-v30/values-v30.xml",
+            "map": [
+                {
+                    "source": "/home/bear/.gradle/caches/9.4.1/transforms/6ed929d78440a0e72732c6234797b90c/transformed/material3-release/res/values-v30/values-v30.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "72",
+                        "endOffsets": "123"
+                    }
+                }
+            ]
+        }
+    ]
+}
