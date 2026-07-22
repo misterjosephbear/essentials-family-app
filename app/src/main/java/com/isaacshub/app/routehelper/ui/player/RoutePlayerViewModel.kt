@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.isaacshub.app.App
+import com.isaacshub.app.discord.DiscordRichPresenceManager
 import com.isaacshub.app.routehelper.data.CachedRoadRouteEntity
 import com.isaacshub.app.routehelper.data.PackageEntity
 import com.isaacshub.app.routehelper.data.RouteHelperRouteEntity
@@ -19,6 +20,7 @@ import com.isaacshub.app.routehelper.location.liveLocationFlow
 import com.isaacshub.app.routehelper.network.RouteDirectionsFetcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.json.JSONArray
+import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -91,6 +93,7 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
 
     private val repository = getApplication<App>().routeHelperRepository
     private val directionsFetcher = RouteDirectionsFetcher()
+    private val discordRpc = DiscordRichPresenceManager.getInstance(getApplication())
     private val routeIdFlow = MutableStateFlow<Long?>(null)
     private val rawLocationFlow = MutableStateFlow<LocationSample?>(null)
     private val locationFlow = MutableStateFlow<LocationSample?>(null)
@@ -444,6 +447,22 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             val displayHour = if (hour == 0) 12 else if (hour > 12) hour - 12 else hour
 
             estimatedCompletionTime = String.format("%d:%02d %s", displayHour, minute, amPm)
+
+            // Update Discord Rich Presence
+            val currentStop = if (nextIndex < stops.size) nextIndex + 1 else stops.size
+            val estimatedCompletionInstant = completionEpochMillis.let {
+                Instant.ofEpochMilli(it)
+            }
+            discordRpc.setDeliveringMailPresence(
+                currentStop = currentStop,
+                totalStops = stops.size,
+                estimatedCompletionTime = estimatedCompletionInstant
+            )
+        } else {
+            // Clear Discord presence when route is complete
+            if (nextIndex >= stops.size && stops.isNotEmpty()) {
+                discordRpc.clearPresence()
+            }
         }
 
         RoutePlayerUiState(

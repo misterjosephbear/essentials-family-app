@@ -97,6 +97,13 @@ fun NapScreen() {
                         Text("Start ${formatDuration(selectedMinutes)} nap")
                     }
 
+                    OutlinedButton(
+                        onClick = { viewModel.startSleep() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Start Sleep for Evening")
+                    }
+
                     if (canScheduleExact == 0) {
                         Card {
                             Column(modifier = Modifier.padding(16.dp)) {
