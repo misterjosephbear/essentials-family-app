@@ -13,7 +13,7 @@ import java.net.URL
 
 object UpdateInstaller {
     // Direct download from web server instead of GitHub releases (GitHub CDN has known issues)
-    private const val DIRECT_APK_URL = "http://isaacs-hub.playit.plus/isaacs-hub-debug.apk"
+    private const val DIRECT_APK_URL = "http://isaacs-hub.playit.plus/isaacs-hub-release.apk"
 
     /** Downloads the APK from web server to cache, reporting 0f..1f via [onProgress], then launches the installer. */
     suspend fun downloadAndInstall(
