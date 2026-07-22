@@ -20,6 +20,7 @@ fi
 
 echo "Copying APK to web server..."
 sudo cp -v "$APK_PATH" "$WEB_DIST/$TARGET_NAME"
+sudo chown bear:bear "$WEB_DIST/$TARGET_NAME"
 
 echo "Verifying..."
 curl -I "http://isaacs-hub.playit.plus/$TARGET_NAME" 2>&1 | grep -E "HTTP|Content-Length"
