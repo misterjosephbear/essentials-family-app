@@ -12,32 +12,22 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object UpdateInstaller {
-    private const val ASSET_URL_TEMPLATE =
-        "https://api.github.com/repos/misterjosephbear/isaacs-hub/releases/assets/%d"
+    // Direct download from web server instead of GitHub releases (GitHub CDN has known issues)
+    private const val DIRECT_APK_URL = "http://isaacs-hub.playit.plus/isaacs-hub-debug.apk"
 
-    /** Downloads the APK asset for [release] to cache, reporting 0f..1f via [onProgress], then launches the installer. */
+    /** Downloads the APK from web server to cache, reporting 0f..1f via [onProgress], then launches the installer. */
     suspend fun downloadAndInstall(
         context: Context,
         release: ReleaseInfo,
         onProgress: (Float) -> Unit
     ) {
         val file = withContext(Dispatchers.IO) {
-            var connection = openAssetConnection(ASSET_URL_TEMPLATE.format(release.assetId))
+            val connection = (URL(DIRECT_APK_URL).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 15_000
+                readTimeout = 15_000
+            }
             try {
                 connection.connect()
-
-                // Private-repo asset downloads redirect to a temporary pre-signed URL that must be
-                // fetched with no Authorization header of its own - HttpURLConnection's built-in
-                // redirect following would resend ours, which the signed URL's host rejects.
-                if (connection.responseCode in 300..399) {
-                    val redirectUrl = connection.getHeaderField("Location")
-                    connection.disconnect()
-                    connection = (URL(redirectUrl).openConnection() as HttpURLConnection).apply {
-                        connectTimeout = 15_000
-                        readTimeout = 15_000
-                        connect()
-                    }
-                }
 
                 val total = connection.contentLength
                 val target = File(context.cacheDir, "update.apk")
@@ -66,13 +56,4 @@ object UpdateInstaller {
         }
         context.startActivity(intent)
     }
-
-    private fun openAssetConnection(url: String): HttpURLConnection =
-        (URL(url).openConnection() as HttpURLConnection).apply {
-            instanceFollowRedirects = false
-            connectTimeout = 15_000
-            readTimeout = 15_000
-            setRequestProperty("Accept", "application/octet-stream")
-            setRequestProperty("Authorization", "Bearer ${BuildConfig.UPDATE_CHECK_TOKEN}")
-        }
 }
