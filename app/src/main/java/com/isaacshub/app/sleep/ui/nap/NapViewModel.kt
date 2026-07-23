@@ -63,7 +63,13 @@ class NapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refresh() {
-        _uiState.value = loadState()
+        val stored = NapStateStore.read(getApplication())
+        _uiState.value = _uiState.value.copy(
+            phase = stored?.phase ?: NapPhase.IDLE,
+            startEpochMillis = stored?.startEpochMillis ?: 0L,
+            alarmEpochMillis = stored?.alarmEpochMillis ?: 0L
+            // Preserve eveningSleepScheduled and eveningSleepWakeTime
+        )
     }
 
     fun startNap(durationMinutes: Int) {
