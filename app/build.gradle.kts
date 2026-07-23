@@ -9,8 +9,8 @@ plugins {
 // vars, so every release build is signed with the same key and gets a strictly increasing
 // versionCode - both required for the in-app updater to install over the existing app in place.
 val releaseKeystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
-val releaseVersionCode = System.getenv("RELEASE_VERSION_CODE")?.toIntOrNull() ?: 115
-val releaseVersionName = System.getenv("RELEASE_VERSION_NAME") ?: "1.15.0"
+val releaseVersionCode = System.getenv("RELEASE_VERSION_CODE")?.toIntOrNull() ?: 116
+val releaseVersionName = System.getenv("RELEASE_VERSION_NAME") ?: "1.16.0"
 
 // Fine-grained PAT (Contents: read-only on this one private repo) so release builds can check
 // GitHub Releases and download the signed APK. Absent on local/debug builds, which simply never
