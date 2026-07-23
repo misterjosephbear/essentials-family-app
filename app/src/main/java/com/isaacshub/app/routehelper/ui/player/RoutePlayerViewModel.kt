@@ -108,16 +108,24 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
     /** Missed package alert state (address of stop where package was missed) */
     private val missedPackageAlertFlow = MutableStateFlow<String?>(null)
 
+    /** Starting location for pace calculation (where we were when route playback started) */
+    private val startingLocationFlow = MutableStateFlow<GeoPoint?>(null)
+
+    /** Starting stop index for pace calculation (what stop we were at when route playback started) */
+    private val startingStopIndexFlow = MutableStateFlow<Int>(0)
+
     /** Safe to call every time the screen recomposes - only actually starts tracking/observing once per route. */
     fun start(routeId: Long) {
         if (routeIdFlow.value != routeId) {
             routeIdFlow.value = routeId
-            // Record route start time when first starting playback
+            // Record route start time and location when first starting playback
             viewModelScope.launch {
                 val route = repository.getRoute(routeId)
                 if (route?.startedAtEpochMillis == null) {
                     repository.setRouteStartTime(routeId, System.currentTimeMillis())
-                    Log.d(TAG, "Route $routeId started at ${System.currentTimeMillis()}")
+                    // Record where we started from
+                    startingLocationFlow.value = locationFlow.value?.point
+                    Log.d(TAG, "Route $routeId started at ${System.currentTimeMillis()}, location: ${startingLocationFlow.value}")
                 }
             }
         }
@@ -173,6 +181,12 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
                 StopAdvanceState(state.index.coerceAtMost(points.size), null, false)
             } else {
                 val newIndex = advanceToNextStop(location, state.previousLocation, points, state.index, speed)
+
+                // Record starting stop index when we first get GPS lock
+                if (startingStopIndexFlow.value == 0 && state.index == 0) {
+                    startingStopIndexFlow.value = newIndex
+                    Log.d(TAG, "Starting stop index set to: $newIndex")
+                }
 
                 // Check if currently within arrival radius of the current stop
                 val withinArrivalRadius = if (newIndex < points.size) {
@@ -449,12 +463,15 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             } else null
 
             val startTime = route?.startedAtEpochMillis
-            val currentPaceMps = if (startTime != null && nextIndex > 0) {
-                // Calculate distance covered from start to current location
+            val startingLocation = startingLocationFlow.value
+            val startingStopIndex = startingStopIndexFlow.value
+
+            val currentPaceMps = if (startTime != null && startingLocation != null && nextIndex > startingStopIndex) {
+                // Calculate distance covered since we started playback (not from stop 0)
                 var coveredDistanceMeters = 0.0
 
-                // Add distance from first stop to current next stop
-                for (i in 0 until nextIndex) {
+                // Add distance between stops from where we started to current position
+                for (i in startingStopIndex until nextIndex) {
                     val from = stops[i]
                     val to = if (i + 1 < stops.size) stops[i + 1] else stops[i]
                     coveredDistanceMeters += distanceMeters(
@@ -472,20 +489,20 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
                     )
                 }
 
-                // Calculate time elapsed since start
+                // Calculate time elapsed since playback started
                 val elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000.0
 
                 // Calculate current pace (meters per second)
-                // Only use if we've covered significant distance and time
+                // Only use if we've covered significant distance and time since we started
                 if (coveredDistanceMeters > 100 && elapsedSeconds > 60) {
                     val pace = coveredDistanceMeters / elapsedSeconds
-                    Log.d(TAG, "Current pace: ${pace} m/s (${pace * 2.237} mph), covered ${coveredDistanceMeters / 1609.34} miles in ${elapsedSeconds / 60} minutes")
+                    Log.d(TAG, "Current pace: ${pace} m/s (${pace * 2.237} mph), covered ${coveredDistanceMeters / 1609.34} miles in ${elapsedSeconds / 60} minutes (from stop $startingStopIndex)")
                     pace
                 } else {
-                    AVERAGE_SPEED_MPS // Fallback to default if not enough data
+                    AVERAGE_SPEED_MPS // Fallback to default if not enough data yet
                 }
             } else {
-                AVERAGE_SPEED_MPS // Fallback to default if no start time or at first stop
+                AVERAGE_SPEED_MPS // Fallback to default if no start time or haven't moved yet
             }
 
             // Calculate time: (distance / current_pace) + (stops * time per stop)
