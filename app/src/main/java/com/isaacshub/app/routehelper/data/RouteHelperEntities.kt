@@ -14,7 +14,9 @@ data class RouteHelperRouteEntity(
     val name: String,
     val zipCode: String,
     val createdAtEpochMillis: Long,
-    val routeType: String = RouteType.REGULAR.name
+    val routeType: String = RouteType.REGULAR.name,
+    /** Timestamp when route playback started (null if not started yet) */
+    val startedAtEpochMillis: Long? = null
 )
 
 /** A candidate stop pulled from OpenStreetMap for a route's ZIP code - a real address until it's routed. */

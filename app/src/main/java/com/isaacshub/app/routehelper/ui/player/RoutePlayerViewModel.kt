@@ -112,6 +112,14 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
     fun start(routeId: Long) {
         if (routeIdFlow.value != routeId) {
             routeIdFlow.value = routeId
+            // Record route start time when first starting playback
+            viewModelScope.launch {
+                val route = repository.getRoute(routeId)
+                if (route?.startedAtEpochMillis == null) {
+                    repository.setRouteStartTime(routeId, System.currentTimeMillis())
+                    Log.d(TAG, "Route $routeId started at ${System.currentTimeMillis()}")
+                }
+            }
         }
         if (!locationStarted) {
             locationStarted = true
@@ -408,11 +416,11 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
 
         if (currentLocation != null && nextIndex < stops.size) {
             // Calculate total remaining distance
-            var totalDistanceMeters = 0.0
+            var remainingDistanceMeters = 0.0
 
             // Distance from current location to next stop
             val nextStop = stops[nextIndex]
-            totalDistanceMeters += distanceMeters(
+            remainingDistanceMeters += distanceMeters(
                 currentLocation,
                 GeoPoint(nextStop.latitude, nextStop.longitude)
             )
@@ -421,18 +429,68 @@ class RoutePlayerViewModel(application: Application) : AndroidViewModel(applicat
             for (i in nextIndex until stops.size - 1) {
                 val from = stops[i]
                 val to = stops[i + 1]
-                totalDistanceMeters += distanceMeters(
+                remainingDistanceMeters += distanceMeters(
                     GeoPoint(from.latitude, from.longitude),
                     GeoPoint(to.latitude, to.longitude)
                 )
             }
 
             // Convert to miles
-            remainingMiles = totalDistanceMeters / 1609.34
+            remainingMiles = remainingDistanceMeters / 1609.34
 
-            // Calculate time: (distance / speed) + (stops * time per stop)
+            // Get route start time to calculate current pace
+            val routeId = routeIdFlow.value
+            val route = if (routeId != null) {
+                try {
+                    repository.getRoute(routeId)
+                } catch (e: Exception) {
+                    null
+                }
+            } else null
+
+            val startTime = route?.startedAtEpochMillis
+            val currentPaceMps = if (startTime != null && nextIndex > 0) {
+                // Calculate distance covered from start to current location
+                var coveredDistanceMeters = 0.0
+
+                // Add distance from first stop to current next stop
+                for (i in 0 until nextIndex) {
+                    val from = stops[i]
+                    val to = if (i + 1 < stops.size) stops[i + 1] else stops[i]
+                    coveredDistanceMeters += distanceMeters(
+                        GeoPoint(from.latitude, from.longitude),
+                        GeoPoint(to.latitude, to.longitude)
+                    )
+                }
+
+                // Add distance from last completed stop to current location
+                if (nextIndex > 0) {
+                    val lastCompletedStop = stops[nextIndex - 1]
+                    coveredDistanceMeters += distanceMeters(
+                        GeoPoint(lastCompletedStop.latitude, lastCompletedStop.longitude),
+                        currentLocation
+                    )
+                }
+
+                // Calculate time elapsed since start
+                val elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000.0
+
+                // Calculate current pace (meters per second)
+                // Only use if we've covered significant distance and time
+                if (coveredDistanceMeters > 100 && elapsedSeconds > 60) {
+                    val pace = coveredDistanceMeters / elapsedSeconds
+                    Log.d(TAG, "Current pace: ${pace} m/s (${pace * 2.237} mph), covered ${coveredDistanceMeters / 1609.34} miles in ${elapsedSeconds / 60} minutes")
+                    pace
+                } else {
+                    AVERAGE_SPEED_MPS // Fallback to default if not enough data
+                }
+            } else {
+                AVERAGE_SPEED_MPS // Fallback to default if no start time or at first stop
+            }
+
+            // Calculate time: (distance / current_pace) + (stops * time per stop)
             val remainingStops = stops.size - nextIndex
-            val drivingTimeSeconds = totalDistanceMeters / AVERAGE_SPEED_MPS
+            val drivingTimeSeconds = remainingDistanceMeters / currentPaceMps
             val stopTimeSeconds = remainingStops * SECONDS_PER_STOP
             val totalTimeSeconds = drivingTimeSeconds + stopTimeSeconds
 

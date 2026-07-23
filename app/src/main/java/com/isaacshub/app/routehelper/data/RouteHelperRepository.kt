@@ -29,6 +29,8 @@ class RouteHelperRepository(
 
     suspend fun deleteRoute(route: RouteHelperRouteEntity) = dao.deleteRoute(route)
 
+    suspend fun setRouteStartTime(routeId: Long, startedAtEpochMillis: Long) = dao.setRouteStartTime(routeId, startedAtEpochMillis)
+
     /**
      * Creates the route and does the one-time OSM address fetch for its ZIP code. If the fetch
      * fails outright (network/server error, as opposed to a ZIP that genuinely has zero addressed

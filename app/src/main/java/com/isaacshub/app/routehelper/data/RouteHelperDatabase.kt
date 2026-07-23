@@ -81,9 +81,16 @@ private val MIGRATION_7_8 = object : Migration(7, 8) {
     }
 }
 
+private val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Add route start time for pace-based completion prediction
+        db.execSQL("ALTER TABLE `route_helper_routes` ADD COLUMN `startedAtEpochMillis` INTEGER")
+    }
+}
+
 @Database(
     entities = [RouteHelperRouteEntity::class, CandidateAddressEntity::class, RoutedStopEntity::class, CachedRoadRouteEntity::class, PackageEntity::class, RouteSectionEntity::class],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 abstract class RouteHelperDatabase : RoomDatabase() {
@@ -103,7 +110,7 @@ abstract class RouteHelperDatabase : RoomDatabase() {
                     // Same rule as every other database in this app: routes/stops are real user
                     // data - any future schema change needs an explicit Migration, never a
                     // destructive fallback.
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .build().also { instance = it }
             }
     }

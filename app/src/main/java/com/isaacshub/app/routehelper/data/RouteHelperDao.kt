@@ -26,6 +26,9 @@ interface RouteHelperDao {
     @Query("DELETE FROM route_helper_routes WHERE id = :id")
     suspend fun deleteRouteById(id: Long)
 
+    @Query("UPDATE route_helper_routes SET startedAtEpochMillis = :startedAtEpochMillis WHERE id = :routeId")
+    suspend fun setRouteStartTime(routeId: Long, startedAtEpochMillis: Long)
+
     @Insert
     suspend fun insertCandidates(candidates: List<CandidateAddressEntity>)
 
