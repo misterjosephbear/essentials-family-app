@@ -5,6 +5,10 @@ import com.isaacshub.app.core.data.prefs.UserPreferencesRepository
 import com.isaacshub.app.essentials.data.EssentialsApiClient
 import com.isaacshub.app.essentials.data.EssentialsDatabase
 import com.isaacshub.app.essentials.data.EssentialsRepository
+import com.isaacshub.app.featurefunnel.data.FeatureFunnelDatabase
+import com.isaacshub.app.featurefunnel.data.FeatureFunnelPreferencesRepository
+import com.isaacshub.app.featurefunnel.data.FeatureFunnelRepository
+import com.isaacshub.app.featurefunnel.worker.FeatureFunnelScheduler
 import com.isaacshub.app.routehelper.data.RouteHelperDatabase
 import com.isaacshub.app.routehelper.data.RouteHelperRepository
 import com.isaacshub.app.routehelper.network.RouteHelperAddressFetcher
@@ -42,6 +46,12 @@ class App : Application() {
         private set
 
     lateinit var essentialsRepository: EssentialsRepository
+        private set
+
+    lateinit var featureFunnelRepository: FeatureFunnelRepository
+        private set
+
+    lateinit var featureFunnelPreferencesRepository: FeatureFunnelPreferencesRepository
         private set
 
     override fun onCreate() {
@@ -93,6 +103,15 @@ class App : Application() {
                 )
             }
         }
+
+        // Feature Funnel initialization
+        val featureFunnelDatabase = FeatureFunnelDatabase.getInstance(this)
+        featureFunnelPreferencesRepository = FeatureFunnelPreferencesRepository(this)
+        featureFunnelRepository = FeatureFunnelRepository(
+            featureFunnelDatabase.featurePromptDao(),
+            featureFunnelPreferencesRepository
+        )
+        FeatureFunnelScheduler.rescheduleIfEnabled(this, featureFunnelPreferencesRepository)
 
         // Schedule daily package cleanup at 1am
         PackageCleanupScheduler.schedule(this)

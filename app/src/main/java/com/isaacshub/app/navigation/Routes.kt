@@ -53,6 +53,11 @@ object Routes {
     const val ESSENTIALS_EDIT_CHORE_PATTERN = "$ESSENTIALS_EDIT_CHORE_BASE/{$ESSENTIALS_EDIT_CHORE_ARG}"
     const val ESSENTIALS_MANAGE_FAMILY = "essentials_manage_family"
 
+    const val FEATURE_FUNNEL_HOME = "feature_funnel_home"
+    const val FEATURE_FUNNEL_EDIT_BASE = "feature_funnel_edit"
+    const val FEATURE_FUNNEL_EDIT_ARG = "promptId"
+    const val FEATURE_FUNNEL_EDIT_PATTERN = "$FEATURE_FUNNEL_EDIT_BASE/{$FEATURE_FUNNEL_EDIT_ARG}"
+
     private const val NEW_TOKEN = "new"
 
     fun editSession(sessionId: Long?): String = "$EDIT_SESSION_BASE/${sessionId ?: NEW_TOKEN}"
@@ -63,6 +68,7 @@ object Routes {
     fun routePlayer(routeId: Long): String = "$ROUTE_PLAYER_BASE/$routeId"
     fun amazonScanner(routeId: Long): String = "$AMAZON_SCANNER_BASE/$routeId"
     fun essentialsEditChore(choreId: Long?): String = "$ESSENTIALS_EDIT_CHORE_BASE/${choreId ?: NEW_TOKEN}"
+    fun featureFunnelEdit(promptId: Long?): String = "$FEATURE_FUNNEL_EDIT_BASE/${promptId ?: NEW_TOKEN}"
 
     fun parseId(arg: String?): Long? = arg?.takeIf { it != NEW_TOKEN }?.toLongOrNull()
 }
