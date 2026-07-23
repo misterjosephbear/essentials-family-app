@@ -1,3 +1,4 @@
+com.isaacshub.essentials:xml/network_security_config = 0x7f100001
 com.isaacshub.essentials:xml/device_admin_policies = 0x7f100000
 com.isaacshub.essentials:styleable/ViewStubCompat = 0x7f0f0037
 com.isaacshub.essentials:styleable/ViewBackgroundHelper = 0x7f0f0036
@@ -535,7 +536,7 @@ com.isaacshub.essentials:id/accessibility_custom_action_3 = 0x7f08001e
 com.isaacshub.essentials:drawable/ic_call_answer_video = 0x7f070059
 com.isaacshub.essentials:drawable/ic_call_answer = 0x7f070057
 com.isaacshub.essentials:id/disableHome = 0x7f080053
-com.isaacshub.essentials:xml/provider_paths = 0x7f100001
+com.isaacshub.essentials:xml/provider_paths = 0x7f100002
 com.isaacshub.essentials:style/Animation.AppCompat.Tooltip = 0x7f0e0004
 com.isaacshub.essentials:dimen/abc_control_padding_material = 0x7f06001a
 com.isaacshub.essentials:drawable/ic_call_decline = 0x7f07005b

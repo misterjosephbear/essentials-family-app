@@ -7,4 +7,5 @@ mipmap ic_launcher_round
 string app_name
 style Theme.Essentials
 xml device_admin_policies
+xml network_security_config
 xml provider_paths

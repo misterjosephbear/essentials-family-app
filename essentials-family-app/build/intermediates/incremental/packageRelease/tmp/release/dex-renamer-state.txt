@@ -1,4 +1,4 @@
-#Thu Jul 23 18:30:10 UTC 2026
+#Thu Jul 23 18:49:32 UTC 2026
 base.0=/home/bear/projects/isaacs-hub/essentials-family-app/build/intermediates/dex/release/minifyReleaseWithR8/classes.dex
 base.1=/home/bear/projects/isaacs-hub/essentials-family-app/build/intermediates/dex/release/minifyReleaseWithR8/classes2.dex
 path.0=classes.dex

@@ -4653,7 +4653,7 @@ LocalWindowInfo
 ScrollableState.kt
 Marking integer:status_bar_notification_info_maxnum:2131296261 used because it matches string pool constant status_
 Marking string:status_bar_notification_info_overflow:2131558509 used because it matches string pool constant status_
-Marking xml:provider_paths:2131755009 used because it matches string pool constant provider
+Marking xml:provider_paths:2131755010 used because it matches string pool constant provider
 Marking id:blocking:2131230784 used because it matches string pool constant block
 Marking id:top:2131230905 used because it matches string pool constant top
 Marking id:topPanel:2131230906 used because it matches string pool constant top
@@ -7875,6 +7875,7 @@ Marking id:tag_window_insets_animation_callback:2131230896 used because it match
     @com.isaacshub.essentials:color/androidx_core_secondary_text_default_material_light
     @com.isaacshub.essentials:dimen/notification_action_text_size
 @com.isaacshub.essentials:xml/device_admin_policies : reachable=true
+@com.isaacshub.essentials:xml/network_security_config : reachable=true
 @com.isaacshub.essentials:xml/provider_paths : reachable=true
 
 The root reachable resources are:
@@ -8472,7 +8473,8 @@ The root reachable resources are:
  style:TextAppearance_Widget_AppCompat_Toolbar_Title:2131624184
  style:Theme_Essentials:2131624207
  xml:device_admin_policies:2131755008
- xml:provider_paths:2131755009
+ xml:network_security_config:2131755009
+ xml:provider_paths:2131755010
 Unused resources are: 
  anim:abc_fade_in:2130771968
  anim:abc_fade_out:2130771969
