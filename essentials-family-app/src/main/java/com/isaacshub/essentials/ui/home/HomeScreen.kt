@@ -48,8 +48,8 @@ fun HomeScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.logout(onLogout) }) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Logout")
+                    IconButton(onClick = { viewModel.refresh() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

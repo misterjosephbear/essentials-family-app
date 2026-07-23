@@ -119,6 +119,10 @@ class HomeViewModel(
         }
     }
 
+    fun refresh() {
+        syncChores()
+    }
+
     fun dismissError() {
         _uiState.update { it.copy(errorMessage = null) }
     }
