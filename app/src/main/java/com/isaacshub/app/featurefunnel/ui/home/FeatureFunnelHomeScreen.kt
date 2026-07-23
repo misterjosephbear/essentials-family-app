@@ -68,7 +68,10 @@ fun FeatureFunnelHomeScreen(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -78,6 +81,38 @@ fun FeatureFunnelHomeScreen(
                         Switch(
                             checked = preferences.enabled,
                             onCheckedChange = { viewModel.setEnabled(it) }
+                        )
+                    }
+
+                    var channelId by remember { mutableStateOf(preferences.discordChannelId ?: "") }
+                    OutlinedTextField(
+                        value = channelId,
+                        onValueChange = { channelId = it },
+                        label = { Text("Discord Channel ID") },
+                        placeholder = { Text("e.g., 1234567890123456789") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        trailingIcon = {
+                            if (channelId.isNotBlank() && channelId != preferences.discordChannelId) {
+                                IconButton(onClick = { viewModel.setDiscordChannelId(channelId) }) {
+                                    Icon(Icons.Default.Check, "Save")
+                                }
+                            }
+                        }
+                    )
+
+                    if (preferences.discordChannelId == null) {
+                        Text(
+                            text = "⚠️ Discord channel ID required to send prompts",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+
+                    if (preferences.lastCheckEpochMillis > 0) {
+                        Text(
+                            text = "Last check: ${java.text.SimpleDateFormat("HH:mm:ss").format(preferences.lastCheckEpochMillis)}",
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }

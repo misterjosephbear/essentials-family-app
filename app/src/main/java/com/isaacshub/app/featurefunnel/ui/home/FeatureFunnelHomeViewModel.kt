@@ -44,6 +44,12 @@ class FeatureFunnelHomeViewModel(
         }
     }
 
+    fun setDiscordChannelId(channelId: String) {
+        viewModelScope.launch {
+            preferencesRepository.setDiscordChannelId(channelId.trim())
+        }
+    }
+
     fun deletePrompt(prompt: FeaturePromptEntity) {
         viewModelScope.launch {
             repository.deletePrompt(prompt)
