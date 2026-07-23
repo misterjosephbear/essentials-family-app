@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -71,7 +72,8 @@ fun LandingScreen(
     onOpenRouteHelper: () -> Unit,
     onOpenBanking: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenEssentials: () -> Unit = {}
+    onOpenEssentials: () -> Unit = {},
+    onOpenFeatureFunnel: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as App
@@ -123,6 +125,13 @@ fun LandingScreen(
                 title = "Essentials",
                 subtitle = "Manage family chores and device restrictions",
                 onClick = onOpenEssentials
+            ),
+            LandingCard(
+                id = "feature_funnel",
+                icon = Icons.Filled.AutoAwesome,
+                title = "Feature Funnel",
+                subtitle = "Queue feature requests for automated development",
+                onClick = onOpenFeatureFunnel
             ),
             LandingCard(
                 id = "settings",

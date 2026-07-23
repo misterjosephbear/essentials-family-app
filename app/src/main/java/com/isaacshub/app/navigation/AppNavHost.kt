@@ -62,6 +62,8 @@ import com.isaacshub.app.vault.ui.home.VaultHomeScreen
 import com.isaacshub.app.vault.ui.pairing.PairingScreen
 import com.isaacshub.app.vault.ui.restore.RestoreScreen
 import com.isaacshub.app.vault.ui.restore.RestoreViewModel
+import com.isaacshub.app.featurefunnel.ui.home.FeatureFunnelHomeScreen
+import com.isaacshub.app.featurefunnel.ui.edit.EditPromptScreen
 
 private data class TopLevelDestination(val route: String, val label: String, val icon: ImageVector)
 
@@ -145,7 +147,8 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                     onOpenRouteHelper = { navController.navigate(Routes.ROUTE_HELPER_HOME) },
                     onOpenBanking = { navController.navigate(Routes.BANKING_HOME) },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS_HOME) },
-                    onOpenEssentials = { navController.navigate(Routes.ESSENTIALS_HOME) }
+                    onOpenEssentials = { navController.navigate(Routes.ESSENTIALS_HOME) },
+                    onOpenFeatureFunnel = { navController.navigate(Routes.FEATURE_FUNNEL_HOME) }
                 )
             }
 
@@ -325,6 +328,24 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
             composable(Routes.ESSENTIALS_MANAGE_FAMILY) {
                 ManageFamilyScreen(
                     onBack = { navController.popBackStack() }
+                )
+            }
+
+            // Feature Funnel routes
+            composable(Routes.FEATURE_FUNNEL_HOME) {
+                FeatureFunnelHomeScreen(
+                    onNavigateToEdit = { promptId -> navController.navigate(Routes.featureFunnelEdit(promptId)) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.FEATURE_FUNNEL_EDIT_PATTERN) { backStackEntry ->
+                val promptId = backStackEntry.arguments?.getString(Routes.FEATURE_FUNNEL_EDIT_ARG)
+                    ?.let { Routes.parseId(it) }
+                EditPromptScreen(
+                    promptId = promptId,
+                    onBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() }
                 )
             }
         }
