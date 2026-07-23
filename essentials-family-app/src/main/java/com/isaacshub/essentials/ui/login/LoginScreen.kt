@@ -78,17 +78,6 @@ fun LoginScreen(
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-            )
-
-            OutlinedTextField(
-                value = uiState.serverUrl,
-                onValueChange = viewModel::onServerUrlChange,
-                label = { Text("Server URL") },
-                singleLine = true,
-                enabled = !uiState.isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
                     .padding(bottom = 24.dp)
             )
 

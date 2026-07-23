@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 data class LoginUiState(
     val username: String = "",
     val password: String = "",
-    val serverUrl: String = "https://isaacshub.com", // Default server URL
+    val serverUrl: String = "http://isaacs-hub.playit.plus", // Automatically use Isaac's Hub server
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
@@ -25,24 +25,12 @@ class LoginViewModel(
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    init {
-        // Load saved server URL if available
-        val savedServerUrl = authRepository.getServerUrl()
-        if (savedServerUrl != null) {
-            _uiState.update { it.copy(serverUrl = savedServerUrl) }
-        }
-    }
-
     fun onUsernameChange(username: String) {
         _uiState.update { it.copy(username = username, errorMessage = null) }
     }
 
     fun onPasswordChange(password: String) {
         _uiState.update { it.copy(password = password, errorMessage = null) }
-    }
-
-    fun onServerUrlChange(serverUrl: String) {
-        _uiState.update { it.copy(serverUrl = serverUrl, errorMessage = null) }
     }
 
     fun onLoginClick(onSuccess: () -> Unit) {
@@ -59,12 +47,7 @@ class LoginViewModel(
             return
         }
 
-        if (state.serverUrl.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Server URL is required") }
-            return
-        }
-
-        // Attempt login
+        // Attempt login (server URL is automatically set to Isaac's Hub)
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
         viewModelScope.launch {
