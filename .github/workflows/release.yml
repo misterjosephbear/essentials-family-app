@@ -23,7 +23,7 @@ jobs:
       - name: Decode release keystore
         run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
 
-      - name: Build signed release APK
+      - name: Build signed release APKs
         env:
           RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
@@ -32,11 +32,15 @@ jobs:
           RELEASE_VERSION_CODE: ${{ github.run_number }}
           RELEASE_VERSION_NAME: "1.0.${{ github.run_number }}"
           UPDATE_CHECK_TOKEN: ${{ secrets.UPDATE_CHECK_TOKEN }}
-        run: ./gradlew :app:assembleRelease --no-daemon
+        run: |
+          ./gradlew :app:assembleRelease --no-daemon
+          ./gradlew :essentials-family-app:assembleRelease --no-daemon
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
           name: Build ${{ github.run_number }}
-          files: app/build/outputs/apk/release/app-release.apk
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            essentials-family-app/build/outputs/apk/release/essentials-family-app-release.apk

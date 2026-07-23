@@ -4,14 +4,20 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.isaacshub.essentials.service.AppBlockingService
 import com.isaacshub.essentials.ui.navigation.EssentialsNavGraph
 import com.isaacshub.essentials.ui.navigation.Routes
 import com.isaacshub.essentials.ui.theme.EssentialsTheme
+import com.isaacshub.essentials.update.UpdateBanner
+import com.isaacshub.essentials.update.UpdateViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,12 +36,24 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             EssentialsTheme {
+                val updateViewModel: UpdateViewModel = viewModel()
+                val updateState by updateViewModel.uiState.collectAsState()
+
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    val navController = rememberNavController()
-                    EssentialsNavGraph(
-                        navController = navController,
-                        startDestination = startDestination
-                    )
+                    Column {
+                        if (updateState.availableRelease != null || updateState.lastCheckFailure != null) {
+                            UpdateBanner(
+                                state = updateState,
+                                onInstall = updateViewModel::installUpdate,
+                                onDismiss = updateViewModel::dismiss
+                            )
+                        }
+                        val navController = rememberNavController()
+                        EssentialsNavGraph(
+                            navController = navController,
+                            startDestination = startDestination
+                        )
+                    }
                 }
             }
         }
