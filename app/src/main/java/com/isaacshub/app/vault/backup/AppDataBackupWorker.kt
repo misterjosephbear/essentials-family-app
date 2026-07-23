@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.isaacshub.app.App
+import com.isaacshub.app.essentials.data.EssentialsDatabase
 import com.isaacshub.app.routehelper.data.RouteHelperDatabase
 import com.isaacshub.app.sleep.data.SleepDatabase
 import com.isaacshub.app.timetracking.data.TimeTrackingDatabase
@@ -16,7 +17,7 @@ import java.util.Date
 import java.util.Locale
 
 private const val REMOTE_FOLDER = "AppBackup"
-private val DATABASE_FILE_NAMES = listOf("sleep.db", "time_tracking.db", "route_helper.db")
+private val DATABASE_FILE_NAMES = listOf("sleep.db", "time_tracking.db", "route_helper.db", "essentials.db")
 private const val MAX_BACKUP_VERSIONS = 5 // Keep last 5 backups
 
 /**
@@ -39,6 +40,7 @@ class AppDataBackupWorker(
         checkpointWal(SleepDatabase.getInstance(applicationContext))
         checkpointWal(TimeTrackingDatabase.getInstance(applicationContext))
         checkpointWal(RouteHelperDatabase.getInstance(applicationContext))
+        checkpointWal(EssentialsDatabase.getInstance(applicationContext))
 
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
 
