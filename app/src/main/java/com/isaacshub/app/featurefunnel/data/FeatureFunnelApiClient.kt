@@ -1,11 +1,11 @@
 package com.isaacshub.app.featurefunnel.data
 
+import com.isaacshub.app.core.network.BaseApiClient
 import com.isaacshub.app.vault.domain.VaultConnection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
-import java.net.URL
 
 sealed interface SendPromptResult {
     data object Success : SendPromptResult
@@ -13,7 +13,7 @@ sealed interface SendPromptResult {
     data class Failed(val message: String) : SendPromptResult
 }
 
-class FeatureFunnelApiClient(private val connection: VaultConnection) {
+class FeatureFunnelApiClient(connection: VaultConnection) : BaseApiClient(connection) {
 
     /**
      * Sends a feature prompt to the Discord channel configured for Claude Code.
@@ -23,42 +23,30 @@ class FeatureFunnelApiClient(private val connection: VaultConnection) {
         channelId: String,
         promptText: String
     ): SendPromptResult = withContext(Dispatchers.IO) {
-        val candidates = listOfNotNull(connection.baseUrl, connection.remoteBaseUrl).distinct()
-
-        for (baseUrl in candidates) {
-            val result = runCatching { postPrompt(baseUrl, channelId, promptText) }
-            result.getOrNull()?.let { return@withContext it }
-        }
-
-        SendPromptResult.Failed("Couldn't reach the server.")
-    }
-
-    private fun postPrompt(baseUrl: String, channelId: String, promptText: String): SendPromptResult {
-        val conn = URL("$baseUrl/api/feature-funnel/send-prompt").openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Authorization", "Bearer ${connection.apiKey}")
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.doOutput = true
-        conn.connectTimeout = 6_000
-        conn.readTimeout = 30_000
-
-        return try {
-            // Send request body
+        val result = tryEachBaseUrl { baseUrl ->
             val requestBody = JSONObject().apply {
                 put("channelId", channelId)
                 put("promptText", promptText)
             }
-            conn.outputStream.bufferedWriter().use { it.write(requestBody.toString()) }
+            val conn = openConnection(baseUrl, "/api/feature-funnel/send-prompt")
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+            conn.readTimeout = 30_000  // Longer timeout for Discord API
 
-            val code = conn.responseCode
-            when (code) {
-                200 -> SendPromptResult.Success
-                429 -> SendPromptResult.LimitHit  // Rate limit / usage limit
-                else -> SendPromptResult.Failed(errorMessageFrom(conn, code))
+            try {
+                conn.outputStream.bufferedWriter().use { it.write(requestBody.toString()) }
+                val code = conn.responseCode
+                when (code) {
+                    200 -> SendPromptResult.Success
+                    429 -> SendPromptResult.LimitHit
+                    else -> SendPromptResult.Failed(errorMessageFrom(conn))
+                }
+            } finally {
+                conn.disconnect()
             }
-        } finally {
-            conn.disconnect()
         }
+        result ?: SendPromptResult.Failed("Couldn't reach the server.")
     }
 
     /**
@@ -66,28 +54,9 @@ class FeatureFunnelApiClient(private val connection: VaultConnection) {
      * Used for completion detection.
      */
     suspend fun getLatestCommitHash(): String? = withContext(Dispatchers.IO) {
-        val candidates = listOfNotNull(connection.baseUrl, connection.remoteBaseUrl).distinct()
-
-        for (baseUrl in candidates) {
-            val result = runCatching { fetchCommitHash(baseUrl) }
-            result.getOrNull()?.let { return@withContext it }
-        }
-
-        null
-    }
-
-    private fun fetchCommitHash(baseUrl: String): String? {
-        val conn = URL("$baseUrl/api/feature-funnel/latest-commit").openConnection() as HttpURLConnection
-        conn.setRequestProperty("Authorization", "Bearer ${connection.apiKey}")
-        conn.connectTimeout = 6_000
-        conn.readTimeout = 10_000
-
-        return try {
-            if (conn.responseCode != HttpURLConnection.HTTP_OK) return null
-            val body = JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
-            body.optString("hash", null)
-        } finally {
-            conn.disconnect()
+        tryEachBaseUrl { baseUrl ->
+            val json = get(baseUrl, "/api/feature-funnel/latest-commit")
+            json.optString("hash", null)
         }
     }
 
@@ -100,51 +69,15 @@ class FeatureFunnelApiClient(private val connection: VaultConnection) {
         promptTitle: String,
         commitHash: String
     ): Boolean = withContext(Dispatchers.IO) {
-        val candidates = listOfNotNull(connection.baseUrl, connection.remoteBaseUrl).distinct()
-
-        for (baseUrl in candidates) {
-            val result = runCatching {
-                postNotification(baseUrl, channelId, promptTitle, commitHash)
-            }
-            if (result.getOrNull() == true) return@withContext true
-        }
-
-        false
-    }
-
-    private fun postNotification(
-        baseUrl: String,
-        channelId: String,
-        promptTitle: String,
-        commitHash: String
-    ): Boolean {
-        val conn = URL("$baseUrl/api/feature-funnel/notify-completion").openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Authorization", "Bearer ${connection.apiKey}")
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.doOutput = true
-        conn.connectTimeout = 6_000
-        conn.readTimeout = 10_000
-
-        return try {
+        val result = tryEachBaseUrl { baseUrl ->
             val requestBody = JSONObject().apply {
                 put("channelId", channelId)
                 put("promptTitle", promptTitle)
                 put("commitHash", commitHash)
             }
-            conn.outputStream.bufferedWriter().use { it.write(requestBody.toString()) }
-
-            conn.responseCode in 200..299
-        } finally {
-            conn.disconnect()
+            post(baseUrl, "/api/feature-funnel/notify-completion", requestBody)
+            true
         }
-    }
-
-    private fun errorMessageFrom(conn: HttpURLConnection, code: Int): String {
-        val body = (conn.errorStream ?: conn.inputStream)?.bufferedReader()?.use { it.readText() }
-        val parsed = body?.let {
-            runCatching { JSONObject(it).optString("error") }.getOrNull()
-        }?.takeIf { it.isNotBlank() }
-        return parsed ?: "Request failed (HTTP $code)"
+        result == true
     }
 }
