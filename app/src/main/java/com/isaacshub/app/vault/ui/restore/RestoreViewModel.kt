@@ -32,9 +32,9 @@ class RestoreViewModel(
 
     private val _databases = MutableStateFlow(
         listOf(
-            BackupDatabase("route_helper", "Route Helper", "route_helper.db"),
-            BackupDatabase("time_tracking", "Time Tracking", "time_tracking.db"),
-            BackupDatabase("sleep", "Sleep Tracker", "sleep.db")
+            BackupDatabase("app", "App Data (Sleep, Banking, Feature Funnel)", "app.db"),
+            BackupDatabase("work", "Work Data (Time Tracking, Route Helper)", "work.db"),
+            BackupDatabase("essentials", "Essentials (Chores, Family)", "essentials.db")
         )
     )
     val databases: StateFlow<List<BackupDatabase>> = _databases

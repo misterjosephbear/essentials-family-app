@@ -102,7 +102,8 @@ class AppBlockingService : Service() {
             val completedChoreIds = completions
                 .filter {
                     it.status == com.isaacshub.essentials.data.local.entities.CompletionStatus.VERIFIED ||
-                    it.status == com.isaacshub.essentials.data.local.entities.CompletionStatus.COMPLETED
+                    it.status == com.isaacshub.essentials.data.local.entities.CompletionStatus.COMPLETED ||
+                    it.status == com.isaacshub.essentials.data.local.entities.CompletionStatus.PENDING_VERIFICATION
                 }
                 .map { it.choreId }
 

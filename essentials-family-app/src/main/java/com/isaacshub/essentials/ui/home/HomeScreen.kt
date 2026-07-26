@@ -23,6 +23,7 @@ import com.isaacshub.essentials.data.local.entities.CompletionStatus
 fun HomeScreen(
     onChoreClick: (Long) -> Unit = {},
     onLogout: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     viewModel: HomeViewModel = viewModel(
         factory = HomeViewModel.Factory(
             essentialsRepository = (LocalContext.current.applicationContext as EssentialsApp).essentialsRepository,
@@ -50,6 +51,9 @@ fun HomeScreen(
                 actions = {
                     IconButton(onClick = { viewModel.refresh() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

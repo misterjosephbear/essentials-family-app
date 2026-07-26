@@ -10,6 +10,7 @@ import com.isaacshub.essentials.ui.choredetail.ChoreDetailScreen
 import com.isaacshub.essentials.ui.home.HomeScreen
 import com.isaacshub.essentials.ui.login.LoginScreen
 import com.isaacshub.essentials.ui.photo.PhotoCaptureScreen
+import com.isaacshub.essentials.ui.settings.SettingsScreen
 import com.isaacshub.essentials.ui.setup.SetupScreen
 
 @Composable
@@ -50,7 +51,16 @@ fun EssentialsNavGraph(
                     navController.navigate(Routes.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Routes.Settings.route)
                 }
+            )
+        }
+
+        composable(Routes.Settings.route) {
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

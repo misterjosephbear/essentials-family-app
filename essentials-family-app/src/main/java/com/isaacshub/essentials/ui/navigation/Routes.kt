@@ -4,6 +4,7 @@ sealed class Routes(val route: String) {
     object Login : Routes("login")
     object Setup : Routes("setup")
     object Home : Routes("home")
+    object Settings : Routes("settings")
     object ChoreDetail : Routes("chore/{choreId}") {
         fun createRoute(choreId: Long) = "chore/$choreId"
     }
