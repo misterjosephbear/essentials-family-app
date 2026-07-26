@@ -8,45 +8,15 @@ import java.net.URL
 /**
  * Base class for API clients that talk to isaacs-hub-server.
  * Provides common HTTP functionality:
- * - Automatic fallback between baseUrl and remoteBaseUrl
+ * - Automatic fallback between baseUrl and remoteBaseUrl (via MultiUrlApiClient)
  * - Consistent timeout values
  * - Error message parsing
  * - Authorization header setup
  */
 abstract class BaseApiClient(
-    protected val connection: VaultConnection,
+    connection: VaultConnection,
     preferredBaseUrl: String? = null
-) {
-    /**
-     * The base URL that successfully responded in the last request.
-     * Can be persisted by the caller to avoid probing unreachable URLs on subsequent requests.
-     */
-    var resolvedBaseUrl: String? = null
-        protected set
-
-    private val candidateBaseUrls: List<String> = run {
-        val all = listOfNotNull(connection.baseUrl, connection.remoteBaseUrl).distinct()
-        val preferred = preferredBaseUrl?.takeIf { it in all }
-        if (preferred != null) listOf(preferred) + all.filterNot { it == preferred } else all
-    }
-
-    /**
-     * Tries [action] against each candidate base URL in order, returning the first one that
-     * completes without throwing. Only connectivity-level exceptions (unreachable URL) cause
-     * fallback to the next candidate. Business-level failures (HTTP 4xx/5xx) are returned as-is.
-     *
-     * Returns null only if every candidate was unreachable.
-     */
-    protected fun <T> tryEachBaseUrl(action: (baseUrl: String) -> T): T? {
-        for (baseUrl in candidateBaseUrls) {
-            val result = runCatching { action(baseUrl) }
-            if (result.isSuccess) {
-                resolvedBaseUrl = baseUrl
-                return result.getOrThrow()
-            }
-        }
-        return null
-    }
+) : MultiUrlApiClient(connection, preferredBaseUrl) {
 
     /**
      * Opens an HTTP connection to [path] at [baseUrl] with common defaults:

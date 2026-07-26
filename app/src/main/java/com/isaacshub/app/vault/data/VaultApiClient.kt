@@ -1,5 +1,6 @@
 package com.isaacshub.app.vault.data
 
+import com.isaacshub.app.core.network.MultiUrlApiClient
 import com.isaacshub.app.vault.domain.VaultConnection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,43 +19,12 @@ private const val MAX_CHUNK_RETRIES = 3
 
 /**
  * Talks to an isaacs-hub-storage server instance to check pairing and push files into the vault.
- *
- * Every call tries [VaultConnection.baseUrl] and [VaultConnection.remoteBaseUrl] (if set) in turn,
- * so the app keeps working whether the phone is on the same network as the server or away from it
- * (e.g. reaching it through a playit.plus tunnel instead of a LAN address) - without this, a phone
- * paired while on the home network would simply have no way to sync/back up once it left. [preferredBaseUrl]
- * (typically whichever URL answered last time, from [VaultPreferencesRepository]) is tried first so
- * repeated calls don't pay a connect-timeout tax probing a URL that's known not to be reachable
- * right now; after a call, [resolvedBaseUrl] reports which URL actually answered so the caller can
- * persist it as the new preference.
+ * Extends [MultiUrlApiClient] to handle automatic fallback between local and remote URLs.
  */
-class VaultApiClient(private val connection: VaultConnection, preferredBaseUrl: String? = null) {
-
-    var resolvedBaseUrl: String? = null
-        private set
-
-    private val candidateBaseUrls: List<String> = run {
-        val all = listOfNotNull(connection.baseUrl, connection.remoteBaseUrl).distinct()
-        val preferred = preferredBaseUrl?.takeIf { it in all }
-        if (preferred != null) listOf(preferred) + all.filterNot { it == preferred } else all
-    }
-
-    /**
-     * Tries [action] against each candidate base URL in order, returning the first one that
-     * completes without throwing (whether it reports business-level success or failure - only a
-     * connectivity-level exception, meaning that URL couldn't be reached at all, moves on to the
-     * next candidate). Returns null only if every candidate was unreachable.
-     */
-    private inline fun <T> tryEachBaseUrl(action: (baseUrl: String) -> T): T? {
-        for (baseUrl in candidateBaseUrls) {
-            val result = runCatching { action(baseUrl) }
-            if (result.isSuccess) {
-                resolvedBaseUrl = baseUrl
-                return result.getOrThrow()
-            }
-        }
-        return null
-    }
+class VaultApiClient(
+    connection: VaultConnection,
+    preferredBaseUrl: String? = null
+) : MultiUrlApiClient(connection, preferredBaseUrl) {
 
     private fun contentUrl(baseUrl: String, remotePath: String): URL {
         val encoded = URLEncoder.encode(remotePath, "UTF-8").replace("+", "%20")
