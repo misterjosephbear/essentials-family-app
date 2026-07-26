@@ -1,0 +1,10 @@
+{
+  "storageRoot": "/tmp/test-storage",
+  "discordBridge": {
+    "discordBotToken": null,
+    "allowedUserIds": [],
+    "claudeOAuthToken": null,
+    "anthropicApiKey": null,
+    "projects": []
+  }
+}

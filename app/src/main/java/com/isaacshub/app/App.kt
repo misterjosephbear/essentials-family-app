@@ -1,20 +1,19 @@
 package com.isaacshub.app
 
 import android.app.Application
+import com.isaacshub.app.core.data.AppDatabase
+import com.isaacshub.app.core.data.DatabaseMigrationHelper
+import com.isaacshub.app.core.data.WorkDatabase
 import com.isaacshub.app.core.data.prefs.UserPreferencesRepository
 import com.isaacshub.app.essentials.data.EssentialsApiClient
 import com.isaacshub.app.essentials.data.EssentialsDatabase
 import com.isaacshub.app.essentials.data.EssentialsRepository
-import com.isaacshub.app.featurefunnel.data.FeatureFunnelDatabase
 import com.isaacshub.app.featurefunnel.data.FeatureFunnelPreferencesRepository
 import com.isaacshub.app.featurefunnel.data.FeatureFunnelRepository
 import com.isaacshub.app.featurefunnel.worker.FeatureFunnelScheduler
-import com.isaacshub.app.routehelper.data.RouteHelperDatabase
 import com.isaacshub.app.routehelper.data.RouteHelperRepository
 import com.isaacshub.app.routehelper.network.RouteHelperAddressFetcher
-import com.isaacshub.app.sleep.data.SleepDatabase
 import com.isaacshub.app.sleep.data.SleepRepository
-import com.isaacshub.app.timetracking.data.TimeTrackingDatabase
 import com.isaacshub.app.timetracking.data.TimeTrackingRepository
 import com.isaacshub.app.vault.backup.AppDataBackupScheduler
 import com.isaacshub.app.vault.data.VaultPreferencesRepository
@@ -58,24 +57,28 @@ class App : Application() {
         super.onCreate()
         preferencesRepository = UserPreferencesRepository(this)
 
-        val sleepDatabase = SleepDatabase.getInstance(this)
-        sleepRepository = SleepRepository(sleepDatabase.sleepSessionDao())
+        // Migrate from old separate databases to new consolidated databases
+        DatabaseMigrationHelper.migrateIfNeeded(this)
 
-        val timeTrackingDatabase = TimeTrackingDatabase.getInstance(this)
+        // AppDatabase - general app features (Sleep, Banking, FeatureFunnel)
+        val appDatabase = AppDatabase.getInstance(this)
+        sleepRepository = SleepRepository(appDatabase.sleepSessionDao())
+
+        // WorkDatabase - work-related features (TimeTracking, RouteHelper)
+        val workDatabase = WorkDatabase.getInstance(this)
         timeTrackingRepository = TimeTrackingRepository(
-            timeTrackingDatabase.timeEntryDao(),
-            timeTrackingDatabase.routeDao(),
-            timeTrackingDatabase.deductionDao(),
-            timeTrackingDatabase.routeScheduleOverrideDao()
+            workDatabase.timeEntryDao(),
+            workDatabase.routeDao(),
+            workDatabase.deductionDao(),
+            workDatabase.routeScheduleOverrideDao()
         )
+        routeHelperRepository = RouteHelperRepository(workDatabase.routeHelperDao(), RouteHelperAddressFetcher(this))
 
         vaultPreferencesRepository = VaultPreferencesRepository(this)
         PhotoBackupScheduler.rescheduleIfPaired(this, vaultPreferencesRepository)
         AppDataBackupScheduler.rescheduleIfPaired(this, vaultPreferencesRepository)
 
-        val routeHelperDatabase = RouteHelperDatabase.getInstance(this)
-        routeHelperRepository = RouteHelperRepository(routeHelperDatabase.routeHelperDao(), RouteHelperAddressFetcher(this))
-
+        // EssentialsDatabase - kept separate (syncs with server)
         val essentialsDatabase = EssentialsDatabase.getInstance(this)
         essentialsRepository = EssentialsRepository(
             essentialsDatabase.choreDao(),
@@ -105,10 +108,9 @@ class App : Application() {
         }
 
         // Feature Funnel initialization
-        val featureFunnelDatabase = FeatureFunnelDatabase.getInstance(this)
         featureFunnelPreferencesRepository = FeatureFunnelPreferencesRepository(this)
         featureFunnelRepository = FeatureFunnelRepository(
-            featureFunnelDatabase.featurePromptDao(),
+            appDatabase.featurePromptDao(),
             featureFunnelPreferencesRepository
         )
         FeatureFunnelScheduler.rescheduleIfEnabled(this, featureFunnelPreferencesRepository)

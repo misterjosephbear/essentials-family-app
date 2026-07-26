@@ -8,13 +8,14 @@ import kotlinx.coroutines.flow.map
 import java.util.UUID
 
 class BankingRepository(
-    private val dao: BankingDao,
+    private val connectionDao: BankConnectionDao,
+    private val accountDao: BankAccountDao,
     private val plaidClient: PlaidClient
 ) {
 
     // Connections
     fun observeAllConnections(): Flow<List<BankConnection>> =
-        dao.getAllConnections().map { entities ->
+        connectionDao.getAllConnections().map { entities ->
             entities.map { it.toDomain() }
         }
 
@@ -36,7 +37,7 @@ class BankingRepository(
                 createdAt = System.currentTimeMillis(),
                 lastSynced = null
             )
-            dao.insertConnection(BankConnectionEntity.fromDomain(connection))
+            connectionDao.insertConnection(BankConnectionEntity.fromDomain(connection))
 
             // Immediately sync accounts after adding connection
             syncPlaidAccounts(BankConnectionEntity.fromDomain(connection))
@@ -53,23 +54,25 @@ class BankingRepository(
     }
 
     suspend fun deleteConnection(connectionId: String) {
-        dao.deleteConnectionAndAccounts(connectionId)
+        // Delete accounts first (foreign key constraint)
+        accountDao.deleteAccountsByConnection(connectionId)
+        connectionDao.deleteConnection(connectionId)
     }
 
     // Accounts
     fun observeAllAccounts(): Flow<List<BankAccount>> =
-        dao.getAllAccounts().map { entities ->
+        accountDao.getAllAccounts().map { entities ->
             entities.map { it.toDomain() }
         }
 
     fun observeAccountsByConnection(connectionId: String): Flow<List<BankAccount>> =
-        dao.getAccountsByConnection(connectionId).map { entities ->
+        accountDao.getAccountsByConnection(connectionId).map { entities ->
             entities.map { it.toDomain() }
         }
 
     suspend fun syncAccounts(connectionId: String): Result<Unit> {
         return runCatching {
-            val connection = dao.getConnection(connectionId)
+            val connection = connectionDao.getConnection(connectionId)
                 ?: throw Exception("Connection not found")
 
             when (connection.provider) {
@@ -89,14 +92,14 @@ class BankingRepository(
             val entities = accountsWithInstitution.map { account ->
                 BankAccountEntity.fromDomain(account, connection.id)
             }
-            dao.insertAccounts(entities)
-            dao.updateLastSynced(connection.id, System.currentTimeMillis())
+            accountDao.insertAccounts(entities)
+            connectionDao.updateLastSynced(connection.id, System.currentTimeMillis())
         }
     }
 
     suspend fun syncAllAccounts(): Result<Unit> {
         return runCatching {
-            val connections = dao.getAllConnections()
+            val connections = connectionDao.getAllConnections()
             // Note: This is a Flow, so in production you'd want to collect and iterate
             // For now, we'll handle syncing from the ViewModel layer per-connection
         }

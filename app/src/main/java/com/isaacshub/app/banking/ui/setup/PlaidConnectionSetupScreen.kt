@@ -30,9 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.isaacshub.app.banking.data.BankingDatabase
 import com.isaacshub.app.banking.data.BankingRepository
 import com.isaacshub.app.banking.data.PlaidClient
+import com.isaacshub.app.core.data.AppDatabase
 import com.plaid.link.OpenPlaidLink
 import com.plaid.link.configuration.LinkTokenConfiguration
 import com.plaid.link.result.LinkExit
@@ -45,8 +45,8 @@ fun PlaidConnectionSetupScreen(
     onConnectionAdded: () -> Unit
 ) {
     val context = LocalContext.current
-    val database = remember { BankingDatabase.getInstance(context) }
-    val repository = remember { BankingRepository(database.bankingDao(), PlaidClient()) }
+    val database = remember { AppDatabase.getInstance(context) }
+    val repository = remember { BankingRepository(database.bankConnectionDao(), database.bankAccountDao(), PlaidClient()) }
     val viewModel: PlaidConnectionSetupViewModel = viewModel(
         factory = PlaidConnectionSetupViewModel.Factory(repository)
     )
