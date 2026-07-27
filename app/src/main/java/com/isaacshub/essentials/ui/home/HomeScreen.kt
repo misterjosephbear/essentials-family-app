@@ -26,7 +26,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(
         factory = HomeViewModel.Factory(
             essentialsRepository = (LocalContext.current.applicationContext as EssentialsApp).essentialsRepository,
-            authRepository = (LocalContext.current.applicationContext as EssentialsApp).authRepository
+            authRepository = (LocalContext.current.applicationContext as EssentialsApp).authRepository,
+            context = LocalContext.current.applicationContext
         )
     )
 ) {
@@ -70,6 +71,55 @@ fun HomeScreen(
                     percentage = uiState.completionPercentage,
                     modifier = Modifier.padding(16.dp)
                 )
+            }
+
+            // Update available banner
+            if (uiState.availableUpdate != null) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Update Available",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Text(
+                                    text = "Version ${uiState.availableUpdate?.versionName}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                                )
+                            }
+                            IconButton(onClick = { viewModel.dismissUpdate() }) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Dismiss",
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { viewModel.downloadUpdate() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.ArrowDownward, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Download & Install")
+                        }
+                    }
+                }
             }
 
             // Error message

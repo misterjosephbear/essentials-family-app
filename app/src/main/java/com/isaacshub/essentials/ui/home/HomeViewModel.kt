@@ -1,5 +1,6 @@
 package com.isaacshub.essentials.ui.home
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -7,6 +8,8 @@ import com.isaacshub.essentials.data.local.entities.LocalChoreEntity
 import com.isaacshub.essentials.data.local.entities.LocalCompletionEntity
 import com.isaacshub.essentials.data.repository.AuthRepository
 import com.isaacshub.essentials.data.repository.EssentialsRepository
+import com.isaacshub.essentials.update.AppVersion
+import com.isaacshub.essentials.update.UpdateManager
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -35,17 +38,21 @@ data class HomeUiState(
     val isLoading: Boolean = false,
     val isSyncing: Boolean = false,
     val errorMessage: String? = null,
-    val completionPercentage: Int = 0
+    val completionPercentage: Int = 0,
+    val availableUpdate: AppVersion? = null,
+    val isCheckingUpdate: Boolean = false
 )
 
 class HomeViewModel(
     private val essentialsRepository: EssentialsRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private val updateManager = UpdateManager(context)
     private val today = LocalDate.now()
     private val todayDayOfWeek = today.dayOfWeek
 
@@ -53,6 +60,7 @@ class HomeViewModel(
         loadUserData()
         observeChoresAndCompletions()
         syncChores()
+        checkForUpdate()
     }
 
     private fun loadUserData() {
@@ -123,6 +131,37 @@ class HomeViewModel(
         _uiState.update { it.copy(errorMessage = null) }
     }
 
+    fun checkForUpdate() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCheckingUpdate = true) }
+
+            updateManager.checkForUpdate()
+                .onSuccess { update ->
+                    _uiState.update {
+                        it.copy(
+                            availableUpdate = update,
+                            isCheckingUpdate = false
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    // Silently fail - update checking is not critical
+                    _uiState.update { it.copy(isCheckingUpdate = false) }
+                }
+        }
+    }
+
+    fun downloadUpdate() {
+        val update = _uiState.value.availableUpdate ?: return
+        updateManager.downloadAndInstallUpdate(update.downloadUrl, update.versionName)
+        // Clear the update after starting download
+        _uiState.update { it.copy(availableUpdate = null) }
+    }
+
+    fun dismissUpdate() {
+        _uiState.update { it.copy(availableUpdate = null) }
+    }
+
     fun logout(onLogoutComplete: () -> Unit) {
         viewModelScope.launch {
             authRepository.clearAuthToken()
@@ -132,11 +171,12 @@ class HomeViewModel(
 
     class Factory(
         private val essentialsRepository: EssentialsRepository,
-        private val authRepository: AuthRepository
+        private val authRepository: AuthRepository,
+        private val context: Context
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return HomeViewModel(essentialsRepository, authRepository) as T
+            return HomeViewModel(essentialsRepository, authRepository, context) as T
         }
     }
 }

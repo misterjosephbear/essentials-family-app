@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Environment
 import android.util.Log
 import androidx.core.content.FileProvider
+import com.isaacshub.essentials.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -25,26 +26,33 @@ data class AppVersion(
 )
 
 /**
- * Manages app updates by checking server for new versions
+ * Manages app updates by checking GitHub releases for new versions
  * and downloading/installing APK files.
  */
 class UpdateManager(private val context: Context) {
 
     companion object {
         private const val TAG = "UpdateManager"
+        private const val GITHUB_REPO = "misterjosephbear/essentials-family-app"
+        private const val GITHUB_API_URL = "https://api.github.com/repos/$GITHUB_REPO/releases/latest"
     }
 
     /**
-     * Check if an update is available
+     * Check if an update is available from GitHub releases
      */
-    suspend fun checkForUpdate(serverUrl: String, authToken: String): Result<AppVersion?> = withContext(Dispatchers.IO) {
+    suspend fun checkForUpdate(): Result<AppVersion?> = withContext(Dispatchers.IO) {
         runCatching {
-            val url = URL("$serverUrl/api/essentials/app/latest-version")
+            val url = URL(GITHUB_API_URL)
             val conn = url.openConnection() as HttpURLConnection
 
             conn.requestMethod = "GET"
-            conn.setRequestProperty("Authorization", "Bearer $authToken")
-            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
+
+            // Add auth token if available
+            val token = BuildConfig.UPDATE_CHECK_TOKEN
+            if (token.isNotEmpty()) {
+                conn.setRequestProperty("Authorization", "Bearer $token")
+            }
 
             if (conn.responseCode != 200) {
                 throw Exception("Failed to check for updates: HTTP ${conn.responseCode}")
@@ -53,11 +61,31 @@ class UpdateManager(private val context: Context) {
             val response = conn.inputStream.bufferedReader().readText()
             val json = JSONObject(response)
 
+            // Parse version from tag (e.g., "v7" -> 7)
+            val tagName = json.getString("tag_name")
+            val versionCode = tagName.removePrefix("v").toIntOrNull() ?: 0
+
+            // Get APK download URL from assets
+            val assets = json.getJSONArray("assets")
+            var apkUrl = ""
+            for (i in 0 until assets.length()) {
+                val asset = assets.getJSONObject(i)
+                val name = asset.getString("name")
+                if (name.endsWith(".apk")) {
+                    apkUrl = asset.getString("browser_download_url")
+                    break
+                }
+            }
+
+            if (apkUrl.isEmpty()) {
+                throw Exception("No APK found in latest release")
+            }
+
             val latestVersion = AppVersion(
-                versionCode = json.getInt("versionCode"),
-                versionName = json.getString("versionName"),
-                downloadUrl = json.getString("downloadUrl"),
-                releaseNotes = json.optString("releaseNotes", "")
+                versionCode = versionCode,
+                versionName = json.optString("name", tagName),
+                downloadUrl = apkUrl,
+                releaseNotes = json.optString("body", "")
             )
 
             val currentVersionCode = getCurrentVersionCode()
