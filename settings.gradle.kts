@@ -13,8 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Essentials Family App"
-include(":app")
+rootProject.name = "essentials-family-app"
 include(":essentialscore")
-
-project(":app").projectDir = file(".")
