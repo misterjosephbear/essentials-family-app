@@ -19,4 +19,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "isaacs-hub"
-include(":app", ":sleepcore", ":essentialscore", ":essentials-family-app")
+include(":app", ":sleepcore", ":essentialscore")
+// Note: essentials-family-app has moved to its own repository:
+// https://github.com/misterjosephbear/essentials-family-app
