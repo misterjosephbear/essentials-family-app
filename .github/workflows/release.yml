@@ -33,7 +33,7 @@ jobs:
           RELEASE_VERSION_NAME: "1.0.${{ github.run_number }}"
           UPDATE_CHECK_TOKEN: ${{ secrets.UPDATE_CHECK_TOKEN }}
         run: |
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew :app:assembleRelease --no-daemon
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -56,4 +56,4 @@ jobs:
 
             **Version:** 1.0.${{ github.run_number }}
           files: |
-            build/outputs/apk/release/*.apk
+            app/build/outputs/apk/release/app-release.apk

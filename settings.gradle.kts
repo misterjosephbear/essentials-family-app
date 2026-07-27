@@ -14,4 +14,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "essentials-family-app"
+include(":app")
 include(":essentialscore")
