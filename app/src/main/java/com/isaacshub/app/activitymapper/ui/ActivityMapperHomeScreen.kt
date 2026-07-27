@@ -293,6 +293,8 @@ private fun SectionHeader(
 
 @Composable
 private fun VariableCard(variable: VariableValue) {
+    val dateFormatter = remember { SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()) }
+
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -312,7 +314,7 @@ private fun VariableCard(variable: VariableValue) {
                 style = MaterialTheme.typography.bodyLarge
             )
             Text(
-                text = "Updated: ${SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date(variable.lastUpdated))}",
+                text = "Updated: ${dateFormatter.format(Date(variable.lastUpdated))}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
