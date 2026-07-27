@@ -46,7 +46,15 @@ fun PlaidConnectionSetupScreen(
 ) {
     val context = LocalContext.current
     val database = remember { AppDatabase.getInstance(context) }
-    val repository = remember { BankingRepository(database.bankConnectionDao(), database.bankAccountDao(), PlaidClient()) }
+    val bankingDatabase = remember { com.isaacshub.app.banking.data.BankingDatabase.getInstance(context) }
+    val repository = remember {
+        BankingRepository(
+            database.bankConnectionDao(),
+            database.bankAccountDao(),
+            bankingDatabase.budgetDao(),
+            PlaidClient()
+        )
+    }
     val viewModel: PlaidConnectionSetupViewModel = viewModel(
         factory = PlaidConnectionSetupViewModel.Factory(repository)
     )

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.isaacshub.app.banking.data.BankingRepository
 import com.isaacshub.app.banking.domain.BankAccount
 import com.isaacshub.app.banking.domain.BankConnection
+import com.isaacshub.app.banking.domain.BudgetState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,7 @@ sealed interface BankingUiState {
         val accounts: List<BankAccount>,
         val connections: List<BankConnection>,
         val totalBalance: Double,
+        val budgetState: BudgetState?,
         val isRefreshing: Boolean
     ) : BankingUiState
     data class Error(val message: String) : BankingUiState
@@ -34,15 +36,17 @@ class BankingHomeViewModel(
     val uiState: StateFlow<BankingUiState> = combine(
         repository.observeAllAccounts(),
         repository.observeAllConnections(),
+        repository.observeBudgetState(),
         _isRefreshing,
         _errorMessage
-    ) { accounts, connections, isRefreshing, error ->
+    ) { accounts, connections, budgetState, isRefreshing, error ->
         when {
             error != null -> BankingUiState.Error(error)
             else -> BankingUiState.Success(
                 accounts = accounts,
                 connections = connections,
                 totalBalance = accounts.sumOf { it.balance },
+                budgetState = budgetState,
                 isRefreshing = isRefreshing
             )
         }

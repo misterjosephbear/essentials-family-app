@@ -7,6 +7,7 @@ object Routes {
 
     const val BANKING_HOME = "banking_home"
     const val BANKING_SETUP = "banking_setup"
+    const val BANKING_BUDGET_CONFIG = "banking_budget_config"
 
     const val SLEEP_HOME = "sleep_home"
     const val SLEEP_HISTORY = "sleep_history"

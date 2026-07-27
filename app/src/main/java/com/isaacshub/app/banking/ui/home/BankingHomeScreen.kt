@@ -47,11 +47,20 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BankingHomeScreen(
-    onAddConnection: () -> Unit
+    onAddConnection: () -> Unit,
+    onConfigureBudget: () -> Unit
 ) {
     val context = LocalContext.current
     val database = remember { AppDatabase.getInstance(context) }
-    val repository = remember { BankingRepository(database.bankConnectionDao(), database.bankAccountDao(), PlaidClient()) }
+    val bankingDatabase = remember { com.isaacshub.app.banking.data.BankingDatabase.getInstance(context) }
+    val repository = remember {
+        BankingRepository(
+            database.bankConnectionDao(),
+            database.bankAccountDao(),
+            bankingDatabase.budgetDao(),
+            PlaidClient()
+        )
+    }
     val viewModel: BankingHomeViewModel = viewModel(
         factory = BankingHomeViewModel.Factory(repository)
     )
@@ -110,7 +119,9 @@ fun BankingHomeScreen(
                     } else {
                         AccountsList(
                             accounts = state.accounts,
-                            totalBalance = state.totalBalance
+                            totalBalance = state.totalBalance,
+                            budgetState = state.budgetState,
+                            onConfigureBudget = onConfigureBudget
                         )
                     }
                 }
@@ -159,7 +170,9 @@ private fun EmptyState(onAddConnection: () -> Unit) {
 @Composable
 private fun AccountsList(
     accounts: List<BankAccount>,
-    totalBalance: Double
+    totalBalance: Double,
+    budgetState: com.isaacshub.app.banking.domain.BudgetState?,
+    onConfigureBudget: () -> Unit
 ) {
     val currencyFormatter = remember {
         NumberFormat.getCurrencyInstance(Locale.US)
@@ -170,6 +183,18 @@ private fun AccountsList(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Budget Tower Card
+        budgetState?.let { state ->
+            if (state.categories.isNotEmpty() && state.totalBalance > 0) {
+                item {
+                    com.isaacshub.app.banking.ui.components.BudgetTowerCard(
+                        budgetState = state,
+                        onConfigureClick = onConfigureBudget
+                    )
+                }
+            }
+        }
+
         // Total balance card
         item {
             Card(

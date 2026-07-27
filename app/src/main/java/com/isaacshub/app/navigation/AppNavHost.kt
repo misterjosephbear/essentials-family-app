@@ -162,7 +162,8 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
 
             composable(Routes.BANKING_HOME) {
                 BankingHomeScreen(
-                    onAddConnection = { navController.navigate(Routes.BANKING_SETUP) }
+                    onAddConnection = { navController.navigate(Routes.BANKING_SETUP) },
+                    onConfigureBudget = { navController.navigate(Routes.BANKING_BUDGET_CONFIG) }
                 )
             }
 
@@ -170,6 +171,25 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                 PlaidConnectionSetupScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onConnectionAdded = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.BANKING_BUDGET_CONFIG) {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val database = com.isaacshub.app.core.data.AppDatabase.getInstance(context)
+                val bankingDatabase = com.isaacshub.app.banking.data.BankingDatabase.getInstance(context)
+                val repository = com.isaacshub.app.banking.data.BankingRepository(
+                    database.bankConnectionDao(),
+                    database.bankAccountDao(),
+                    bankingDatabase.budgetDao(),
+                    com.isaacshub.app.banking.data.PlaidClient()
+                )
+                val viewModel: com.isaacshub.app.banking.ui.config.BudgetConfigViewModel = viewModel(
+                    factory = com.isaacshub.app.banking.ui.config.BudgetConfigViewModel.Factory(repository)
+                )
+                com.isaacshub.app.banking.ui.config.BudgetConfigScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 
