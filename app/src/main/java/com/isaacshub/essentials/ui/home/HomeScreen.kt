@@ -114,9 +114,9 @@ fun HomeScreen(
                             onClick = { viewModel.downloadUpdate() },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.Download, contentDescription = null)
+                            Icon(Icons.Default.Refresh, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Download & Install")
+                            Text("Download & Install Update")
                         }
                     }
                 }
