@@ -1,8 +1,8 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("com.google.devtools.ksp")
+    id("com.android.application") version "8.9.0"
+    id("org.jetbrains.kotlin.android") version "2.1.0"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.1.0"
+    id("com.google.devtools.ksp") version "2.1.0-1.0.29"
     kotlin("plugin.serialization") version "2.1.0"
 }
 
@@ -14,20 +14,28 @@ android {
         applicationId = "com.isaacshub.essentials"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = System.getenv("RELEASE_VERSION_CODE")?.toIntOrNull() ?: 1
+        versionName = System.getenv("RELEASE_VERSION_NAME") ?: "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Update check token for GitHub API
+        buildConfigField("String", "UPDATE_CHECK_TOKEN", "\"${System.getenv("UPDATE_CHECK_TOKEN") ?: ""}\"")
     }
 
     signingConfigs {
         create("release") {
-            // Note: In production, create a release keystore
-            // For development, use debug signing
-            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            // Use release keystore from environment variables (set by CI)
+            // Falls back to debug keystore for local development
+            val keystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
+            storeFile = if (keystorePath != null) {
+                file(keystorePath)
+            } else {
+                file("${System.getProperty("user.home")}/.android/debug.keystore")
+            }
+            storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD") ?: "android"
+            keyAlias = System.getenv("RELEASE_KEY_ALIAS") ?: "androiddebugkey"
+            keyPassword = System.getenv("RELEASE_KEY_PASSWORD") ?: "android"
         }
     }
 
