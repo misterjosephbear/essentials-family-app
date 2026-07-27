@@ -1,103 +1,113 @@
 # Isaac's Hub
 
-The start of an Android "all-in-one" app. First feature: a sleep tracker that mirrors Rise Sleep
-Tracker's core idea - auto-detect sleep from phone signals (no wearable), and track a rolling
-**sleep debt** over time instead of just logging individual nights.
+An Android "all-in-one" productivity app combining multiple independent tools in a single app. Built with Kotlin, Jetpack Compose, and Material 3.
 
-## How it works
+## Features
 
-1. **Detection** (`sleep/detection/SleepDetectionService.kt`) - a foreground service listens for
-   `ACTION_SCREEN_ON`/`ACTION_SCREEN_OFF` broadcasts and the `TYPE_SIGNIFICANT_MOTION` trigger
-   sensor, and feeds them into a small heuristic state machine
-   (`sleepcore/.../SleepDetectionEngine.kt`): screen goes off at night, stays off and still for
-   ~10 minutes -> sleep candidate becomes an actual session; screen comes back on (or motion
-   resumes) and stays that way for ~3 minutes -> session ends. A brief screen check in the middle
-   of the night (checking the time, then putting the phone back down) does not end the session.
-   This is a **heuristic approximation**, not a reverse-engineering of Rise's actual (undisclosed)
-   algorithm - it's built entirely from public phone signals (screen state + a stock Android
-   sensor), documented in the code so it's easy to tune or replace.
-2. **Confirmation** - every auto-detected session is inserted unconfirmed, with a notification
-   ("Good morning! 7h 42m detected - tap to confirm or edit") so a bad read never silently pollutes
-   your sleep debt. Manual entry is always available too (`+` button on Home/History), both as a
-   fallback and because the detector needs a session to already be confirmed to count toward debt.
-3. **Sleep debt** (`sleepcore/.../SleepDebt.kt`) - each night short of your sleep-need target (set
-   in Settings, default 8h) adds to a running debt total; each night over it pays debt back down,
-   floored at zero. Only the last N days (default 14, `debtWindowDays`) count, and only nights with
-   a confirmed session count - a night with no data is skipped rather than assumed to be a total
-   loss.
-4. **Persistence** - Room (`sleep/data/`) for sleep sessions, Jetpack DataStore
-   (`core/data/prefs/`) for settings (sleep need, auto-detect toggle, night window). Detection
-   state itself (which phase the state machine is in, mid-session) is snapshotted to
-   `SharedPreferences` after every event so a service restart resumes instead of losing the night.
+### Sleep Health Tracker
+Auto-detect sleep sessions from phone signals (no wearable required) and track rolling **sleep debt** over time, similar to Rise Sleep Tracker's core concept.
 
-## Module layout
+- **Auto-detection** (`sleep/detection/`) - Foreground service monitors screen state and motion sensors
+- **Sleep debt calculation** (`sleepcore/SleepDebt.kt`) - Tracks deficit/surplus against your sleep need target
+- **Manual entry** - Confirm or edit auto-detected sessions, or add sessions manually
+- **Nap alarm** (`sleep/nap/`) - Foreground-service timer for timed naps
 
-- **`:sleepcore`** - pure Kotlin/JVM, no Android dependency. Contains `SleepDebtCalculator` and
-  `SleepDetectionEngine`, the two pieces of actual logic in this app. Fully unit tested (16 tests,
-  all passing - see "What's verified" below).
-- **`:app`** - the Android app: Room/DataStore data layer, the foreground detection service,
-  notifications, and a 3-tab Jetpack Compose UI (Home with a sleep-debt ring, History, Settings)
-  plus a manual add/edit screen with Material3 date/time pickers.
+### Route Helper
+Build mail-delivery routes by driving them once, then replay turn-by-turn on later days.
+
+- **Route Builder** (`routehelper/ui/builder/`) - Live GPS recording with auto-discovered addresses using Census TIGER/Line data and Microsoft building footprints
+- **Route Player** (`routehelper/ui/player/`) - GPS navigation with rotating map (direction of travel always faces up)
+- **Mail Scanner** (`routehelper/ui/mailscan/`) - Camera + ML Kit OCR to scan addresses from envelopes and add stops on the fly
+- **Route Editor** (`routehelper/ui/edit/`) - Reorder or remove stops after recording
+
+### Time Tracking
+Log work hours by route with evaluations and overtime tracking.
+
+- Weekly schedule view with past/future week pagination
+- Per-day schedulable routes with notes
+- Overtime calculations
+
+### Photo & App Vault
+QR-pairs with an `isaacs-hub-storage` server instance for automatic backups.
+
+- Auto-backup photos and videos (preserves GPS metadata)
+- Backup Room databases and app preferences
+- Resumable uploads with remote-tunnel fallback
+- Live progress indicators
+
+### Banking
+View all account balances in one place using Plaid integration.
+
+### Essentials
+Manage family chores and device restrictions (available as standalone app at [essentials-family-app](https://github.com/misterjosephbear/essentials-family-app)).
+
+### Feature Funnel
+Queue and manage feature requests for automated development via Discord integration.
+
+### Activity Mapper
+Automation system for triggering actions based on conditions.
+
+- **Variables** - Track system state (IS_SLEEPING, CURRENT_ACTIVITY, etc.)
+- **Rules** - Create automation rules with conditions and logical operators (AND/OR)
+- **Actions** - Currently supports Discord Rich Presence integration
+- **CRUD UI** - Full interface for managing rules and Rich Presence profiles
+
+## Module Structure
+
+- **`:app`** - Main Android app with all features
+- **`:sleepcore`** - Pure Kotlin/JVM module for sleep debt calculation and detection logic (16 passing unit tests)
+- **`:essentialscore`** - Shared logic for Essentials features
+
+## Auto-Updater
+
+The app includes an in-app auto-updater that checks GitHub Releases for new builds. CI automatically publishes signed APKs on every push to `main` via `.github/workflows/release.yml`.
+
+**Note**: Update checks require a valid `UPDATE_CHECK_TOKEN` (fine-grained GitHub PAT with Contents read-only access). If you see a "Bad credentials" error, the token needs to be regenerated in the repository secrets.
 
 ## Permissions
 
 | Permission | Why |
 |---|---|
-| `POST_NOTIFICATIONS` | Foreground-service notification + "sleep detected" morning summary |
-| `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_SPECIAL_USE` | Keeps the detector running overnight |
-| `RECEIVE_BOOT_COMPLETED` | Restarts detection after a reboot, if it was enabled |
-
-No `BODY_SENSORS`, no location, no microphone. Auto-detect is opt-in (off by default, toggled in
-Settings) and only requests the notification permission when you turn it on.
-
-## What's verified vs. what isn't
-
-This was built in a sandboxed environment with **no network access to `dl.google.com`** (Google's
-Maven host), which is required to resolve the Android Gradle Plugin, AndroidX/Compose/Room, and
-the Android SDK itself. So the `:app` module has **not been compiled**, run, or seen a device/
-emulator - the Compose UI, Room/KSP annotation processing, and the manifest have not been checked
-by a real build.
-
-What *has* been verified: `:sleepcore` has no Android dependency, so it was tested standalone
-against Maven Central (which is reachable here) - 16 JUnit tests covering the debt-calculation
-math (deficit accumulation, surplus paydown floored at zero, rolling window boundaries, same-day
-session summing) and the detection state machine (night-window gating, false-start cancellation,
-stillness/wake confirmation timing, mid-sleep screen checks not ending a session, the runaway-
-session safety cap, and snapshot/restore). Both files are dependency-free enough to read and
-review directly: `sleepcore/src/main/kotlin/com/isaacshub/sleep/core/`.
-
-Before relying on this:
-
-1. Open the project in Android Studio (or run `./gradlew build`) and fix whatever the real
-   compiler finds. The highest-risk file is `sleep/ui/edit/EditSessionScreen.kt` - it uses
-   Material3's `DatePicker`/`TimePicker`, which are a bit fiddly (the `DatePicker` API works in
-   UTC regardless of device timezone, which the code accounts for, but is worth double-checking
-   against the real widget).
-2. Foreground-service background-start rules are strict on modern Android. The service is only
-   ever started from a foreground context (Settings toggle, `MainActivity` launch, or the
-   boot-completed exemption) - never from `Application.onCreate()` - but this needs a real-device
-   check, since `ForegroundServiceStartNotAllowedException` is easy to trigger without realizing
-   it.
-3. Detection reliability depends on the OS not fully suspending the CPU overnight in a way that
-   starves the tick handler for too long. The design tolerates *late* ticks (every transition is
-   duration-based off real timestamps, not tick-count-based), but hasn't been battery/Doze-tested
-   on a real device. `SettingsScreen` offers a battery-optimization exemption shortcut for this.
-   A tighter version would swap the `Handler.postDelayed` tick loop for
-   `AlarmManager.setExactAndAllowWhileIdle`.
-4. `TYPE_SIGNIFICANT_MOTION` isn't present on every device; the code null-checks it and degrades
-   gracefully (screen-on alone still ends a session, just with a slightly less precise stillness
-   read), but that fallback path is untested.
+| `POST_NOTIFICATIONS` | Sleep detection notifications + nap alarms |
+| `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_SPECIAL_USE` | Keep detectors running overnight |
+| `RECEIVE_BOOT_COMPLETED` | Restart services after reboot |
+| `CAMERA` | Mail envelope scanning (Route Helper) |
+| `ACCESS_FINE_LOCATION` | GPS tracking for Route Helper |
+| `INTERNET` | Vault sync, update checks, API integrations |
 
 ## Building
 
-```
-./gradlew build          # full build
-./gradlew :sleepcore:test  # just the verified pure-logic tests
-./gradlew installDebug    # install on a connected device/emulator
+```bash
+./gradlew build              # Full build
+./gradlew :sleepcore:test    # Run sleep logic unit tests
+./gradlew installDebug       # Install debug build on device/emulator
 ```
 
-## Roadmap ideas (not built yet)
+### Signing
 
-- Sleep debt trend chart / history graph
-- Smart alarm (wake within a window near a light-sleep point)
-- Additional "all-in-one" features beyond sleep tracking
+Both debug and release builds use the same signing key for in-app update compatibility. CI uses secrets for production builds; local builds use default values from `app/build.gradle.kts`.
+
+## Development Environment
+
+- `compileSdk` / `targetSdk`: 36
+- `minSdk`: 26 (Android 8.0+)
+- Kotlin 2.0+ with Compose compiler
+- Java 17
+
+## Architecture
+
+- **UI**: Jetpack Compose with Material 3
+- **Navigation**: Jetpack Navigation Compose
+- **Data**: Room + Jetpack DataStore
+- **Networking**: OkHttp + Retrofit
+- **Dependency Injection**: ViewModelProvider.Factory pattern
+- **Concurrency**: Kotlin Coroutines + Flow
+
+## Contributing
+
+This is a personal project but issues and PRs are welcome. See `PROJECT_STATUS.md` for current development status.
+
+## Related Projects
+
+- [isaacs-hub-storage](https://github.com/misterjosephbear/isaacs-hub-storage) - Backend server for Photo/App Vault and other features
+- [essentials-family-app](https://github.com/misterjosephbear/essentials-family-app) - Standalone version of Essentials feature
