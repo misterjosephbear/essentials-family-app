@@ -58,6 +58,14 @@ object Routes {
     const val FEATURE_FUNNEL_EDIT_ARG = "promptId"
     const val FEATURE_FUNNEL_EDIT_PATTERN = "$FEATURE_FUNNEL_EDIT_BASE/{$FEATURE_FUNNEL_EDIT_ARG}"
 
+    const val ACTIVITY_MAPPER_HOME = "activity_mapper_home"
+    const val ACTIVITY_MAPPER_EDIT_RULE_BASE = "activity_mapper_edit_rule"
+    const val ACTIVITY_MAPPER_EDIT_RULE_ARG = "ruleId"
+    const val ACTIVITY_MAPPER_EDIT_RULE_PATTERN = "$ACTIVITY_MAPPER_EDIT_RULE_BASE/{$ACTIVITY_MAPPER_EDIT_RULE_ARG}"
+    const val ACTIVITY_MAPPER_EDIT_PROFILE_BASE = "activity_mapper_edit_profile"
+    const val ACTIVITY_MAPPER_EDIT_PROFILE_ARG = "profileId"
+    const val ACTIVITY_MAPPER_EDIT_PROFILE_PATTERN = "$ACTIVITY_MAPPER_EDIT_PROFILE_BASE/{$ACTIVITY_MAPPER_EDIT_PROFILE_ARG}"
+
     private const val NEW_TOKEN = "new"
 
     fun editSession(sessionId: Long?): String = "$EDIT_SESSION_BASE/${sessionId ?: NEW_TOKEN}"
@@ -69,6 +77,10 @@ object Routes {
     fun amazonScanner(routeId: Long): String = "$AMAZON_SCANNER_BASE/$routeId"
     fun essentialsEditChore(choreId: Long?): String = "$ESSENTIALS_EDIT_CHORE_BASE/${choreId ?: NEW_TOKEN}"
     fun featureFunnelEdit(promptId: Long?): String = "$FEATURE_FUNNEL_EDIT_BASE/${promptId ?: NEW_TOKEN}"
+    fun activityMapperEditRule(ruleId: Int?): String = "$ACTIVITY_MAPPER_EDIT_RULE_BASE/${ruleId ?: NEW_TOKEN}"
+    fun activityMapperEditProfile(profileId: String?): String = "$ACTIVITY_MAPPER_EDIT_PROFILE_BASE/${profileId ?: NEW_TOKEN}"
 
     fun parseId(arg: String?): Long? = arg?.takeIf { it != NEW_TOKEN }?.toLongOrNull()
+    fun parseIntId(arg: String?): Int? = arg?.takeIf { it != NEW_TOKEN }?.toIntOrNull()
+    fun parseStringId(arg: String?): String? = arg?.takeIf { it != NEW_TOKEN }
 }

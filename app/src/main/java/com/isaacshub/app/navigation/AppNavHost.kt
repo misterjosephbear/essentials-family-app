@@ -64,6 +64,9 @@ import com.isaacshub.app.vault.ui.restore.RestoreScreen
 import com.isaacshub.app.vault.ui.restore.RestoreViewModel
 import com.isaacshub.app.featurefunnel.ui.home.FeatureFunnelHomeScreen
 import com.isaacshub.app.featurefunnel.ui.edit.EditPromptScreen
+import com.isaacshub.app.activitymapper.ui.ActivityMapperHomeScreen
+import com.isaacshub.app.activitymapper.ui.EditRuleScreen
+import com.isaacshub.app.activitymapper.ui.EditRichPresenceProfileScreen
 
 private data class TopLevelDestination(val route: String, val label: String, val icon: ImageVector)
 
@@ -148,7 +151,8 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                     onOpenBanking = { navController.navigate(Routes.BANKING_HOME) },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS_HOME) },
                     onOpenEssentials = { navController.navigate(Routes.ESSENTIALS_HOME) },
-                    onOpenFeatureFunnel = { navController.navigate(Routes.FEATURE_FUNNEL_HOME) }
+                    onOpenFeatureFunnel = { navController.navigate(Routes.FEATURE_FUNNEL_HOME) },
+                    onOpenActivityMapper = { navController.navigate(Routes.ACTIVITY_MAPPER_HOME) }
                 )
             }
 
@@ -344,6 +348,35 @@ private fun IsaacsHubScaffold(navController: NavHostController, modifier: Modifi
                     ?.let { Routes.parseId(it) }
                 EditPromptScreen(
                     promptId = promptId,
+                    onBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() }
+                )
+            }
+
+            // Activity Mapper routes
+            composable(Routes.ACTIVITY_MAPPER_HOME) {
+                ActivityMapperHomeScreen(
+                    onEditRule = { ruleId -> navController.navigate(Routes.activityMapperEditRule(ruleId)) },
+                    onEditProfile = { profileId -> navController.navigate(Routes.activityMapperEditProfile(profileId)) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.ACTIVITY_MAPPER_EDIT_RULE_PATTERN) { backStackEntry ->
+                val ruleId = backStackEntry.arguments?.getString(Routes.ACTIVITY_MAPPER_EDIT_RULE_ARG)
+                    ?.let { Routes.parseIntId(it) }
+                EditRuleScreen(
+                    ruleId = ruleId,
+                    onBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.ACTIVITY_MAPPER_EDIT_PROFILE_PATTERN) { backStackEntry ->
+                val profileId = backStackEntry.arguments?.getString(Routes.ACTIVITY_MAPPER_EDIT_PROFILE_ARG)
+                    ?.let { Routes.parseStringId(it) }
+                EditRichPresenceProfileScreen(
+                    profileId = profileId,
                     onBack = { navController.popBackStack() },
                     onSaved = { navController.popBackStack() }
                 )

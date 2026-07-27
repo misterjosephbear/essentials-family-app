@@ -73,7 +73,8 @@ fun LandingScreen(
     onOpenBanking: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenEssentials: () -> Unit = {},
-    onOpenFeatureFunnel: () -> Unit = {}
+    onOpenFeatureFunnel: () -> Unit = {},
+    onOpenActivityMapper: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as App
@@ -132,6 +133,13 @@ fun LandingScreen(
                 title = "Feature Funnel",
                 subtitle = "Queue feature requests for automated development",
                 onClick = onOpenFeatureFunnel
+            ),
+            LandingCard(
+                id = "activity_mapper",
+                icon = Icons.Filled.AutoAwesome,
+                title = "Activity Mapper",
+                subtitle = "Automation system for triggering actions based on conditions",
+                onClick = onOpenActivityMapper
             ),
             LandingCard(
                 id = "settings",
