@@ -56,4 +56,4 @@ jobs:
 
             **Version:** 1.0.${{ github.run_number }}
           files: |
-            app/build/outputs/apk/release/essentials-family-app-release.apk
+            app/build/outputs/apk/release/app-release.apk
