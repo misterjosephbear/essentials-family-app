@@ -17,3 +17,7 @@ local.properties
 # Release keystore
 *.keystore
 *.keystore.b64
+
+# graphify knowledge graph (see CLAUDE.md Context Navigation section):
+# keep graph.json and GRAPH_REPORT.md tracked, cache/ is machine-local/regenerable
+graphify-out/cache/
