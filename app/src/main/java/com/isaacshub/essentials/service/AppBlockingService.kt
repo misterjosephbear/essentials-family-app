@@ -154,9 +154,11 @@ class AppBlockingService : Service() {
             overlayView = View(this).apply {
                 setBackgroundColor(0xCC000000.toInt()) // Semi-transparent black
                 setOnClickListener {
-                    // Open main activity
+                    // Open main activity (or bring to front if already running)
                     val intent = Intent(this@AppBlockingService, MainActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                     }
                     startActivity(intent)
                 }
